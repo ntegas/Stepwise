@@ -5,8 +5,10 @@ This file is the canonical, living product spec for Stepwise. It is auto-loaded 
 Supporting documents (read alongside this file):
 - `/docs/functional-analysis.md` — the sections below grouped into implementation modules
 - `/docs/data-model.md` — entities, fields, relationships, and the automatic-cascade rule
-- `/docs/architecture.md` — stack choice (Supabase + React Native/Expo for Android first), repo layout
-- `/docs/android-stack.md`, `/docs/android-architecture.md`, `/docs/play-store-checklist.md` — Android/Play Store specifics
+- `/docs/architecture.md` — high-level stack choice (Supabase + native Android), repo layout
+- `/docs/android-architecture-specification.md` — the canonical, detailed Android technical architecture (Kotlin/Compose, offline-first, sync, backend, security, testing, etc.)
+- `/docs/play-store-checklist.md` — Play Store release specifics (stack-agnostic)
+- `/docs/android-stack.md`, `/docs/android-architecture.md` — superseded (React Native/Expo era), kept for history only
 - `/docs/scope-of-work.md` — full screen/feature breakdown for build sequencing (no MVP cut)
 
 ## Non-negotiable principle
@@ -436,8 +438,8 @@ Calendar: «Boxing 19:00.» Stepwise: «Boxing 19:00 → Actual Session → Goal
 
 ## Product/engineering decisions made so far (outside the concept text)
 
-- **Primary client: Android first, released on Google Play; iOS built later on the same React Native/Expo codebase** — see `/docs/android-stack.md`. The Next.js web app from Phase 0 stays in the repo but is parked, not the active development focus.
-- **Backend**: Supabase (Postgres + Auth + REST/Realtime + RLS) — one backend reachable identically from Android, iOS later, and the parked web client.
+- **Primary client: native Android — Kotlin + Jetpack Compose — released on Google Play; iOS built later, path TBD (likely Kotlin Multiplatform sharing the domain/data layer — kept deliberately open, see `/docs/android-architecture-specification.md` §26 dependency rules).** This supersedes the earlier React Native/Expo decision (`/docs/android-stack.md`, `/docs/android-architecture.md` — kept for history only). The full technical architecture is `/docs/android-architecture-specification.md`. The Next.js web app from Phase 0 stays in the repo but is parked, not the active development focus.
+- **Backend**: Supabase (Postgres + Auth + Realtime + RLS) — chosen specifically because the relational model fits the multi-goal/multi-metric calculation engine and the source-of-truth requirement below; reasoning in the spec's Architecture Decision Record.
 - **Source of truth (§62)**: Sessions/Progress Events only. No manually-maintained totals anywhere — Goal progress, Life Area aggregates, and every period rollup are derived views, never independently stored/editable numbers.
 - **Idempotency (§60)** and **recomputation on edit/delete (§61)** are binding architecture constraints on the Sessions/Progress Events pipeline, not later hardening.
 - **Internationalization**: multi-language from day one, no hardcoded UI strings — `i18next`/`react-i18next`, starting with Russian + English.
@@ -446,4 +448,4 @@ Calendar: «Boxing 19:00.» Stepwise: «Boxing 19:00 → Actual Session → Goal
 - **Legal/jurisdiction**: resolved before the public production Play Store release, not before development starts.
 - **Audience**: a public product for other people, not personal-use-only — confirms the existing multi-user design (Supabase Auth + per-user RLS).
 - **Scope: no MVP phasing (§77).** The full concept above is the target for the build — not a cut-down core loop. Build order and screen-by-screen scope are tracked in `/docs/scope-of-work.md`, which must be kept in sync whenever this file changes.
-- **Build order**: Phase 0 (done) = original concept analysis + data model + Supabase schema + parked web scaffold. Phase 1 (done) = Android pre-development analysis + first scope-of-work draft, built against the original 48-section concept. Phase 1.5 (in progress) = reconcile data model, functional analysis, architecture, and scope-of-work against this Master Product Concept (§1–77), which supersedes the original 48-section text. Phase 2 = actual Android app build against the reconciled `/docs/scope-of-work.md`.
+- **Build order**: Phase 0 (done) = original concept analysis + data model + Supabase schema + parked web scaffold. Phase 1 (done) = Android pre-development analysis + first scope-of-work draft, built against the original 48-section concept (React Native/Expo decision, since superseded). Phase 1.5 (done) = reconciled data model, functional analysis, architecture, and scope-of-work against this Master Product Concept (§1–77). Phase 1.6 (done) = `/docs/android-architecture-specification.md` — native Kotlin/Compose technical architecture, superseding the Phase 1 React Native stack docs. Phase 2 = Canonical Data Model → Calculation Engine → UX/Navigation → Offline & Sync → Google Play Release specs, in that order (per the architecture spec §28), then implementation.

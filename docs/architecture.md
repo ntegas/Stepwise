@@ -2,19 +2,18 @@
 
 ## Access requirement
 
-Stepwise must be usable from a phone and a computer with the same data, with no dependency on any single local machine. **The primary client is a native Android app, released on Google Play** (see `/docs/android-stack.md`, `/docs/play-store-checklist.md`, `/docs/android-architecture.md`). The Next.js web app built in Phase 0 stays in the repo as a parked secondary client, not the active development focus.
+Stepwise must be usable from a phone and a computer with the same data, with no dependency on any single local machine. **The primary client is a native Android app (Kotlin + Jetpack Compose), released on Google Play** — full technical architecture in `/docs/android-architecture-specification.md` (canonical), Play Store specifics in `/docs/play-store-checklist.md`. The Next.js web app built in Phase 0 stays in the repo as a parked secondary client, not the active development focus.
 
 ## Stack
 
-- **Backend: Supabase** — hosted Postgres + Auth (email/OAuth) + auto-generated REST/GraphQL API + Realtime + Row Level Security.
-  - One backend reachable identically from the Android app and the parked web client, via plain REST or Supabase's official SDKs.
+- **Backend: Supabase** — hosted Postgres + Auth (email/OAuth) + Realtime + Row Level Security, accessed via `supabase-kt` / Retrofit from the Android app.
   - RLS enforces per-user data isolation at the database level rather than in application code, so every client inherits the same security guarantee for free.
-  - Free tier is sufficient to start; no separate server to host or operate.
-- **Android app: React Native + Expo (TypeScript)** — reuses `/packages/domain` and `@supabase/supabase-js` the same way the web app does; built via EAS Build for Play Store submission. Full rationale in `/docs/android-stack.md`.
+  - Chosen over Firebase specifically because the relational model fits the multi-goal/multi-metric calculation engine and the source-of-truth requirement below — Firestore's standard scaling pattern (denormalized counters) is the anti-pattern §62 forbids. Full comparison in the Android spec's Architecture Decision Record.
+- **Android app: native Kotlin + Jetpack Compose + Room + WorkManager**, Hilt for DI at the app layer. Supersedes the earlier React Native/Expo decision — see `/docs/android-architecture-specification.md` for the full stack, layering, module structure, offline/sync design, and ADR.
 - **Web app (parked): Next.js (TypeScript)**, deployed to Vercel. Kept as a secondary/interim access point; not the active build target.
-- **Derived calculations** (execution rate, pace, forecast, period rollups) live in Postgres views/functions, not duplicated per-client in app code (see `/docs/data-model.md`). This guarantees every client agrees on the numbers, since all of them read the same view.
-- **Internationalization & units**: no hardcoded strings or unit assumptions — `i18next` for translations, a per-user unit preference for display. See `/docs/android-architecture.md`.
-- **iOS**: not built now, but React Native/Expo means the same codebase targets iOS later without a rewrite — the user's stated sequencing (§1: Android first, iOS on the same base) is a scheduling choice, not a platform-lock-in risk.
+- **Derived calculations** (execution rate, pace, forecast, period rollups) live in Postgres views/functions, mirrored by a pure-Kotlin Calculation Engine on-device for offline reads — not duplicated ad hoc per screen (see `/docs/data-model.md` and the Android spec §12/§15).
+- **Internationalization & units**: no hardcoded strings or unit assumptions — Android string resources per locale, a per-user unit preference for display.
+- **iOS**: not built now; sequencing is Android first, iOS later. Keeping `:core:model`/`:core:calculation`/`:domain` as plain Kotlin (no Android SDK dependency, no DI annotations) keeps a Kotlin Multiplatform path realistic later without committing to it now — see the Android spec §26.
 
 ## Binding technical requirements (Master Product Concept §59–63)
 
@@ -37,21 +36,25 @@ An Artifact was considered (zero hosting, instant multi-device URL) but rejected
 /docs
   functional-analysis.md
   data-model.md
-  architecture.md      — this file
+  architecture.md                       — this file (high-level overview)
+  android-architecture-specification.md — canonical detailed Android architecture
+  play-store-checklist.md
+  android-stack.md, android-architecture.md — superseded (React Native era), history only
 /supabase
-  migrations/          — schema, RLS policies, triggers, views
+  migrations/          — schema, RLS policies, triggers, views (Phase 0 version; superseded by Phase 2's Canonical Data Model)
 /apps
   web/                 — Next.js app (parked): Today / Goals / Plan / Progress tabs + Quick Add
-  mobile/              — React Native/Expo Android app (Phase 2 onward)
 /packages
-  domain/              — shared TypeScript types + pure calculation helpers, consumed by both apps
+  domain/              — shared TypeScript types, used by the parked web app only (not the native Android app)
+/android             — native Android Gradle project (Phase 2 onward), multi-module per android-architecture-specification.md §5
 ```
 
 ## Build order
 
 1. **Phase 0 (done)**: concept analysis, data model, Supabase schema + RLS + cascade trigger + rollup views, Next.js web app skeleton, README — built against the original 48-section concept.
-2. **Phase 1 (done)**: Android pre-development analysis — stack decision, Play Store checklist, Android-specific architecture concerns, and a first scope-of-work breakdown.
-3. **Phase 1.5 (done)**: reconciled `/CLAUDE.md`, `/docs/data-model.md`, `/docs/functional-analysis.md`, and this file against the Master Product Concept (§1–77), which supersedes the original 48-section text — most notably the Vision/Life Areas/Life Balance strategic layer, multi-goal/multi-metric Sessions, and the source-of-truth/idempotency requirements above. `/docs/scope-of-work.md` is reconciled to match in the same pass.
-4. **Phase 2**: Android app build, including a new Supabase migration written against the reconciled data model (the Phase 0 migration is superseded, not extended). Per the user's explicit decision there is **no MVP cut** — the full concept is the target, not a phased subset. Sequencing within Phase 2 is defined in `/docs/scope-of-work.md`.
+2. **Phase 1 (done)**: Android pre-development analysis — stack decision (React Native/Expo, since superseded), Play Store checklist, a first scope-of-work breakdown.
+3. **Phase 1.5 (done)**: reconciled `/CLAUDE.md`, `/docs/data-model.md`, `/docs/functional-analysis.md`, and this file against the Master Product Concept (§1–77) — the Vision/Life Areas/Life Balance strategic layer, multi-goal/multi-metric Sessions, source-of-truth/idempotency requirements. `/docs/scope-of-work.md` reconciled in the same pass.
+4. **Phase 1.6 (done)**: `/docs/android-architecture-specification.md` — platform decision changed to native Kotlin/Compose; full technical architecture (layers, modules, offline/sync, backend, security, testing) locked, with a consistency audit and an ADR.
+5. **Phase 2**: Canonical Data Model → Calculation Engine → UX/Navigation → Offline & Sync → Google Play Release specs (in that order, per the Android spec §28), each building on the last, followed by implementation. No MVP cut — the full concept is the target, not a phased subset.
 
 Each stage is verified end-to-end (migration applies cleanly, app builds and runs, manual smoke test of the flow) before moving on.
