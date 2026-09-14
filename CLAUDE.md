@@ -725,8 +725,13 @@ Activity продолжает жить: «Boxing Lifetime: 375h»
 
 ## Product/engineering decisions made so far (outside the concept text)
 
-- **Access requirement**: usable from phone and computer with shared data, no local binding. User will build a native Android app separately later; this repo currently covers the shared backend + web client.
-- **Backend**: Supabase (Postgres + Auth + REST/Realtime + RLS) — one backend reachable identically from web now and Android later.
-- **Web**: Next.js (TypeScript), deployed to Vercel.
+- **Primary client: Android, released on Google Play.** Built with React Native + Expo (TypeScript) — see `/docs/android-stack.md`. The Next.js web app from Phase 0 stays in the repo but is parked, not the active development focus.
+- **Backend**: Supabase (Postgres + Auth + REST/Realtime + RLS) — one backend reachable identically from Android and the parked web client.
 - **Derived calculations** (execution rate, pace, forecast, rollups) live in Postgres views/functions, not duplicated in app code per client, so every client reads the same numbers.
-- **Build order**: Phase 0 = concept analysis + data model + architecture scaffold (this phase). Phase 1 = MVP core loop Today → Goals → Progress. Later phases = Calendar/Habits, then Milestones/Projects/Forecast UI/Skills/History editing.
+- **Internationalization**: multi-language from day one, no hardcoded UI strings — `i18next`/`react-i18next`, starting with Russian + English. See `/docs/android-architecture.md`.
+- **Units of measurement**: user-configurable per-account setting (metric/imperial, currency), never hardcoded — data stored in one canonical unit, converted for display.
+- **Monetization**: decided later (possibly ads); not built now, but architecture shouldn't foreclose it.
+- **Legal/jurisdiction**: resolved before the public production Play Store release, not before development starts.
+- **Audience**: a public product for other people, not personal-use-only — confirms the existing multi-user design (Supabase Auth + per-user RLS).
+- **Scope: no MVP phasing.** The full concept (all 48 sections above) is the target for the first Android build — not a cut-down core loop. Build order and screen-by-screen scope are tracked in `/docs/scope-of-work.md`.
+- **Build order**: Phase 0 (done) = concept analysis + data model + Supabase schema + parked web scaffold. Phase 1 (done) = Android pre-development analysis (`/docs/android-stack.md`, `/docs/play-store-checklist.md`, `/docs/android-architecture.md`) + full scope of work. Phase 2 = actual Android app build against `/docs/scope-of-work.md`.
