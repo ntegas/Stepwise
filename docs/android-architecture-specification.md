@@ -4,7 +4,7 @@ Canonical technical foundation for Stepwise on Android. Source of truth for prod
 
 This is the prerequisite for, in order: Canonical Data Model Specification, Calculation Engine Specification, UX/Navigation Specification, Offline & Sync Specification, Google Play Release Specification, Implementation. None of those should re-derive the decisions made here.
 
-**Revision status**: the user reviewed this specification and directed six decisions (Goal `progressMode`, hybrid conflict resolution, a domain-owned `ReminderScheduler` abstraction, a more precise offline-first-safe statement of Progress Event handling plus a decision to not persist `ProgressEvent` as a table, a tightened Task/Session statement, and deterministic recurrence-occurrence identity), applied below as B6–B9 in the audit plus corresponding edits throughout. OQ-1 and OQ-2 are closed; OQ-3 is retained as an implementation-time verification requirement, not an open product question. See the chat response accompanying this revision for the full change list and current READY/NOT READY status.
+**Revision status**: two revision rounds so far. Round 1 — the user directed six decisions (Goal `progressMode`, hybrid conflict resolution, a domain-owned `ReminderScheduler` abstraction, a more precise offline-first-safe statement of Progress Event handling plus a decision to not persist `ProgressEvent` as a table, a tightened Task/Session statement, and deterministic recurrence-occurrence identity), applied as B6–B9 plus corresponding edits throughout; closed OQ-1/OQ-2, reframed OQ-3. Round 2 — added the Android Home Screen Widget as a canonical, first-class product requirement (§19), including a new `DomainEventBus` and a local-idempotency tightening (both flagged explicitly as new rather than folded in silently), and OQ-4 (Glance/widget-hosting live verification). See the chat response accompanying each revision for the full change list and current READY/NOT READY status.
 
 ---
 
@@ -23,7 +23,7 @@ Performed before proposing architecture, per instruction. Two parts: (A) archite
 | Activity ↔ Goal is many-to-many, each link scoped to a specific Metric | §21, §23 | Domain model, Progress Event fan-out |
 | Session can carry multiple Metric Values | §23 | Domain model, calculation engine |
 | Life Area figures (Attention/Execution/Goal Progress/Trend) stay separate, never blended | §63 | Analytics/Life Balance architecture |
-| Execution status (Done/Partial/Missed/Rescheduled/In Progress/Cancelled) is a different axis from lifecycle status (Active/Paused/Completed/Archived) | §13, §25 | Domain model — two enums, never conflated |
+| Execution status (Done/Partial/Missed/Rescheduled/In Progress/Cancelled) is a different axis from lifecycle status (Active/Paused/Completed/Archived) | concept §13, §25 | Domain model — two enums, never conflated |
 | One recurrence engine for Task/Activity/Habit | §30, §33 | Scheduling architecture |
 | Offline-first: core actions work with zero connectivity | §59 | Every layer — this is the top structural constraint |
 | i18n-ready, no hardcoded strings; units/currency user-configurable | §58 | UI layer, resource strategy |
@@ -59,7 +59,7 @@ A Goal has exactly one `progressMode`, chosen at creation with a sensible defaul
 
 **B7. Sync conflict resolution — RESOLVED (closes OQ-2). Hybrid, not blanket last-write-wins.**
 Blanket timestamp-based last-write-wins across every entity was too coarse for progress-affecting data, but full CRDT/field-merge is unjustified complexity for a single-owner-per-account product. Rewritten in full in §9 below; summary: **low-risk scalar metadata** (title, description, notes, icon, color, some settings) resolves via silent version-checked last-write-wins. **Progress-affecting entities** (Sessions/SessionMetricValues, materialized recurrence occurrences) use the same version-check to *detect* a conflict, but instead of silently discarding the losing write, the losing device's write is preserved as a non-destructive "conflict copy" rather than deleted — safe-by-default, with recovery possible, without requiring a blocking merge UI for what should be a rare event (this is single-owner data; true concurrent edits of the same Session on two devices are expected to be uncommon). **New Sessions never conflict with each other** just because they affect the same Goal — each is an independent canonical fact identified by its own client-generated UUID; Goal Progress is a view recomputed after both land, not a field either Session competes to set. **Deletes** are tombstones (unchanged from the original design). **ProgressEvents/aggregates never participate in conflict resolution at all** — see B8, they either don't exist as a stored, syncable entity or are purely derived, so there's nothing to conflict.
-*Downstream impact*: Sync Architecture (§9, rewritten below), the ADR "Conflict resolution" row (updated below), Testing Architecture (§23 — conflict tests now need to cover both tiers: metadata silent-resolve, and Session conflict-copy preservation). No impact on Today, Goals, Activities, Habits, Progress, Analytics, Pace, Forecast, Life Areas, Life Balance, Search, Recurrence's rule engine itself, or Notifications; History gains a forward-looking note that a future UX pass may want to surface conflict copies, which is a UX/Navigation Specification concern, not resolved here.
+*Downstream impact*: Sync Architecture (§9, rewritten below), the ADR "Conflict resolution" row (updated below), Testing Architecture (§24 — conflict tests now need to cover both tiers: metadata silent-resolve, and Session conflict-copy preservation). No impact on Today, Goals, Activities, Habits, Progress, Analytics, Pace, Forecast, Life Areas, Life Balance, Search, Recurrence's rule engine itself, or Notifications; History gains a forward-looking note that a future UX pass may want to surface conflict copies, which is a UX/Navigation Specification concern, not resolved here.
 
 **B8. Does `ProgressEvent` need to exist as a separate persisted, canonical table? — RESOLVED. No — demoted to a derived view/query, not stored.**
 §64 lists `ProgressEvent` as a domain entity, and the Phase-1.5 data model (`/docs/data-model.md`) made it a trigger-maintained table. Asked to evaluate rather than keep it by default: a trigger-maintained table is *an* implementation of "derived from Sessions," but not the only one, and it reintroduces exactly the kind of thing that can drift from its source if the trigger logic ever has a bug — a materialized copy that must stay in sync with `session_metric_values ⋈ goal_activity_links`, rather than being that join.
@@ -75,7 +75,7 @@ B3 established lazy materialization but not how two devices avoid materializing 
 
 ## 1. Executive Architecture Summary
 
-Native Android app (Kotlin, Jetpack Compose, Material 3) on an offline-first, layered architecture: Compose UI → ViewModel (StateFlow) → domain Use Cases → Repository → Room (local, operational) with a background Sync Engine reconciling against Supabase (Postgres, canonical, cross-device). Calculations (execution rate, pace, forecast, Life Balance) are pushed to a dedicated, pure-Kotlin Calculation Engine module mirrored by Postgres views server-side, so the same math runs identically on-device (for instant offline stats) and server-side (as the cross-device-consistent canonical answer). Hilt provides DI at the Android/app layer; domain and data-model modules stay framework-agnostic to keep a future Kotlin Multiplatform path to iOS open, per the user's stated Android-first-then-iOS sequencing.
+Native Android app (Kotlin, Jetpack Compose, Material 3) on an offline-first, layered architecture: Compose UI → ViewModel (StateFlow) → domain Use Cases → Repository → Room (local, operational) with a background Sync Engine reconciling against Supabase (Postgres, canonical, cross-device). Calculations (execution rate, pace, forecast, Life Balance) are pushed to a dedicated, pure-Kotlin Calculation Engine module mirrored by Postgres views server-side, so the same math runs identically on-device (for instant offline stats) and server-side (as the cross-device-consistent canonical answer). Hilt provides DI at the Android/app layer; domain and data-model modules stay framework-agnostic to keep a future Kotlin Multiplatform path to iOS open, per the user's stated Android-first-then-iOS sequencing. A Jetpack Glance Home Screen Widget (§19) is a first-class, canonical part of the product — a presentation-only layer over the same Use Cases, with no execution logic or state of its own.
 
 ## 2. Architecture Decisions
 
@@ -118,7 +118,7 @@ Multi-module, organized by dependency direction rather than mirroring the featur
 ```
 :app                      composition root — Hilt setup, NavHost assembly, applies all feature modules
 
-:core:common              dispatchers, Result/AppError types, date/time utilities — pure Kotlin
+:core:common              dispatchers, Result/AppError types, date/time utilities, DomainEventBus (§19.5) — pure Kotlin
 :core:model               domain models (Goal, Activity, Session, ...) — pure Kotlin, no Android/Room/network types
 :core:calculation         Calculation Engine: execution rate, pace, forecast, Life Balance math — pure Kotlin, heavily unit-tested
 :domain                   Use Cases + Repository interfaces — depends on :core:model, :core:calculation
@@ -138,9 +138,10 @@ Multi-module, organized by dependency direction rather than mirroring the featur
 :feature:today, :feature:goals, :feature:plan, :feature:progress,
 :feature:activities, :feature:habits, :feature:vision (Vision/Life Areas/Life Plan/Life Balance),
 :feature:tasks-inbox, :feature:search, :feature:archive, :feature:settings,
-:feature:onboarding-auth, :feature:quickadd
+:feature:onboarding-auth, :feature:quickadd, :feature:widget (§19 — Glance Home Screen Widget)
                            each depends on :domain, :core:model, :core:designsystem, :core:common —
                            NEVER on :core:database, :core:network, or :data directly
+                           (:feature:widget included — this is what makes a second execution path uncompilable, §19.2)
 ```
 
 The example above is Stepwise's actual module set, not a generic template — it follows §70's screen list, merged where screens obviously share one feature module's domain (e.g. Vision/Life Plan/Life Area/Life Balance all live under `:feature:vision` since they're one strategic-layer concern per §5–8) and split out where a concern is genuinely cross-cutting (Search and Archive touch every entity, so they're their own modules rather than duplicated per-feature).
@@ -149,7 +150,7 @@ The example above is Stepwise's actual module set, not a generic template — it
 
 `:core:model` holds the entities enumerated in `/CLAUDE.md` §64 (User, Vision, LifeArea, Goal, Milestone, Project, Task, Activity, Habit, Schedule/RecurrenceRule, Session, ProgressEvent, Metric, MetricValue, GoalActivityLink, Skill, Reminder, WeeklyReview, Insight/Recommendation) as plain Kotlin data classes — no Room `@Entity`, no network `@Serializable` on the same class. `:core:database` and `:core:network` each have their own representations and map to/from `:core:model` at their boundary. This is deliberate duplication in exchange for a real guarantee: a Room schema migration or a backend DTO change can never silently change what the domain layer — and therefore every ViewModel and every calculation — thinks a Goal *is*.
 
-Two status axes live on `Goal`/`Task` as separate enums per §13/§25, never merged into one: `LifecycleStatus` (Active/Paused/Completed/Archived) and `ExecutionStatus` (Done/Partial/Missed/Rescheduled/InProgress/Cancelled) — the former describes the Goal/Task itself, the latter describes a specific Session/occurrence.
+Two status axes live on `Goal`/`Task` as separate enums per concept §13/§25, never merged into one: `LifecycleStatus` (Active/Paused/Completed/Archived) and `ExecutionStatus` (Done/Partial/Missed/Rescheduled/InProgress/Cancelled) — the former describes the Goal/Task itself, the latter describes a specific Session/occurrence.
 
 `Goal` carries an explicit `progressMode: METRIC | TARGET_VALUE | FREQUENCY | MILESTONES | TASKS | MANUAL` (B6) — one mode per Goal, never blended; `Milestone` carries `weight` + (`isBinary` or `progressPercent`) to support the `MILESTONES` mode's weighted formula; `Task` carries an optional `weight`/effort field used only by the `TASKS` fallback mode. Exact field types belong to the Canonical Data Model Specification.
 
@@ -218,7 +219,7 @@ Concretely, the offline flow the user specified:
 6. The backend answers "Goal progress"/"Progress Event" queries via the same kind of derivation (a view/query over `session_metric_values ⋈ goal_activity_links`) — this is the authoritative, cross-device answer.
 7. The client's local cache reconciles against the backend's view on next sync; if they ever transiently disagreed (sync lag, or a conflict-copy scenario per B7), the backend's view wins and the local cache is refreshed to match.
 
-The on-device (Kotlin, `:core:calculation`) and backend (Postgres query/view) implementations of this join-and-aggregate logic must be kept behaviorally identical — this is exactly why `:core:calculation` gets the deepest test coverage in the whole app (§22 Testing Architecture), and why B8 rejected a stored, trigger-maintained `progress_events` table on the backend: keeping the backend side a pure, stateless view (rather than a table something writes to) is what makes "identical to the Kotlin implementation" a checkable property instead of "identical to whatever the trigger happened to leave behind."
+The on-device (Kotlin, `:core:calculation`) and backend (Postgres query/view) implementations of this join-and-aggregate logic must be kept behaviorally identical — this is exactly why `:core:calculation` gets the deepest test coverage in the whole app (§24 Testing Architecture), and why B8 rejected a stored, trigger-maintained `progress_events` table on the backend: keeping the backend side a pure, stateless view (rather than a table something writes to) is what makes "identical to the Kotlin implementation" a checkable property instead of "identical to whatever the trigger happened to leave behind."
 
 ## 13. Scheduling / Recurrence Architecture
 
@@ -271,7 +272,136 @@ interface ReminderScheduler {
 - **Notification channels**: split by category (Task reminders, Habit reminders, Weekly Review ready, Insights/Recommendations) so a user can mute one category without muting all.
 - **Runtime permission**: `POST_NOTIFICATIONS` (Android 13+) requested contextually — when the user sets their first reminder — not on first app launch.
 
-## 19. Billing Architecture
+## 19. Android Home Screen Widget Architecture
+
+Stepwise ships a full Android Home Screen Widget as a first-class part of the product, per explicit instruction — not experimental, giving "Посмотреть → Выполнить → Отметить" (§2) a presence outside the app. The single rule governing everything below: **the Widget is a presentation/integration layer over the exact same domain Use Cases the App uses — it is structurally incapable of having its own execution logic or its own source of truth**, enforced the same way every other module boundary in this document is enforced: by which modules `:feature:widget` is and isn't allowed to depend on (§27).
+
+### 19.1 Technology
+
+Jetpack Glance — the current Google-recommended approach for Compose-style App Widgets, built on the classic `RemoteViews`/`AppWidgetProvider` host framework. **Glance's API surface, `updatePeriodMillis` minimums, `ActionCallback` execution time budget, and any target-SDK-specific widget constraints must be verified against live Android documentation immediately before implementation** — this is the same category of requirement as OQ-3, tracked as OQ-4 below, since both Glance itself and Android's widget-hosting rules evolve and neither is safe to assume from training-era knowledge. Glance is entirely a `:feature:widget`-internal detail — no other module references Glance types.
+
+### 19.2 Module placement
+
+New module: `:feature:widget`, following the exact same feature-module rule as every other feature (§5, §27) — depends on `:domain`, `:core:model`, `:core:designsystem` (a Glance-compatible token subset; Glance cannot render full Compose Material3 components, so `:feature:widget` consumes shared colors/spacing/type-scale tokens rather than `:core:designsystem`'s Compose components directly), `:core:common`. **No dependency on `:core:database`, `:core:network`, or `:data`** — this is what makes "the Widget cannot create a second execution path" a compile-time fact rather than a code-review convention. Contains `StepwiseGlanceWidget` (`GlanceAppWidget`), `StepwiseWidgetReceiver` (`GlanceAppWidgetReceiver`), one `ActionCallback` per Quick Action, and `WidgetRefreshCoordinator` (§19.5).
+
+### 19.3 Canonical execution pipeline
+
+Exactly the pipeline requested, and exactly the App's own pipeline — one path, not two:
+
+```
+Widget "Boxing ✓" tap (ActionCallback)          App "Boxing ✓" tap (ViewModel)
+                     \                                /
+                      ▼                              ▼
+                   CompleteOccurrenceUseCase (:domain) — the one entry point
+                                     │
+                                     ▼
+                         Room transaction (Session upsert, §7/§9)
+                                     │
+                                     ▼
+               local recalculation (:core:calculation) → Goal/Activity/Today/Analytics
+                                     │
+                     ┌───────────────┴───────────────┐
+                     ▼                                ▼
+         DomainEvent.DataChanged published     outbox entry queued (§9)
+                     │                                │
+                     ▼                                ▼
+      WidgetRefreshCoordinator (:feature:widget)   later backend sync
+                     │
+                     ▼
+           GlanceAppWidget.update() → Widget re-renders
+```
+
+`ActionCallback` and the ViewModel are both callers of `CompleteOccurrenceUseCase`, never implementers of completion logic themselves. §27's module graph makes a second path physically impossible to compile, not merely discouraged.
+
+### 19.4 Idempotency — local, not only at sync
+
+B4 established sync-time idempotency (client-generated UUID upsert). Widget double-tap sharpens the requirement: correctness must hold **locally and instantly**, before any sync happens — a double-tap that briefly shows "+2h" and is only "corrected" later by sync is still a bug. **Resolution**: `CompleteOccurrenceUseCase`'s Room write is itself an upsert keyed on a Session ID deterministically derived from the occurrence being completed — extending B9's deterministic-identity pattern one step further, rather than a fresh random UUID per invocation. Invoking the Use Case twice for the same occurrence (two rapid Widget taps, a Widget tap racing an App tap, any combination) resolves to one row at the local Room layer, by construction, before sync is even involved. A light UI-level debounce (disable the control while the callback is in flight) is added as defense in depth, not as what correctness depends on. This tightening applies uniformly to the App too — it is a strict improvement to the existing pipeline, not a Widget-only special case.
+
+### 19.5 Refresh strategy — event-driven, not polling (new: `DomainEventBus`)
+
+A Glance widget doesn't continuously observe a `Flow` the way a Compose screen does — it redraws when something explicitly calls `GlanceAppWidget.update()`. Satisfying "event-driven refresh, no unnecessary polling" needs one genuinely new, small piece of architecture, flagged explicitly per the anti-error standard rather than folded in silently: a **`DomainEventBus`** (a `SharedFlow<DomainEvent>` wrapper, defined in `:core:common`, since both `:domain` Use Cases and `:core:sync` need to publish to it without depending on each other, and `:core:common` is already a dependency-free leaf both can reach).
+
+- Mutating Use Cases (`CompleteOccurrenceUseCase`, `EditSessionUseCase`, `DeleteSessionUseCase`, `StartTimerUseCase`/`StopTimerUseCase`, …) publish `DomainEvent.DataChanged(entityType, id)` after a successful local commit.
+- `:core:sync` publishes `DomainEvent.SyncCompleted` after a pull/push cycle — this is what makes a remote-originated change (another device, or a server-side recompute) reach the Widget.
+- `WidgetRefreshCoordinator` (`:feature:widget`) subscribes to both and calls `update()` only on the affected widget instances (scoped once §19.10's configuration is read).
+- **Day-boundary coverage**: nothing above fires from the passage of time alone, so Glance's own coarse periodic update (`updatePeriodMillis`, Android's built-in floor is 30 minutes) stays as a low-frequency safety net so Today's virtual occurrences never go stale for long even if an event-driven trigger is somehow missed — defense in depth, not the primary mechanism, and battery-cheap at that frequency.
+- Purely additive: every existing Use Case keeps its current behavior and gains one line (publish an event) after already succeeding.
+
+### 19.6 Widget as projection, never source of truth
+
+Glance's own `GlanceStateDefinition` (the small serialized blob Glance persists between updates so it can redraw without a full recompute) is a rendering cache internal to the widget framework, write-only from the domain's perspective — nothing reads it back as authoritative. Every render is produced fresh from `:domain` Use Case reads (`GetTodayAgendaUseCase`, `GetActiveTimerUseCase`) at update time. There is no separate Widget database.
+
+### 19.7 Today aggregation and recurring occurrences — shared, not duplicated
+
+The Widget's Today view calls the exact same `GetTodayAgendaUseCase` (§14) the App's Today screen calls — same virtual/materialized occurrence resolution (§13), same Goal Impact ranking. Because materialized-occurrence identity is deterministic (B9 — a hash of `recurrenceRuleId` + date), Widget-triggered and App-triggered materialization of "the same" logical occurrence converge on one row regardless of which surface acts first — there is no separate Widget-side Today or recurrence algorithm to keep in sync with the App's.
+
+### 19.8 Timer — authoritative state (clarifies an existing status, adds no new entity)
+
+A running Timer is not a new domain concept: it **is** a `Session` in `IN_PROGRESS` execution status (§25's concept-level status list already defines this; Timer is simply the first feature to fully exploit it). `StartTimerUseCase(activityId)` writes a `sessions` row with `status = IN_PROGRESS`, `startedAt = now()` — if an in-progress Session already exists for that Activity, it's resumed/shown rather than a second one created. `StopTimerUseCase(sessionId)` computes `actual = now() − startedAt` and transitions the Session to `Done`/`Partial` via the same completion path as any other occurrence (§19.3). Elapsed time is **computed at render time**, never persisted as an incrementing counter — the same "no independently mutable running total" principle (§62) applied to Timer specifically, and exactly what makes "authoritative state survives process death/reboot/app close" trivially true: it's a timestamp already in Room, not in-memory state that can be lost. Because App and Widget both read the same `GetActiveTimerUseCase` `Flow<ActiveTimer?>` over that one Session row, a timer started on either surface is the same timer on the other by construction, not by special-casing.
+
+### 19.9 Widget sizes
+
+Glance's `SizeMode.Responsive`/`Exact` selects among composables per size bucket (Small/Medium/Large, per the requested sketch) — all fed by the same `TodayAgenda`/`ActiveTimer` read models; only how much is rendered and which Quick Actions show differs per size. No pixel-perfect layout is locked here, but the architecture is size-agnostic by construction: adding a size is a new Glance composable, never a new data path.
+
+### 19.10 Configuration and multiple instances
+
+Android's AppWidget framework natively keys instances by `appWidgetId`. A `WidgetConfiguration` (`appWidgetId`, `scope: TODAY | FOCUS_ONLY | ACTIVITY(id) | GOAL(id)`, `itemCount`, `enabledQuickActions`) is stored locally in Room, **not synced to the backend** — a widget's placement is a per-device, per-instance arrangement, not account data with cross-device meaning (a widget on a tablet and one on a phone are physically different placements; syncing "scope" between them would be actively wrong). `:feature:widget` looks up its own `appWidgetId`'s configuration on every render. V1 ships a single implicit default (`scope = TODAY`, no configuration UI) — the schema already supports per-instance configuration, so adding a configuration screen later needs no data-model change. Because configuration is stored and read independently per `appWidgetId`, multiple instances cannot mix state by construction (AC9).
+
+### 19.11 Privacy
+
+A per-account Settings field (extending existing Settings, concept §58 / this doc §3) governs how much detail the Widget shows — e.g. hiding a Financial or Weight goal's exact numbers even though the same data is fully visible inside the authenticated App. `:feature:widget`'s render step reads this setting before deciding detail level. The full granular picker isn't built now, but the read seam (Settings → render decision) exists from the start so tightening privacy later doesn't require restructuring the render path.
+
+### 19.12 Analytics
+
+Every analytics event carries a `source: APP | WIDGET` metadata field. **`source` must never appear in any domain calculation branch** — completion math, Goal progress, Pace/Forecast, Life Balance are all defined without reference to where the action originated (§19.3 already guarantees this structurally, since both surfaces call the identical Use Case); `source` exists purely for product analytics, not domain semantics.
+
+### 19.13 Affected-consumer inventory (preflight, per the anti-error standard)
+
+| Consumer | Impact |
+|---|---|
+| Today | None — Widget reuses `GetTodayAgendaUseCase` unchanged (§19.7) |
+| Quick Add | None — Widget's `+ Add` deep-links into the existing Quick Add flow |
+| Tasks / Activities / Habits | None — completed via the same Use Cases; B1 (Task's Session-is-canonical rule) applies identically |
+| Sessions | No new fields for Widget's sake; `IN_PROGRESS` status (already defined, concept §25) is now actively used by Timer (§19.8) |
+| ProgressEvent | None — still a view (B8), computed identically regardless of completion source |
+| Recurrence | None — same deterministic occurrence identity (B9) resolves identically from either surface |
+| Timer | New: formalized as `StartTimerUseCase`/`StopTimerUseCase`/`GetActiveTimerUseCase` over an `IN_PROGRESS` Session — clarifies an existing status, adds no new persisted entity |
+| Room | New: local-only `WidgetConfiguration` table (not synced) |
+| Domain Use Cases | New: `StartTimerUseCase`, `StopTimerUseCase`, `GetActiveTimerUseCase`; existing `CompleteOccurrenceUseCase` gains the local-idempotency tightening (§19.4), applying to App and Widget alike |
+| Offline Sync | None structurally — Widget writes use the same Room→outbox path; in-progress Sessions sync like any other Session |
+| Idempotency | Tightened (§19.4): enforced at the local Use Case/Room layer, not only at sync |
+| Analytics | Gains a `source` metadata field (§19.12), explicitly excluded from domain logic |
+| Navigation / Deep Links | Reuses existing Navigation Compose deep-link destinations — no new navigation graph |
+| Notifications | None — orthogonal; `ReminderScheduler` (§18) unaffected |
+| Progress / Pace / Forecast / Life Areas / Life Balance / History / Search | None — unaffected, since nothing about how a Session is created changes what it means once persisted |
+| Widget refresh | New (§19.5): `DomainEventBus`, `WidgetRefreshCoordinator` |
+
+No conflicts found with already-approved architecture. The two genuinely new pieces are `DomainEventBus` (§19.5) and the local-idempotency tightening (§19.4) — both additive, both flagged explicitly rather than folded in silently. Timer (§19.8) is not new domain modeling, only the first full use of an already-approved status value.
+
+### 19.14 New interfaces / Use Cases required
+
+- `StartTimerUseCase(activityId)`, `StopTimerUseCase(sessionId)`, `GetActiveTimerUseCase(activityId?): Flow<ActiveTimer?>` — `:domain`.
+- `WidgetConfigurationRepository` — interface in `:domain`, implemented in `:data`/`:core:database` (local-only, no `:core:network` involvement, matching the existing repository pattern).
+- `DomainEventBus` — defined in `:core:common`; `:domain` Use Cases and `:core:sync` both publish to it.
+- `WidgetRefreshCoordinator` — `:feature:widget`-internal, subscribes to `DomainEventBus`.
+- No new Repository interface is needed for completion itself — `CompleteOccurrenceUseCase` (already specified) is reused as-is.
+
+### 19.15 Widget Acceptance Criteria ↔ Test Strategy (1:1)
+
+| # | Acceptance Criterion | Test Strategy |
+|---|---|---|
+| AC1 | App `Done` and Widget `Done` use one domain logic | Unit test invoking `CompleteOccurrenceUseCase` from a simulated ViewModel call-site and a simulated `ActionCallback` call-site; assert byte-identical resulting `Session` row and identical Goal-progress delta — backed by the §27 module-graph rule that makes a second path uncompilable |
+| AC2 | Widget `Done` works offline | Sync-layer test with network disabled: invoke the Widget completion path, assert immediate local Room update plus a queued outbox entry — reusing the existing offline test harness (§24), parameterized for a Widget-originated call |
+| AC3 | Double-tap never creates a duplicate Session | Idempotency test: invoke `CompleteOccurrenceUseCase` twice in rapid succession for the same occurrence; assert exactly one `Session` row exists (§19.4) — extends the existing idempotency test category |
+| AC4 | App and Widget show identical Today state | Contract test: `:feature:today`'s ViewModel and `:feature:widget`'s `WidgetRefreshCoordinator` both collect the same `GetTodayAgendaUseCase` emission in a shared-fixture test and are asserted to render equal `TodayAgenda` values |
+| AC5 | A virtual recurring occurrence has one stable identity in App and Widget | Unit test computing the deterministic occurrence ID from two independent call sites, asserting equality; integration test materializing "from Widget" then "from App" for the same occurrence, asserting one resulting row (B9) |
+| AC6 | Session edit/delete correctly updates the Widget | Edit/delete a Session; assert `DomainEvent.DataChanged` is published; assert `WidgetRefreshCoordinator` receives it and invokes `update()` (spy/mock on the Glance update call) |
+| AC7 | Background sync correctly updates the Widget | Simulate `DomainEvent.SyncCompleted` from a fake `:core:sync`; assert the same refresh path fires and rendered state reflects newly-pulled data |
+| AC8 | A Timer started from the Widget is the same Timer after opening the App | Start via the Widget's `StartTimerUseCase` call site; read `GetActiveTimerUseCase`'s `Flow` from a simulated App-side collector; assert identical `sessionId`/`startedAt` (§19.8) |
+| AC9 | Multiple Widget instances never mix configuration/state | Create two `WidgetConfiguration` rows for two distinct `appWidgetId`s with different scopes; assert each instance renders only from its own configuration and that updating one never mutates the other's stored row |
+| AC10 | Widget never becomes an independent source of truth | Architectural test (module-dependency-graph assertion) asserting `:feature:widget` has no dependency edge to `:core:database` or `:core:network` — a compile-time-enforced invariant, the strongest form this test can take |
+
+## 20. Billing Architecture
 
 Prepares the plumbing without committing to a monetization model, per `/CLAUDE.md` ("decided later, possibly ads"):
 - Google Play Billing Library for purchase flow.
@@ -280,7 +410,7 @@ Prepares the plumbing without committing to a monetization model, per `/CLAUDE.m
 - Restore purchases: re-query Play Billing and re-verify server-side (covers reinstalls/new devices).
 - Grace period/account hold/cancellation/expiration map directly onto Play's own subscription lifecycle states via RTDN — no separate state machine to invent.
 
-## 20. Security
+## 21. Security
 
 - Supabase Auth JWTs; refresh token in Keystore-backed encrypted storage, never plain `SharedPreferences`.
 - HTTPS everywhere; no cleartext traffic permitted (Android network security config).
@@ -291,27 +421,27 @@ Prepares the plumbing without committing to a monetization model, per `/CLAUDE.m
 - Secure export: data-export files are written to app-private/cache storage and shared via a scoped `FileProvider` intent, never to public external storage.
 - Account deletion: a real cascade delete (or anonymization) across Supabase tables and any Crashlytics/analytics-linked identifiers, not a soft "disabled" flag — required both by `/docs/play-store-checklist.md` and by the account-deletion note in this doc's Billing/Auth sections.
 
-## 21. Performance
+## 22. Performance
 
 Paging 3 (via Room) for History/Session lists rather than loading full history into memory; `LazyColumn` throughout Compose lists; DB indexes on `(user_id, date)` for `sessions`/`tasks` and on the FK columns used in `goal_activity_links`/`session_metric_values` joins; aggregate queries expressed in SQL (`@Query` with `SUM`/`GROUP BY`), never pulled into Kotlin and summed in memory; multi-table writes (Session + MetricValues + outbox entry) wrapped in a single Room transaction; Compose state kept immutable/stable to avoid unnecessary recomposition; Room `Flow` queries scoped narrowly per screen rather than one broad query multiple screens subscribe to and over-recompose from; calculation work dispatched off the main thread (`Dispatchers.Default`/WorkManager), never blocking Compose or a Flow collector.
 
-## 22. Error Handling
+## 23. Error Handling
 
 A sealed `AppError` hierarchy (`Domain`, `Database`, `Network`, `Auth`, `Sync`, `Billing`, `Validation` subtypes) that the Repository/Use Case layer maps raw exceptions into at the boundary where they're first caught. ViewModels expose UI state built from `AppError`, never a raw `Throwable` — the UI renders by error *category* ("couldn't sync, will retry automatically" for any `Network`/`Sync` error), with the underlying raw exception logged once at the point it was caught, not re-logged at every layer it passes through.
 
-## 23. Testing Architecture
+## 24. Testing Architecture
 
-Unit tests (pure Kotlin, JVM, no Android dependency) for `:core:calculation` and `:domain` — fast, exhaustive, table-driven per Goal type (cumulative sum, target-value latest-reading, percentage/milestone-weighted, frequency-per-period; edge cases: zero sessions, a session dated before the goal existed, Cancelled sessions excluded from denominators per §29). Repository tests against fakes. Room DAO tests via `Room.inMemoryDatabaseBuilder`. Migration tests via `MigrationTestHelper`, one per version bump, run in CI on every schema change. Sync tests simulating offline-then-reconnect against a fake backend. Conflict tests covering both tiers of the hybrid strategy (B7/§9): metadata conflicts resolve silently to the newer `updated_at`; a Session/occurrence conflict resolves deterministically *and* preserves the losing write as a recoverable conflict copy rather than discarding it — both asserted explicitly, since "silently correct" and "silently lossy" must never be confused in a test that only checks the winning value. **Idempotency tests are explicitly first-class**: submit the same client-generated Session id twice (simulating a retry/double-tap) and assert exactly one Progress Event fan-out results — this is called out separately because it's the single most product-critical invariant in the app (§24/§60/§68) and the easiest kind of bug to ship silently. ViewModel tests asserting `StateFlow` emissions from fake Use Cases. Compose UI tests for the highest-value flows (Today's one-tap complete, Quick Add). A small number of true end-to-end tests (sign up → create Goal → complete Activity → see Progress update) — expensive, kept few, high value.
+Unit tests (pure Kotlin, JVM, no Android dependency) for `:core:calculation` and `:domain` — fast, exhaustive, table-driven per Goal type (cumulative sum, target-value latest-reading, percentage/milestone-weighted, frequency-per-period; edge cases: zero sessions, a session dated before the goal existed, Cancelled sessions excluded from denominators per §29). Repository tests against fakes. Room DAO tests via `Room.inMemoryDatabaseBuilder`. Migration tests via `MigrationTestHelper`, one per version bump, run in CI on every schema change. Sync tests simulating offline-then-reconnect against a fake backend. Conflict tests covering both tiers of the hybrid strategy (B7/§9): metadata conflicts resolve silently to the newer `updated_at`; a Session/occurrence conflict resolves deterministically *and* preserves the losing write as a recoverable conflict copy rather than discarding it — both asserted explicitly, since "silently correct" and "silently lossy" must never be confused in a test that only checks the winning value. **Idempotency tests are explicitly first-class**: submit the same client-generated Session id twice (simulating a retry/double-tap) and assert exactly one Progress Event fan-out results — this is called out separately because it's the single most product-critical invariant in the app (§24/§60/§68) and the easiest kind of bug to ship silently. ViewModel tests asserting `StateFlow` emissions from fake Use Cases. Compose UI tests for the highest-value flows (Today's one-tap complete, Quick Add). A small number of true end-to-end tests (sign up → create Goal → complete Activity → see Progress update) — expensive, kept few, high value. Widget-specific test strategy (including an architectural test enforcing `:feature:widget`'s module isolation) is specified 1:1 against acceptance criteria in §19.15, not duplicated here.
 
-## 24. Database Migration Strategy
+## 25. Database Migration Strategy
 
 Room: every schema change ships an explicit `Migration` object; `fallbackToDestructiveMigration()` is never used in a production build — this app is explicitly designed to hold years of personal history, and a destructive migration would violate the entire premise of Personal Progress History (§52). Every migration gets a `MigrationTestHelper` test before it ships. Backend: versioned SQL migration files (the existing `/supabase/migrations/` pattern), additive-first — a released app version must keep working against the schema for at least one release cycle after a migration, so drops/renames are staged (add new, dual-write/dual-read if needed, migrate, remove old) rather than done in one step. Rollout: Play Console staged/percentage rollout is safe specifically because migrations are additive-first, so old and new client versions can coexist against the same backend schema during a rollout window.
 
-## 25. Observability
+## 26. Observability
 
 A single structured-logging facade (e.g. Timber) with tagged categories (`sync`, `calculation`, `auth`) so logs are filterable per concern. Firebase Crashlytics for crash reporting (used alongside Supabase for data — orthogonal concerns, no conflict in using both). Analytics-events SDK choice deferred until the monetization/growth strategy is decided (`/CLAUDE.md`), but the event-emission seam in the domain layer should exist from day one so wiring a provider later doesn't require touching every feature. A debug-only "sync diagnostics" screen (outbox depth, last sync time, last error) — genuinely important for a solo developer debugging real-world sync issues that won't reproduce easily on a dev machine. Debug/verbose logs gated behind `BuildConfig.DEBUG`; never log PII even in debug builds.
 
-## 26. Dependency Rules
+## 27. Dependency Rules
 
 - UI (Compose) never imports a Room or Supabase type — only `:core:model`/domain types.
 - Feature modules depend on `:domain`, `:core:model`, `:core:designsystem`, `:core:common` — **not** on `:core:database`, `:core:network`, or `:data`. This is enforced at the Gradle level (no dependency edge exists), not just by convention.
@@ -319,22 +449,27 @@ A single structured-logging facade (e.g. Timber) with tagged categories (`sync`,
 - `:data` is the only module allowed to depend on both `:core:database` and `:core:network` — it's where the interfaces from `:domain` get implemented and wired.
 - `:core:database` and `:core:network` never depend on each other directly; `:core:sync` mediates.
 - `:domain` and every feature module depend only on the `ReminderScheduler` interface (§18) — never on `AlarmManager`, `WorkManager`, or FCM types directly; only `:core:notifications` may import those.
+- `:feature:widget` follows the same rule as every other feature module — `:domain`, `:core:model`, `:core:designsystem`, `:core:common` only, no exception for it. This single rule is the entire enforcement mechanism behind §19's "no second execution path, no second source of truth."
+- `DomainEventBus` (§19.5) lives in `:core:common` specifically so `:domain` (which publishes) and `:core:sync` (which also publishes) never need to depend on each other to share it; `:feature:widget` (which subscribes) reaches it through the same `:core:common` dependency every feature module already has.
+- Only `:feature:widget` may import Glance types (`GlanceAppWidget`, `ActionCallback`, etc.) — no other module references them.
 - `:core:model`, `:core:calculation`, `:core:common` are plain Kotlin/JVM modules wherever possible (no Android SDK dependency) — this is what keeps a future Kotlin Multiplatform iOS path realistic without a rewrite of the app's actual logic.
 - `:app` is the only module allowed to see everything (composition root).
 
-## 27. Architecture Risks
+## 28. Architecture Risks
 
 - **supabase-kt maturity**: the Kotlin Multiplatform Supabase client is younger than Firebase's Android SDK; a gap in a needed feature could force a fallback to raw Retrofit/Postgrest calls for that feature (already anticipated in §3, not a blocker, but worth tracking).
 - **Hybrid conflict resolution** (B7) is a deliberate simplification for progress-affecting data (version-checked, conflict-copy-preserving, not a full merge) — correct for single-owner data, insufficient if Stepwise ever adds shared/collaborative goals; would need real CRDT-style merging at that point.
 - **Exact alarm policy drift**: Android's exact-alarm permission model has tightened before and may again; the `ReminderScheduler` abstraction (§18) contains the blast radius to `:core:notifications`, but the concrete mechanism still needs a live policy check at implementation time (OQ-3).
+- **Widget hosting constraints**: Glance/RemoteViews impose real limits (a coarse `updatePeriodMillis` floor, a short `ActionCallback` execution budget, size/complexity ceilings on what a widget can render) that must be checked against current Android documentation before implementation (OQ-4); `:feature:widget`'s isolation (§19.2, §27) keeps any surprise here contained to one module.
+- **New cross-cutting refresh mechanism**: `DomainEventBus` (§19.5) is a new piece of shared infrastructure introduced specifically for widget refresh; low risk (additive, one small module) but worth tracking as the first thing of its kind in the architecture, and a candidate other features (e.g. future live cross-device notices) may reuse rather than duplicate.
 - **Two-vendor operational surface** (Supabase + Firebase for push/crash) means two dashboards/two things that can have an outage, in exchange for not reinventing push/crash tooling that Firebase already does well.
 - **Local-cache/backend-view divergence window**: during sync lag, a locally-cached derived number can transiently disagree with the backend's canonical view; the UI must communicate "syncing," not silently show a number that later changes without explanation.
 
-## 28. Recommended Implementation Sequence
+## 29. Recommended Implementation Sequence
 
 1. **Canonical Data Model Specification** — extends `/docs/data-model.md` with the concrete Room schema, Postgres schema, and the sync metadata columns (`id: UUID`, `updated_at`, `version`, `deleted_at`, `sync_status`) introduced here.
 2. **Calculation Engine Specification** — the exact formulas per Goal type, pace/forecast math, and the Kotlin/SQL parity requirement from §12/§15.
-3. **UX / Navigation Specification** — screen-by-screen detail on top of `/docs/scope-of-work.md`'s feature list and this document's module boundaries.
+3. **UX / Navigation Specification** — screen-by-screen detail on top of `/docs/scope-of-work.md`'s feature list and this document's module boundaries, including the Widget's per-size layouts (§19.9) and its configuration UI (§19.10).
 4. **Offline & Sync Specification** — the detailed outbox schema, WorkManager worker design, and conflict-resolution edge cases beyond what §9 establishes at the architecture level.
 5. **Google Play Release Specification** — building on `/docs/play-store-checklist.md`, now informed by the concrete Billing/notification/account-deletion architecture above.
 6. **Implementation.**
@@ -355,11 +490,15 @@ A single structured-logging facade (e.g. Timber) with tagged categories (`sync`,
 | `ProgressEvent` persistence | Not a stored table anywhere (client or backend) — a view/query over `session_metric_values ⋈ goal_activity_links`, computed fresh on read | A Postgres-trigger-maintained `progress_events` table (Phase 1.5 data model); client-synced `progress_events` | A view can't drift from its inputs because it has no independent state; strictly purer under §62 than a materialized table that must stay in sync with a trigger | None material at current expected scale (thousands, not millions, of Sessions per account) | Reversible — a materialized view is a drop-in upgrade behind the same read interface if scale ever demands it |
 | Goal progress calculation | Explicit `progressMode` per Goal (`METRIC`/`TARGET_VALUE`/`FREQUENCY`/`MILESTONES`/`TASKS`/`MANUAL`) instead of one formula for all "goal types" | One universal progress formula inferred from Goal type (original proposal, rejected as underspecified for Percentage/Project goals) | §11's Goal types conflate unit/shape with computation method; Percentage/Project goals have no single natural formula (weighted milestones vs. weighted tasks vs. manual are genuinely different modes) | `MANUAL` mode must be kept from silently competing with a computed value for the same Goal (addressed explicitly in B6) | Additive — new modes can be added later without touching existing ones |
 | Reminder scheduling | Domain-owned `ReminderScheduler` interface; `:core:notifications` picks the concrete Android mechanism | Domain/feature code calling AlarmManager/WorkManager/FCM directly | Isolates Android/Play policy churn (exact-alarm restrictions especially) to one module; OQ-3 becomes an implementation-time detail behind a stable interface, not a domain-architecture risk | None — pure abstraction, no behavior change | Fully reversible — an interface, not a structural commitment |
+| Widget technology | Jetpack Glance, in a `:feature:widget` module with zero dependency on `:core:database`/`:core:network` (§19.1–19.2) | Classic RemoteViews/AppWidgetProvider directly; a hypothetical separate "Widget sync" system | Glance is Google's current recommended approach and fits the Compose-style codebase; the module-boundary rule (not the UI framework choice) is what actually guarantees no second execution path | Glance's API surface and Android's widget-hosting limits change over time — must be verified live before implementation (OQ-4) | Presentation-layer choice, reversible without touching domain/data |
+| Widget refresh | Event-driven via a new `DomainEventBus` (§19.5), with a coarse periodic Glance update as a day-boundary safety net | Continuous polling; a Widget-specific push mechanism | Matches the explicit "no unnecessary polling" requirement; reuses the same Use Case success path instead of inventing Widget-specific plumbing | One new cross-cutting piece to maintain | Additive/reversible — a different pub/sub could replace it without touching Use Cases beyond the publish call |
+| Timer modeling | A Timer is a `Session` in `IN_PROGRESS` status; elapsed time computed at render time, never persisted as a counter (§19.8) | A separate `Timer`/`ActiveTimer` table with its own running/mutable state | No new domain entity needed — the concept's `IN_PROGRESS` status (concept §25) already covers it; avoids exactly the independently-mutable running total §62 forbids | None material | N/A — a modeling clarification of already-approved status values, not a new commitment |
 
 ## OPEN QUESTIONS
 
 - **OQ-1 (Percentage/Project goal math) — CLOSED.** Resolved by the explicit `progressMode` decision (B6): `MILESTONES` → weighted milestones, falling back to `TASKS` → weighted task completion, with `MANUAL` as a distinct, non-competing, explicitly-chosen mode. No longer open.
 - **OQ-2 (conflict resolution sign-off) — CLOSED.** Resolved by the hybrid strategy (B7, §9, ADR): silent last-write-wins for metadata, version-checked-with-preserved-conflict-copy for progress-affecting entities, no conflict at all for independent new Sessions. No longer open.
 - **OQ-3 — Exact alarm / reminder scheduling policy. Retained, but reframed: an implementation-time external verification requirement, not an unresolved product question.** The product unambiguously wants Task/Habit reminders (§16/§22) — that's settled. What's *not* settled, and can't be settled from the concept or from today's date, is which concrete Android/Play mechanism satisfies that requirement at the moment reminders are actually built, because `SCHEDULE_EXACT_ALARM`/`USE_EXACT_ALARM` policy has changed before and may again. The `ReminderScheduler` interface (§18, B-adjacent, ADR) exists specifically so this check can happen at implementation time — against Play's then-current published policy — without touching domain architecture either way. Nothing here is blocked on it.
+- **OQ-4 — Glance / Android Home Screen Widget hosting constraints. Same category as OQ-3: an implementation-time external verification requirement, not an unresolved product question.** The product unambiguously wants a full Home Screen Widget (§19) — that's settled. What needs a live check immediately before implementation, because it changes over time and isn't safe to assume: Jetpack Glance's current API surface, the minimum `updatePeriodMillis` Android enforces, `ActionCallback`'s execution time budget, and any target-SDK-specific widget restrictions. `:feature:widget`'s isolation (§19.2, §27) means this check touches one module, not domain architecture.
 
 No other genuinely open questions remain against the Master Product Concept as written.
