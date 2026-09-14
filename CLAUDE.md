@@ -3,735 +3,447 @@
 This file is the canonical, living product spec for Stepwise. It is auto-loaded at the start of every Claude Code session opened against this repository, so it should always be read and followed before acting on any request — regardless of which chat/session is doing the work. Extend this file in place as the concept evolves; do not let the spec live only in a chat conversation.
 
 Supporting documents (read alongside this file):
-- `/docs/functional-analysis.md` — the 48 sections below grouped into implementation modules
+- `/docs/functional-analysis.md` — the sections below grouped into implementation modules
 - `/docs/data-model.md` — entities, fields, relationships, and the automatic-cascade rule
-- `/docs/architecture.md` — stack choice (Supabase + Next.js), repo layout, web/Android split
+- `/docs/architecture.md` — stack choice (Supabase + React Native/Expo for Android first), repo layout
+- `/docs/android-stack.md`, `/docs/android-architecture.md`, `/docs/play-store-checklist.md` — Android/Play Store specifics
+- `/docs/scope-of-work.md` — full screen/feature breakdown for build sequencing (no MVP cut)
 
 ## Non-negotiable principle
 
 **Powerful underneath. Simple every day.** Every new feature must be checked against two questions: (1) does it help the person achieve their goals? (2) does it add an extra action to the daily scenario? If (2) is true, find a way to automate or hide the complexity — never push it onto the user.
 
-## Full concept (source of truth, verbatim)
+## Concept change process (§77 — binding on all future work)
 
-> Фиксирую обновлённую концепцию Stepwise с новым обязательным принципом: сложная система внутри, максимально простое ежедневное использование снаружи.
+Nothing in the concept below may be arbitrarily removed, simplified, or reinterpreted during implementation. If a technical constraint requires changing the concept: (1) explain the problem, (2) show the affected functions/entities and their consumers, (3) propose options, (4) wait for the user's choice, (5) only then change the architecture. Build sequencing (what gets coded first) is not the same as scope reduction — every part is designed as a piece of one complete application.
 
-# STEPWISE — полная концепция
+## Full concept — Master Product Concept (source of truth, verbatim)
 
-## 1. Что такое Stepwise
+### 1. Что такое Stepwise
 
-Stepwise — система достижения целей, которая связывает долгосрочные намерения человека с его реальными ежедневными действиями.
+Stepwise — полноценное мобильное приложение для iOS и Android (Android разрабатывается первым; iOS строится позже на той же базе), которое помогает человеку превращать долгосрочные жизненные цели в конкретные ежедневные действия и измерять реальный прогресс.
 
-Основная цепочка:
+Главная идея: то, что человек хочет получить завтра, должно быть связано с тем, что он делает сегодня.
 
-Vision → Goal → Milestones → Project/Plan → Tasks & Activities → Today → Execution → Progress → Statistics → Analysis → Adjustment → Achievement
+Stepwise не должен быть просто: todo list; habit tracker; календарём; системой целей; тайм-трекером; приложением со статистикой. Это должна быть единая система, которая связывает всё вместе.
 
-Ключевой вопрос приложения:
+Основная логика:
 
-> Что мне нужно сделать сегодня, чтобы реально приблизиться к своим целям?
+> MY VISION → LIFE AREAS → GOALS → MILESTONES → PROJECTS / PLANS → TASKS / ACTIVITIES / HABITS → TODAY → EXECUTION → PROGRESS → ANALYSIS → ADJUSTMENT → ACHIEVEMENT
 
-Пользователь не должен вручную управлять всей этой цепочкой. Большая её часть работает автоматически.
+И обратная связь:
 
-## 2. Главный UX-принцип
+> DAILY ACTIONS → GOALS → LIFE AREAS → LIFE BALANCE
 
-Сложная система внутри. Простое действие снаружи.
+### 2. Главный UX-принцип
 
-Это становится одним из фундаментальных требований Stepwise.
+Powerful underneath. Simple every day.
 
-Приложение может иметь мощную внутреннюю архитектуру, но пользователь не должен ощущать её сложность.
+Внутри приложение может иметь сложную архитектуру и большое количество взаимосвязей. Но пользователь не должен ощущать эту сложность. Главный принцип: сложная система внутри, простое действие снаружи.
 
-80% ежедневного взаимодействия:
-
-> Посмотреть → Выполнить → Отметить
-
-Например утром:
+Около 80% ежедневного использования — Посмотреть → Сделать → Отметить.
 
 > TODAY
-> 🥊 Boxing · 1h
-> 💻 Stepwise · 2h
-> 🇬🇧 English · 30m
-> 🧘 Meditation · 15m
+> Boxing — 1h
+> Stepwise — 2h
+> English — 30m
+> Meditation — 15m
 
-После бокса пользователь нажимает:
+После бокса пользователь нажимает ✓. Всё. Внутри приложение автоматически: создаёт Session; записывает Actual; обновляет Activity; обновляет связанную Goal; обновляет Life Area; обновляет статистику Week/Month/Year/Lifetime; recalculates Goal Pace; recalculates Forecast; обновляет Life Balance; обновляет Personal Progress History. Пользователь не должен выполнять эти действия вручную.
 
-> ✓
-
-Всё.
-
-Внутри Stepwise автоматически:
-
-создаёт Session → записывает Actual 1h → обновляет Activity → Goal → Week → Month → Year → Lifetime → Statistics → Pace → Forecast.
-
-Пользователь этого процесса не видит.
-
-## 3. Основная навигация
-
-Я бы пока зафиксировал четыре основных пространства:
-
-TODAY | GOALS | PLAN | PROGRESS
-
-плюс глобальная кнопка:
-
-＋
-
-Не нужно выводить каждую внутреннюю сущность приложения в отдельный tab.
-
-## 4. Today
-
-Это главный и наиболее часто используемый экран.
-
-Показываем прежде всего то, что нужно сделать сегодня.
-
-Например:
-
-> Saturday, 13 September
->
-> Focus
-> 🚀 Finish Stepwise onboarding
->
-> Today
-> 🥊 Boxing · 19:00 · 1h
-> 🇬🇧 English · 30m
-> 🧘 Meditation · 15m
-> 💻 Stepwise · 2h
->
-> Today 3/5
-
-Не нужно перегружать Today:
-
-огромными графиками; полной статистикой; деревом навыков; всеми milestones; всеми целями; сложной аналитикой.
-
-Для этого существуют другие экраны.
-
-## 5. Быстрое выполнение
-
-Стандартное действие:
-
-Tap ✓ → Done
-
-Если было запланировано:
-
-> Boxing · 1h
-
-Stepwise предполагает:
-
-> Actual = 1h
-
-и автоматически записывает час.
-
-Дополнительные варианты не должны постоянно занимать экран.
-
-Через swipe / long press / меню:
-
-Partial, Missed, Reschedule, Cancel
-
-## 6. Статусы выполнения
-
-Полная система остаётся:
-
-✓ Done — выполнено.
-◐ Partial — выполнено частично.
-○ Missed / Not Done — не выполнено.
-→ Rescheduled — перенесено.
-◌ In Progress — начато.
-× Cancelled — отменено.
-
-Но пользователю не показываем одновременно шесть огромных кнопок.
-
-## 7. Частичное выполнение
-
-Это важная особенность Stepwise.
-
-Например:
-
-> Boxing
-> Planned: 60 min
-
-Пользователь занимался 40 минут.
-
-Выбирает:
-
-> Partial → 40 min
-
-Получаем:
-
-> Planned: 60 min
-> Actual: 40 min
-> Status: Partial
-
-Именно 40 минут идут в статистику и цель.
-
-Мы не превращаем полезную работу в «0», только потому что пользователь не сделал 100% плана.
-
-## 8. Planned vs Actual
-
-Stepwise хранит две разные величины:
-
-Planned и Actual
-
-Например:
-
-> 💻 Stepwise Development
-> Planned: 3h
-> Actual: 2h 10m
-> 72% executed
-
-Это фундамент для качественной аналитики.
-
-## 9. Goals
-
-Цель отвечает на вопрос:
-
-> Чего я хочу достичь?
-
-Примеры:
-
-> 🥊 100 Hours Boxing — 72 / 100 h
-> 📚 Read 20 Books — 7 / 20
-> 🏃 Run 500 km — 183 / 500 km
-> 💰 Save €30,000 — €8,400 / €30,000
-> ⚖️ Weight — 92 → 85 kg
-> 🚀 Launch Stepwise — 68%
-
-## 10. Типы целей
-
-Не заставляем все цели работать по одной математике.
-
-Cumulative — Накапливаем результат: 72 / 100 hours
-Quantity — 7 / 20 books
-Distance — 183 / 500 km
-Financial — €8,400 / €30,000
-Target value — 92 → 85 kg
-Frequency — 3 workouts/week
-Percentage / project — 68 / 100%
-
-Каждый тип имеет собственную логику расчёта.
-
-## 11. Простое создание цели
-
-При этом нельзя заставлять пользователя заполнять двадцать полей.
-
-Базовое создание:
-
-> Goal: 100 Hours Boxing
-> Target: 100 h
-> Deadline: Dec 31
-
-Готово.
-
-Дополнительные настройки находятся в:
-
-> More options
-
-Там уже: milestones, priority, project, schedule, category, description и т.д.
-
-## 12. Milestones
-
-Сложные цели разбиваются на этапы.
-
-Например, Launch Stepwise:
-
-> Specification ✓
-> UI/UX ✓
-> Development 73%
-> Testing 21%
-> Store preparation 0%
-> Launch 0%
-
-Для простой цели вроде 100 Hours Boxing milestones вообще могут не понадобиться.
-
-То есть Stepwise не заставляет пользователя пользоваться сложностью, которая ему не нужна.
-
-## 13. Projects
-
-Для сложных целей:
-
-Goal ↓ Projects ↓ Tasks
-
-Например, Launch Stepwise:
-
-↳ Product Design
-↳ Development
-↳ Testing
-↳ Marketing
-↳ Launch
-
-Но Projects не должны быть обязательными.
-
-Для «Read 20 books» создавать Project бессмысленно.
-
-## 14. Tasks
-
-Task — конкретное действие.
-
-Например: «Finish onboarding screen»
-
-У задачи могут быть: Goal; Project; date; time; deadline; duration; priority; reminder; recurrence; metric; planned result; actual result; status.
-
-Но большинство этих полей опциональны.
-
-Быстрая задача:
-
-> Finish onboarding → Tomorrow
-
-и готово.
-
-## 15. Activities
-
-Activity — постоянная деятельность человека.
-
-Например: 🥊 Boxing, 💻 Programming, 🇬🇧 English, 📚 Reading, 🧘 Meditation, 🏃 Running
-
-Это не одноразовая задача.
-
-Activity существует независимо от конкретной цели.
-
-## 16. Goal и Activity — разные сущности
-
-Например:
-
-Activity: Boxing
-Goal: 100 Hours Boxing
-
-После достижения:
-
-> 100/100 ✓
-
-цель закрывается.
-
-Но Activity продолжает существовать:
-
-> Boxing — Lifetime: 347h
-
-Можно поставить следующую цель:
-
-> 500 Hours Boxing
-
-История не обнуляется.
-
-## 17. Sessions
-
-Каждое фактическое занятие создаёт Session.
-
-Например:
-
-> Boxing
-> 13 Sep — Planned: 60m, Actual: 60m, ✓ Done
-
-Другой день:
-
-> 15 Sep — Planned: 60m, Actual: 42m, ◐ Partial
-
-Все Sessions формируют реальную историю Activity.
-
-## 18. Автоматические связи
-
-Это один из ключевых UX-принципов.
-
-Если пользователь один раз связал:
-
-> Boxing → 100 Hours Boxing
-
-ему больше не нужно выбирать Goal при каждом занятии.
-
-Он просто выполняет:
-
-> Boxing ✓
-
-Stepwise сам понимает:
-
-> +1h Boxing
-> +1h → 100 Hours Boxing
-
-## 19. Никакого двойного ввода
-
-Это обязательное правило.
-
-Пользователь не должен:
-
-1. отметить тренировку в Calendar;
-2. потом записать её в Activity;
-3. потом обновить Goal;
-4. потом отметить Habit.
-
-Одно фактическое действие должно создавать один Progress Event, от которого обновляется всё остальное.
-
-## 20. Calendar / Plan
-
-Полноценное планирование:
-
-Day | Week | Month | Year
-
-В календаре: Tasks; Activities; Habits; deadlines; milestones; events.
-
-Например, Tuesday:
-
-> 09:00 Work
-> 18:00 English · 30m
-> 19:00 Boxing · 1h
-
-## 21. Recurring Activities
-
-Пользователь один раз создаёт:
-
-> Boxing — Tuesday + Thursday — 19:00 — 1h
-
-Дальше расписание создаётся автоматически.
-
-Не нужно каждую неделю заново создавать Boxing.
-
-## 22. Habits
-
-Привычки:
-
-> Meditation · 15m/day
-> Reading · 30m/day
-> Water · 2.5L/day
-> English · 30m/day
-
-Могут быть связаны с Activity и Goal.
-
-Например:
-
-Goal: 200 Hours English
-↓
-Habit: English 30 min/day
-↓
-Completed 30m
-↓
-+30m English
-↓
-Goal automatically updated
-
-## 23. Habits тоже поддерживают Partial
-
-Например, Reading — 30m. Результат: 30/30 ✓, или 18/30 ◐, или 0/30 ○.
-
-18 минут не исчезают из статистики.
-
-## 24. Timer
-
-Для временных Activities:
-
-> START — 00:00:00 ↓ STOP — 01:17:32 — Save
-
-Stepwise записывает: +1h 17m
-
-Но таймер не обязателен. Можно просто: Enter manually → 1h 20m
-
-## 25. Progress
-
-Это аналитический центр.
-
-Основные периоды: WEEK | MONTH | YEAR | ALL TIME
-
-Например, THIS WEEK:
-
-> 🥊 Boxing — 3h 20m
-> 💻 Stepwise — 11h 45m
-> 🇬🇧 English — 4h 30m
-> 📚 Reading — 2h 10m
-> 🧘 Meditation — 1h 05m
-
-## 26. Planned vs Actual Statistics
-
-Например, THIS WEEK:
-
-> Planned: 27h
-> Actual: 22h 50m
-> Execution: 84.6%
-
-Дополнительно:
-
-> Done — 23, Partial — 4, Missed — 3, Rescheduled — 1, Cancelled — 1
-
-## 27. Week / Month / Year / All Time
-
-Это работает для Goals, Activities, Habits и других измеримых данных.
-
-Например, Boxing: Week 3h 20m, Month 12h 40m, Year 103h 15m, All Time 347h 42m.
-
-## 28. Activity Statistics
-
-Карточка Boxing может показывать:
-
-> 🥊 BOXING
-> Goal: 72/100h
-> This week: 3h 20m
-> This month: 12h 40m
-> This year: 103h
-> Lifetime: 347h
-> Sessions: 286
-> Average session: 1h 13m
-> Average/week: 3.1h
-
-## 29. History
-
-Полная история, например September:
-
-> Sep 13 — 1h 20m ✓
-> Sep 11 — 1h 30m ✓
-> Sep 8 — 40m ◐
-> Sep 6 — Missed
-> Sep 4 — 1h ✓
-
-Любую запись можно открыть. Если Actual был введён неправильно — исправить. Все связанные показатели пересчитываются.
-
-## 30. Графики
-
-Показываем динамику: Day → Week → Month → Year
-
-Например: Jan 8h, Feb 11h, Mar 14h, Apr 9h, May 13h
-
-Также: trend; calendar heatmap; consistency; cumulative progress.
-
-Но графики находятся в Progress, а не мешают ежедневному Today.
-
-## 31. Сравнение периодов
-
-Например: Boxing — 12h 40m this month — ↑ 22% vs last month
-
-или: Development — 38h — ↓ 7h vs previous month
-
-Так Stepwise показывает направление движения.
-
-## 32. Pace
-
-Для целей с дедлайном:
-
-> 100 Hours Boxing
-> 72 / 100h
-> Remaining: 28h
-> Required: 2.1h/week
-> Current: 3.0h/week
-> 🟢 Ahead
-
-Или: 🔴 Behind by 1.4h/week
-
-## 33. Forecast
-
-Stepwise прогнозирует дату достижения.
-
-Например:
-
-> Current pace
-> Estimated completion: December 17
-> Deadline: December 31
-> 🟢 14 days ahead
-
-Если темп падает:
-
-> Estimated: January 21
-> 🔴 21 days behind
-
-## 34. Goal Impact
-
-Не все задачи одинаково важны. Stepwise должен понимать связь действия с целью.
-
-Например:
-
-> 🔴 Finish payment integration — High Goal Impact
-> 🟡 English lesson — Medium
-> ⚪ Clean inbox — Low
-
-Today может поднимать вверх действительно значимые действия.
-
-Именно здесь появляется отличие: не «что у меня сегодня запланировано?», а «что сегодня сильнее всего двигает меня вперёд?»
-
-## 35. Skills
-
-Skills сохраняем, но не превращаем их в отдельную ежедневную обязанность.
-
-Например: Product Development, Programming, English, Public Speaking
-
-Skill может быть связан с Activities и Goals.
-
-Но пользователь не должен после часа программирования делать: «Programming Skill +2%.»
-
-Stepwise уже знает, что он занимался программированием.
-
-Навыки должны максимально развиваться из существующих данных, а не требовать дополнительного учёта.
-
-## 36. Personal Progress History
-
-Со временем Stepwise становится персональной базой достижений.
-
-Например, 2026:
-
-> 🥊 Boxing — 126h
-> 💻 Development — 684h
-> 🇬🇧 English — 193h
-> 📚 Books — 31
-> 🧘 Meditation — 82h
-> Goals completed — 14
-> Projects completed — 9
-> Overall execution — 81%
-
-А через несколько лет:
-
-> BOXING
-> Lifetime: 864h
-> Sessions: 691
-> Started: March 2025
-> Goals completed: 6
-
-Это уже не todo history, а история развития человека.
-
-## 37. Аналитика поведения
-
-Stepwise анализирует накопленные данные.
-
-Например: «Ты планируешь в среднем 5 тренировок в неделю, но выполняешь 3.2.»
-
-Или: «За последние четыре недели время на Stepwise снизилось с 14h/week до 8h/week.»
-
-Или: «Ты выполняешь 91% задач утром и только 54% после 19:00.»
-
-Или: «На эту цель запланировано много задач, но фактический прогресс почти не меняется.»
-
-## 38. Интеллектуальные рекомендации
-
-Здесь автоматизация действительно имеет смысл.
-
-Не универсальный чат ради модного слова AI, а анализ данных пользователя.
-
-Например: «Goal deadline at risk.»
-
-Причина: «Required: 5.1h/week, Current: 3.2h/week»
-
-Предложение: «Add approximately 2h/week.»
-
-И пользователь может принять изменение плана.
-
-## 39. Quick Add
-
-Кнопка ＋ должна быть доступна практически везде.
-
-Через неё: Task, Goal, Activity, Habit, Session, Project, Progress
-
-Но список можно делать контекстным.
-
-Например внутри Boxing кнопка + сразу предполагает: «Add Boxing Session», а не заставляет снова выбирать Boxing.
-
-## 40. Быстрое создание
-
-Это ещё одно обязательное UX-правило.
-
-Не делать форму из 15 обязательных полей.
-
-Например задача: «Call designer — Tomorrow» → Save.
-
-А уже при необходимости: More options, где находятся: Goal, Project, Priority, Duration, Reminder, Repeat, Notes, Metric и т.д.
-
-## 41. Progressive Disclosure
-
-Это должен быть фундамент интерфейса.
-
-Новичок видит простую систему. По мере необходимости открывает более глубокие функции.
-
-Например, Basic: Boxing — 1 hour — Tuesday
-
-Advanced: Goal association, recurrence, target metric, reminder, priority, forecast settings, notes
-
-То есть мощность приложения не означает сложный первый экран.
-
-## 42. Автоматизация
-
-Stepwise должен самостоятельно делать максимум очевидной работы.
-
-Если пользователь создал «Boxing — Tue/Thu — 1h» и связал «100 Hours Boxing», дальше система знает связь.
-
-Не спрашивать каждую неделю одно и то же.
-
-## 43. Умные defaults
-
-Если запланировано «Boxing — 1h» и пользователь нажал ✓: Actual = 1h.
-
-Не открываем дополнительную форму.
-
-Если результат отличается — пользователь сам выбирает Partial/Edit.
-
-Это значительно сокращает количество действий.
-
-## 44. Что пользователь делает сам
-
-В идеале всего четыре типа действий:
-
-Plan — Что я хочу сделать.
-Do — Сделать.
-Mark — Зафиксировать результат.
-Review — Иногда посмотреть прогресс и скорректировать направление.
-
-Всё остальное Stepwise должен максимально вычислять самостоятельно.
-
-## 45. Что Stepwise делает автоматически
-
-На основании одного действия система может: сохранить Session, обновить Actual, определить Status, обновить Activity, обновить Goal, обновить Milestone, обновить Week, обновить Month, обновить Year, обновить Lifetime, пересчитать Execution Rate, пересчитать Pace, пересчитать Forecast, обновить Charts, обновить Comparison, обновить Personal History.
-
-Это очень важное архитектурное требование:
-
-> Один пользовательский ввод → множество автоматических последствий.
-
-## 46. Networking отсутствует
-
-Networking полностью исключён из Stepwise.
-
-Нет: CRM; contacts management; companies; relationship tracking; networking reminders.
-
-Это отдельная продуктовая задача и она разрушала бы фокус Stepwise.
-
-## 47. Главная петля продукта
-
-В итоге Stepwise работает так:
-
-GOAL — «Я хочу 100 часов бокса.»
-↓
-PLAN — «2 раза в неделю.»
-↓
-TODAY — «Boxing · 19:00 · 1h»
-↓
-DO — Пользователь тренируется.
-↓
-✓ — Одно нажатие.
-↓
-MEASURE — «Actual +1h»
-↓
-PROGRESS — «72 → 73h»
-↓
-STATISTICS — «Week / Month / Year / Lifetime»
-↓
-ANALYZE — «Current pace 3h/week»
-↓
-FORECAST — «Goal completion Dec 17»
-↓
-ADJUST — При необходимости меняем план.
-↓
-ACHIEVE — «100 / 100h ✓»
-↓
-Activity продолжает жить: «Boxing Lifetime: 375h»
-
-## 48. Продуктовая формула Stepwise
+### 3. Главная продуктовая формула
 
 > GOAL → PLAN → DO → TRACK → ANALYZE → ADJUST → ACHIEVE
 
-А пользовательское обещание можно выразить ещё проще:
+На стратегическом уровне:
+
+> VISION → LIFE AREAS → GOALS → ACTIONS
+
+И обратно:
+
+> ACTIONS → RESULTS → GOALS → LIFE BALANCE
+
+### 4. Основная навигация
+
+TODAY | GOALS | PLAN | PROGRESS, плюс глобальная кнопка ＋. Не нужно создавать отдельный основной tab для каждой внутренней сущности. Activities, Skills, History, Vision, Life Areas и другие функции открываются из основных экранов.
+
+### 5. MY VISION
+
+My Vision — верхний стратегический уровень. Отвечает на вопрос: какой жизни я хочу? Не обязательная сложная анкета. Пользователь может: написать общее видение своей жизни; написать Vision отдельно по каждой сфере жизни; редактировать; возвращаться к нему; связывать Goals со своим Vision.
+
+> MY VISION
+> — иметь сильное и здоровое тело
+> — финансовая независимость
+> — создать успешный собственный продукт
+> — сильные отношения
+> — постоянное развитие
+> — свобода путешествовать
+> — иметь достаточно свободного времени
+
+Vision опционален. Пользователь может начать пользоваться Stepwise вообще без заполнения Vision.
+
+### 6. LIFE AREAS
+
+Цели могут быть сгруппированы по сферам жизни. Стандартные примеры: Health, Finance, Career, Relationships, Personal Development, Family, Lifestyle, Projects, Education, Spirituality. Life Areas полностью настраиваемы: создать свою, удалить, переименовать, поменять порядок, выбрать иконку/категорию.
+
+> HEALTH — Goal: 100 Hours Boxing / Goal: Weight 85 kg / Goal: Sleep average 8h
+> FINANCE — Goal: Capital €100,000 / Goal: Additional income €2,000/month
+> PROJECTS — Goal: Launch Stepwise
+
+### 7. LIFE PLAN
+
+Life Plan — стратегическое представление всей жизни пользователя: My Vision, Life Areas, Goals внутри каждой сферы, состояние целей, прогресс, активность по каждой сфере, баланс между сферами. Не должен становиться дополнительной ежедневной обязанностью — это стратегический экран.
+
+> MY LIFE
+> Health / Finance / Career / Relationships / Development / Lifestyle
+
+Внутри каждой сферы отображаются активные цели.
+
+### 8. LIFE BALANCE
+
+Показывает, куда фактически направляется внимание человека. Строится автоматически из реальных данных: Goals, Activities, Sessions, Tasks, Habits, Actual time, Execution, Goal progress.
+
+> LIFE BALANCE — September
+> Health 32h / Career 71h / Development 14h / Relationships 6h / Lifestyle 2h
+
+Нельзя сводить всю жизнь к одному искусственному проценту. Для Life Area показываются независимые показатели:
+- **Attention** — сколько времени/действий направлено в эту сферу
+- **Execution** — насколько выполнен запланированный объём
+- **Goal Progress** — как двигаются цели внутри сферы
+- **Trend** — растёт или падает внимание относительно предыдущего периода
+
+> HEALTH — Attention: 32h / Execution: 84% / Goals progressing: 3/3 / Trend: +12%
+
+Stepwise может показывать наблюдение («Career занимает 54% отслеживаемого времени этого месяца», «Relationships получает меньше внимания третий месяц подряд»), но не должен говорить пользователю, как ему правильно жить — оно показывает данные.
+
+### 9. TODAY
+
+Главный ежедневный экран. Отвечает на вопрос: что сегодня действительно двигает меня вперёд?
+
+> TODAY
+> Focus: Finish payment integration
+> Today: Boxing — 19:00 — 1h / English — 30m / Meditation — 15m / Finish Stepwise onboarding
+> Progress: 3 / 5
+
+Today не должен быть перегружен сложными графиками, полной статистикой, Skills, всеми Milestones, всеми Goals, Life Balance, деталями Forecast. Это execution screen.
+
+### 10. GOALS
+
+Отвечает на вопрос: чего я хочу достичь?
+
+> 100 Hours Boxing — 72/100h · Read 20 Books — 7/20 · Run 500km — 183/500km · Save €30,000 — €8,400/€30,000 · Weight 92→85kg · Launch Stepwise — 68%
+
+### 11. GOAL TYPES
+
+Разные цели требуют разной математики — нельзя использовать одну формулу для всех:
+- **Cumulative** — 72 → 73 → 74 → 100 hours boxing
+- **Quantity** — Read 20 books, 7/20
+- **Distance** — Run 500km, 183/500km
+- **Financial** — Save €30,000, €8,400/€30,000
+- **Target Value** — Weight 92→85kg (значение не накапливается, оно движется к target)
+- **Frequency** — Train 3 times per week
+- **Percentage / Project** — Launch Stepwise, 68%
+
+### 12. GOAL CREATION
+
+Основная форма: Goal name, Target, Deadline (например «100 Hours Boxing / 100 hours / 31 December» → Save). Дополнительные параметры под «More Options»: Life Area, description, priority, milestones, project, metric, schedule, category, notes.
+
+### 13. GOAL STATUS
+
+Goal имеет отдельный lifecycle status — не то же самое, что статус выполнения Task: **Active, Paused, Completed, Archived**. Paused важен и это не Failed и не Cancelled («Boxing temporarily paused»).
+
+### 14. MILESTONES
+
+Сложные Goals могут содержать Milestones:
+
+> Launch Stepwise — Specification ✓ / UI/UX ✓ / Development 73% / Testing 21% / Store preparation 0% / Launch 0%
+
+Опциональны — для простой цели вроде «100 Hours Boxing» могут не использоваться вообще.
+
+### 15. PROJECTS
+
+Нужны для сложных Goals. Goal → Project → Tasks. Например Launch Stepwise → Product Design / Development / Testing / Marketing / Launch. Не должны быть обязательными.
+
+### 16. TASKS
+
+Task — конкретное действие («Finish onboarding screen»). Может содержать: Goal, Project, Life Area, date, time, deadline, duration, priority, reminder, recurrence, metric, Planned, Actual, status, notes — почти все поля optional. Быстрая задача: «Finish onboarding / Tomorrow» → Save.
+
+### 17. INBOX / UNSCHEDULED
+
+Пользователь должен быстро добавить мысль или задачу без организации («Buy insurance»). Если дата и другие параметры не указаны — Task попадает в Inbox/Unscheduled. Позже можно добавить дату, связать с Goal/Project, задать priority, удалить, архивировать. Принцип: **Capture now. Organize later.**
+
+### 18. OVERDUE
+
+Невыполненные действия не должны просто исчезать. Today может иметь блок OVERDUE («Finish payment integration — Yesterday») с действиями Complete/Reschedule/Skip/Edit. Но приложение не должно автоматически переносить все просроченные задачи на сегодня — иначе Today перегрузится.
+
+### 19. ACTIVITIES
+
+Activity — постоянная деятельность человека (Boxing, Running, English, Programming, Reading, Meditation, Gym, Cycling). Существует независимо от конкретной Goal.
+
+### 20. ACTIVITY ≠ GOAL
+
+Принципиально разные сущности. Activity: Boxing. Goal: 100 Hours Boxing. Когда Goal достигается (100/100h ✓), Goal становится Completed, но Activity остаётся («Boxing — Lifetime: 347h»). Позже можно создать новую Goal («500 Hours Boxing») — история Activity не обнуляется.
+
+### 21. ACTIVITY ↔ MULTIPLE GOALS
+
+Одна Activity может быть связана с несколькими Goals. Пример: Activity Running ↔ Goal 1 «Run 500km» и Goal 2 «100 Hours Running». Один Running Session (Distance: 8.2km, Duration: 52min) может одновременно обновить «Run 500km» (+8.2km) и «100 Hours Running» (+52min). Связь Activity ↔ Goal должна поддерживать multiple relations, каждая со своей метрикой.
+
+### 22. SESSIONS
+
+Session — фактическая запись выполненной Activity («Boxing Session, 13 September, Planned: 60min, Actual: 60min, Status: Done»; или «Running Session, Duration: 52min, Distance: 8.2km»). Session — важная часть source of truth.
+
+### 23. MULTI-METRIC SESSIONS
+
+Session не ограничен одной метрикой — может иметь несколько Metric Values: Running (Duration: 52min, Distance: 8.2km), Reading (Duration: 40min, Pages: 32), Cycling (Duration: 1h40m, Distance: 37km), Workout (Duration: 70min). Это необходимо учитывать в data model.
+
+### 24. ONE ACTION → ONE PROGRESS EVENT
+
+Критически важное правило: одно реальное действие не должно требовать нескольких отметок в разных разделах. После Boxing пользователь НЕ отмечает Calendar, потом Habit, потом Activity, потом Goal, потом Progress по отдельности — он делает одно действие «Boxing ✓», и Stepwise создаёт один Progress Event/Session, который автоматически обновляет всё связанное.
+
+### 25. EXECUTION STATUSES
+
+✓ Done, ◐ Partial, ○ Missed/Not Done, → Rescheduled, ◌ In Progress, × Cancelled. Пользователь не должен постоянно видеть 6 больших кнопок. Основное действие: Tap ✓. Дополнительные статусы: swipe/long press/more menu.
+
+### 26. QUICK DONE
+
+Если Activity/Task имеет Planned value (Boxing — 60min) и нажато ✓, Stepwise предполагает Actual = Planned без дополнительного popup. Если результат отличается — пользователь выбирает Partial/Edit.
+
+### 27. PARTIAL COMPLETION
+
+Planned: 60min boxing, Actual: 40min, Status: Partial. В Goal и Statistics идёт +40min, а не 0. Полезная работа не считается полностью невыполненной только потому, что не достигнуто 100% плана.
+
+### 28. PLANNED VS ACTUAL
+
+Хранятся отдельно (Development: Planned 3h, Actual 2h10m). Используется для Execution, statistics, trends, behavioral analytics, planning accuracy.
+
+### 29. EXECUTION CALCULATION
+
+Определена однозначно: Done = 100%; Partial measurable = Actual/Planned; Missed = 0%; Cancelled исключается из denominator; Rescheduled не считается Missed на первоначальную дату. Если тип Task невозможно измерить численно: Done = 100%, Partial = approximate completion percentage, заданный пользователем, либо отдельная логика.
+
+### 30. RECURRING ACTIVITIES
+
+Пользователь создаёт расписание один раз («Boxing, Tuesday+Thursday, 19:00, 1h»), Stepwise автоматически формирует будущие occurrences.
+
+### 31. HABITS
+
+Habit — правило регулярности, не дублирует Activity. Модель: Activity «Meditation» / Habit «Meditation — 15min every day». Выполнение Habit создаёт Meditation Session. Activity отвечает «что я делаю?», Habit — «как регулярно я хочу это делать?».
+
+### 32. HABIT PARTIAL
+
+Habit «Read 30min/day», сегодня 18min → результат 18/30min Partial, и +18min Reading идёт в статистику.
+
+### 33. RECURRENCE
+
+Нужно избегать дублирования механизма Recurring Activity и Habit schedule — внутренне единый механизм Schedule/Recurrence Rule, применимый к Task, Activity, Habit.
+
+### 34. TIMER
+
+Для временных Activities: START → timer → STOP → 01:17:32 → Save Session → +1h17m. Всегда optional — можно вручную ввести Actual duration.
+
+### 35. PLAN / CALENDAR
+
+Day/Week/Month/Year. Отображает Tasks, Activities, Habits, events, deadlines, milestones. Recurring activities генерируются автоматически.
+
+### 36. QUICK ADD
+
+Глобальная кнопка ＋, доступна почти везде. Базовые действия: Task, Goal, Activity, Habit, Session, Project, Note/Idea. Context-aware: внутри Boxing ＋ сразу предлагает «Add Boxing Session».
+
+### 37. NATURAL LANGUAGE QUICK ADD
+
+Пользователь пишет «Boxing tomorrow 19:00 for 1h», Stepwise распознаёт Activity/Date/Time/Duration, пользователь подтверждает. Дополнительный способ ввода, не заменяет обычные формы.
+
+### 38. PROGRESSIVE DISCLOSURE
+
+Basic: Boxing / 1h / Tuesday. Advanced: linked Goal, recurrence, reminder, metric, notes, priority, forecasting settings. Пользователь видит сложность только тогда, когда она ему нужна.
+
+### 39. SMART DEFAULTS
+
+Внутри Boxing «Add Session» не спрашивает Activity. Если Boxing связан с Goal, не спрашивает Goal каждый раз. Если Planned=60min и нажато ✓ — Actual=60min.
+
+### 40. PROGRESS
+
+Аналитический центр. Периоды: WEEK | MONTH | YEAR | ALL TIME.
+
+### 41. GLOBAL PROGRESS
+
+> THIS WEEK — Boxing 3h20m / Stepwise 11h45m / English 4h30m / Reading 2h10m / Meditation 1h05m
+> Planned: 27h / Actual: 22h50m / Execution: 84.6%
+
+### 42. STATUS STATISTICS
+
+Done — 23, Partial — 4, Missed — 3, Rescheduled — 1, Cancelled — 1.
+
+### 43. ACTIVITY STATISTICS
+
+> BOXING — Goal: 72/100h · This week: 3h20m · This month: 12h40m · This year: 103h15m · Lifetime: 347h42m · Sessions: 286 · Average Session: 1h13m · Average/week: 3.1h
+
+### 44. WEEK / MONTH / YEAR / ALL TIME
+
+Периоды работают для Activities, Goals, Habits, Life Areas, Progress.
+
+### 45. HISTORY
+
+Полная история Sessions, можно открыть и исправить («Actual 60min → 40min»), все связанные totals пересчитываются.
+
+### 46. GRAPHS
+
+Daily/Weekly/Monthly/Yearly trend, cumulative progress, calendar heatmap, consistency. Аналитический элемент — не перегружает Today.
+
+### 47. PERIOD COMPARISON
+
+«Boxing 12h40m this month, ↑22% vs last month» / «Development 38h, ↓7h vs previous month» — показывает динамику.
+
+### 48. PACE
+
+Для Goal с deadline: 100 Hours Boxing, 72/100h, Remaining 28h, Required pace 2.1h/week, Current pace 3.0h/week, Status Ahead (или Behind by 1.4h/week).
+
+### 49. FORECAST
+
+Estimated completion 17 December, Deadline 31 December, 14 days ahead. Пересчитывается при изменении current pace. Не абсолютное обещание — прогноз на основании текущих данных.
+
+### 50. GOAL IMPACT
+
+Различает занятость и реальный прогресс. Task может иметь Goal Impact (High/Medium/Low), внутри — числовой Impact Score 0–100. Today использует Impact Score для ранжирования.
+
+### 51. SKILLS
+
+Пользователь не должен вручную обновлять Skill Progress каждый день. Activity «Programming» + Goal «500 Hours Programming» → Skill «Software Development» использует accumulated activity data. Skills — аналитическая/profile функция, не отдельная ежедневная обязанность.
+
+### 52. PERSONAL PROGRESS HISTORY
+
+Stepwise постепенно превращается в историю развития человека.
+
+> 2026 — Boxing 126h / Development 684h / English 193h / Books 31 / Meditation 82h / Goals completed 14 / Projects completed 9 / Overall execution 81%
+
+Через несколько лет: BOXING — Lifetime 864h, Sessions 691, Started March 2025, Goals completed 6.
+
+### 53. WEEKLY REVIEW
+
+Опциональный, автоматически подготовленный summary.
+
+> YOUR WEEK — Goals progressed: 4/6 · Planned: 22h · Actual: 18h40m · Execution: 84% · Strongest Area: Health · Falling Behind: Stepwise Development · Next: Plan next week
+
+Максимально автоматизирован — пользователь не составляет отчёт вручную.
+
+### 54. BEHAVIORAL ANALYTICS
+
+«Ты планируешь 5 тренировок в неделю, но выполняешь в среднем 3.2.» / «Последние 4 недели время на Stepwise снизилось 14h→8h/week.» / «91% morning tasks vs 54% evening tasks.» / «Goal deadline may be at risk.»
+
+### 55. RECOMMENDATIONS
+
+«Required: 5.1h/week, Current: 3.2h/week → Add approximately 2h/week.» Пользователь сам решает: Apply / Ignore / Edit Plan.
+
+### 56. SEARCH
+
+Global Search по Goal, Activity, Task, Project, Habit, History — нужен по мере роста данных (сотни Goals, тысячи Tasks/Sessions, десятки Activities).
+
+### 57. ARCHIVE
+
+Разделение Active / Completed / Archived для Goals, Projects, Activities, Habits — предотвращает перегрузку интерфейса.
+
+### 58. SETTINGS
+
+Language, Units, Currency, Notifications, Account, Export Data, Delete Account, Privacy, Theme, Backup/Sync configuration. Минимум Russian + English. Вся архитектура i18n-ready, никаких hardcoded UI strings.
+
+### 59. OFFLINE FIRST
+
+Пользователь отмечает ✓ без интернета; после восстановления сети данные синхронизируются. Часть архитектуры с самого начала, не поздний костыль.
+
+### 60. IDEMPOTENCY
+
+Критически важное техническое требование: двойной тап ✓ из-за плохого интернета не должен дать +2h вместо +1h. Progress Events/Sessions должны иметь idempotent processing.
+
+### 61. EDIT / DELETE RECOMPUTATION
+
+Изменение Session (60min→40min) или удаление должно корректно пересчитать: Goal progress, Month/Year/Lifetime total, Pace, Forecast, Life Balance.
+
+### 62. SOURCE OF TRUTH
+
+Source of truth — уровень Sessions/Progress Events, не manually maintained totals. Goal progress «72h» выводится из Progress Events/Sessions, а не хранится как независимый вручную изменяемый total — иначе возможна рассинхронизация (Goal=74h, Activity=73h, Month total=72h40m). Этого нельзя допускать.
+
+### 63. LIFE AREA CALCULATIONS
+
+Life Area не имеет вручную задаваемый progress percentage — агрегирует данные своих Goals/Activities/Actions. Показатели Goal Progress, Attention, Execution, Trend не смешиваются в один математически сомнительный показатель.
+
+### 64. DATA MODEL — HIGH LEVEL
+
+User, Vision, LifeArea, Goal, Milestone, Project, Task, Activity, Habit, Schedule/RecurrenceRule, Session, ProgressEvent, Metric, MetricValue, GoalActivityLink, Skill, Reminder, Review, Insight/Recommendation.
+
+### 65. RELATIONSHIPS — HIGH LEVEL
+
+> User → Vision → Life Areas → Goals → Milestones/Projects → Tasks/Activities/Habits → Sessions/Progress Events → Progress/Analytics/Forecast → Life Balance
+
+Связи не всегда strictly hierarchical: Activity ↔ multiple Goals, Goal ↔ multiple Activities, Activity ↔ Habit, Session → multiple MetricValues.
+
+### 66. ОСНОВНОЙ DAILY FLOW
+
+Morning: Open Today → see Boxing 1h/Stepwise 2h/English 30m/Meditation 15m → Do Boxing → Tap ✓ → Done. Внутри: Session created, Actual=1h, Activity updated, Goal updated, Health Life Area updated, Week/Month/Year/Lifetime updated, Pace recalculated, Forecast recalculated, Life Balance updated. Пользователь видит только: Boxing ✓.
+
+### 67. ПРИМЕР ПОЛНОГО FLOW
+
+> MY VISION (Strong and healthy body) → LIFE AREA (Health) → GOAL (100 Hours Boxing) → ACTIVITY (Boxing) → PLAN (Tue/Thu 19:00 1h) → TODAY (Boxing 19:00 1h) → DO (Training) → ✓ → SESSION (1h) → GOAL (72→73h) → STATISTICS (Week/Month/Year/Lifetime) → PACE (3h/week) → FORECAST (Dec 17) → LIFE BALANCE (Health data updated) → PERSONAL HISTORY (Boxing lifetime increased)
+
+### 68. WHAT MUST NOT HAPPEN
+
+Нельзя: заставлять отмечать одну тренировку несколько раз; требовать сложные формы для простых действий; заставлять пользователя понимать внутреннюю data architecture; превращать Life Areas в ежедневную бюрократию; смешивать Activity и Goal; смешивать Habit и Activity так, что пользователь не понимает разницу; считать Partial как полный failure; автоматически переносить бесконечные Overdue tasks на Today; хранить независимые totals, которые могут рассинхронизироваться; делать Skills отдельной ежедневной системой ручного учёта.
+
+### 69. NETWORKING
+
+Полностью исключены: contacts CRM, companies, relationship database, reminders to contact people, professional networking management — отдельный продуктовый домен. Relationships в Life Areas означает жизненную сферу и цели пользователя, а не CRM.
+
+### 70. ОСНОВНЫЕ ЭКРАНЫ
+
+Primary: 1. Today, 2. Goals, 3. Plan, 4. Progress.
+
+Secondary: 5. My Vision, 6. Life Plan, 7. Life Area, 8. Goal Details, 9. Activity Details, 10. Task Details, 11. Habit Details, 12. Project Details, 13. Session Details, 14. History, 15. Personal Progress History, 16. Skills, 17. Weekly Review, 18. Inbox, 19. Search, 20. Archive, 21. Quick Add, 22. Settings, 23. Auth, 24. Onboarding.
+
+### 71. GOALS SCREEN
+
+Верхний уровень Life Plan (Health/Finance/Career/Relationships/Development/Lifestyle), ниже All Goals/Active/Paused/Completed — цель видна либо в контексте всей жизни, либо обычным списком.
+
+### 72. PROGRESS SCREEN
+
+Анализ по Overall, Life Areas, Goals, Activities, Habits, Tasks; периоды Week/Month/Year/All Time; drill down Progress → Health → Boxing → Session History.
+
+### 73. SIMPLE DAILY EXPERIENCE
+
+Главное правило: количество функций не должно определять сложность ежедневного использования. Каждая новая функция проходит два вопроса: (1) помогает ли достигать целей? (2) добавляет ли лишнее ежедневное действие? Если полезна, но добавляет действие — сначала автоматизировать, вывести из существующих данных, скрыть через progressive disclosure, использовать smart defaults, объединить с существующим действием.
+
+### 74. PRODUCT DIFFERENTIATION
+
+Todo App: «You have 12 tasks.» Stepwise: «These 3 actions have the strongest impact on your important goals.»
+Todo App: «Task completed.» Stepwise: «Task completed → Goal progress changed → Pace changed → Forecast changed → Life Plan changed.»
+Habit Tracker: «12 day streak.» Stepwise: «This habit contributed 6 hours toward your actual long-term Goal.»
+Calendar: «Boxing 19:00.» Stepwise: «Boxing 19:00 → Actual Session → Goal → Statistics → Forecast → Life Area.»
+
+### 75. КЛЮЧЕВОЕ ОБЕЩАНИЕ STEPWISE
 
 > Turn your goals into action.
-
-И главный UX-принцип:
-
+> Stepwise connects what you want tomorrow with what you do today.
 > Powerful underneath. Simple every day.
 
-С этого момента каждая новая функция Stepwise проверяется двумя вопросами: (1) помогает ли она человеку достигать целей? (2) добавляет ли она лишнее действие в ежедневный сценарий? Если второе — сначала ищем способ автоматизировать или спрятать сложность, а не перекладываем её на пользователя.
+### 76. FINAL PRODUCT LOOP
+
+> MY VISION → LIFE AREAS → GOALS → PLAN → TODAY → DO → TRACK → PROGRESS → ANALYZE → LIFE BALANCE → ADJUST → ACHIEVE → NEW GOALS
+
+Вся история сохраняется. Stepwise постепенно становится не только системой планирования, но и цифровой историей развития человека.
+
+### 77. ВАЖНО ДЛЯ ДАЛЬНЕЙШЕЙ РАЗРАБОТКИ
+
+При дальнейшей работе нельзя произвольно удалять, упрощать или переосмысливать функции из этого документа. Если техническая реализация требует изменения концепции: (1) объяснить проблему, (2) показать затронутые функции и consumers, (3) предложить варианты, (4) дождаться выбора, (5) только потом менять архитектуру. Техническая последовательность разработки не означает сокращение функциональности продукта — все части проектируются как элементы одного полноценного приложения. При любых изменениях архитектуры учитывать: все связанные entities, all consumers, migrations, historical data, offline sync, idempotency, recalculation, regression impact, UX simplicity.
+
+Главный критерий: Stepwise может быть сложным внутри, но для пользователя должен оставаться простым, быстрым и логичным каждый день.
 
 ## Product/engineering decisions made so far (outside the concept text)
 
-- **Primary client: Android, released on Google Play.** Built with React Native + Expo (TypeScript) — see `/docs/android-stack.md`. The Next.js web app from Phase 0 stays in the repo but is parked, not the active development focus.
-- **Backend**: Supabase (Postgres + Auth + REST/Realtime + RLS) — one backend reachable identically from Android and the parked web client.
-- **Derived calculations** (execution rate, pace, forecast, rollups) live in Postgres views/functions, not duplicated in app code per client, so every client reads the same numbers.
-- **Internationalization**: multi-language from day one, no hardcoded UI strings — `i18next`/`react-i18next`, starting with Russian + English. See `/docs/android-architecture.md`.
+- **Primary client: Android first, released on Google Play; iOS built later on the same React Native/Expo codebase** — see `/docs/android-stack.md`. The Next.js web app from Phase 0 stays in the repo but is parked, not the active development focus.
+- **Backend**: Supabase (Postgres + Auth + REST/Realtime + RLS) — one backend reachable identically from Android, iOS later, and the parked web client.
+- **Source of truth (§62)**: Sessions/Progress Events only. No manually-maintained totals anywhere — Goal progress, Life Area aggregates, and every period rollup are derived views, never independently stored/editable numbers.
+- **Idempotency (§60)** and **recomputation on edit/delete (§61)** are binding architecture constraints on the Sessions/Progress Events pipeline, not later hardening.
+- **Internationalization**: multi-language from day one, no hardcoded UI strings — `i18next`/`react-i18next`, starting with Russian + English.
 - **Units of measurement**: user-configurable per-account setting (metric/imperial, currency), never hardcoded — data stored in one canonical unit, converted for display.
 - **Monetization**: decided later (possibly ads); not built now, but architecture shouldn't foreclose it.
 - **Legal/jurisdiction**: resolved before the public production Play Store release, not before development starts.
 - **Audience**: a public product for other people, not personal-use-only — confirms the existing multi-user design (Supabase Auth + per-user RLS).
-- **Scope: no MVP phasing.** The full concept (all 48 sections above) is the target for the first Android build — not a cut-down core loop. Build order and screen-by-screen scope are tracked in `/docs/scope-of-work.md`.
-- **Build order**: Phase 0 (done) = concept analysis + data model + Supabase schema + parked web scaffold. Phase 1 (done) = Android pre-development analysis (`/docs/android-stack.md`, `/docs/play-store-checklist.md`, `/docs/android-architecture.md`) + full scope of work. Phase 2 = actual Android app build against `/docs/scope-of-work.md`.
+- **Scope: no MVP phasing (§77).** The full concept above is the target for the build — not a cut-down core loop. Build order and screen-by-screen scope are tracked in `/docs/scope-of-work.md`, which must be kept in sync whenever this file changes.
+- **Build order**: Phase 0 (done) = original concept analysis + data model + Supabase schema + parked web scaffold. Phase 1 (done) = Android pre-development analysis + first scope-of-work draft, built against the original 48-section concept. Phase 1.5 (in progress) = reconcile data model, functional analysis, architecture, and scope-of-work against this Master Product Concept (§1–77), which supersedes the original 48-section text. Phase 2 = actual Android app build against the reconciled `/docs/scope-of-work.md`.

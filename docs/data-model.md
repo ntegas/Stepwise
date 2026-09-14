@@ -1,102 +1,99 @@
 # Data Model
 
-Postgres schema (Supabase). Every table carries `user_id uuid references auth.users` and Row Level Security restricting rows to their owner, since this is a single-user-per-account product with no sharing/networking (§46).
+Reconciled against the Master Product Concept (`/CLAUDE.md`, §1–77). This supersedes the Phase 0 data model: the biggest change is that **no entity stores its own progress as an editable column** (§62) — Goal progress, Life Area aggregates, and every period rollup are views computed from `sessions` / `session_metric_values` / `progress_events`, never a cached number a trigger writes and something else could desync from. The Phase 0 migration (`0001_init.sql`) predates this correction and will be superseded by a Phase 2 migration built against this document — it is not reused as-is.
 
-## Entities
+All tables carry `user_id uuid references auth.users` and RLS restricting rows to their owner (single-tenant-per-account; no sharing/networking, §69).
+
+## Entity list (§64)
+
+`User · Vision · LifeArea · Goal · Milestone · Project · Task · Activity · Habit · Schedule/RecurrenceRule · Session · SessionMetricValue · ProgressEvent · Metric · GoalActivityLink · Skill · Reminder · Review · Insight`
+
+## Strategic layer
+
+### `visions`
+Free text, optional (§5). `id, user_id, life_area_id (nullable — null = whole-life vision), content, updated_at`.
+
+### `life_areas`
+User-defined, fully customizable (§6). `id, user_id, name, icon, category, sort_order, archived`.
 
 ### `goals`
-Answers "what do I want to achieve" (§9–11).
+`id, user_id, life_area_id (nullable), project_id (nullable), title, type (cumulative|quantity|distance|financial|target|frequency|percentage — §11), target_value, unit, deadline, priority, category, description, status (active|paused|completed|archived — §13, independent of any session/task status), created_at`.
 
-| column | type | notes |
-|---|---|---|
-| id | uuid pk | |
-| user_id | uuid | |
-| title | text | |
-| type | enum | `cumulative \| quantity \| distance \| financial \| target \| frequency \| percentage` (§10) — each type has its own progress-calculation logic |
-| target_value | numeric | |
-| current_value | numeric | derived — written only by the cascade trigger, never directly by the client |
-| unit | text | h, km, books, €, kg, % ... |
-| deadline | date, nullable | |
-| priority | int, nullable | |
-| project_id | uuid, nullable fk → projects | optional (§13) |
-| category | text, nullable | |
-| description | text, nullable | |
+`current_value` is **not a column** — see [Goal progress is a view](#goal-progress-is-a-view-not-a-column) below.
 
 ### `milestones`
-Stages of a complex Goal (§12). Optional — simple Goals have none.
-
-id, goal_id (fk), title, sort_order, percent/status.
+Optional stages of a Goal (§14). `id, goal_id, title, sort_order, percent_or_status`.
 
 ### `projects`
-Groups Tasks under a complex Goal (§13). Optional.
+Optional grouping of Tasks under a Goal (§15). `id, user_id, goal_id (nullable), life_area_id (nullable), title`.
 
-id, user_id, goal_id (nullable fk), title.
+## Doing layer
 
 ### `activities`
-Ongoing activity, independent of any single Goal (§15–16).
-
-| column | type | notes |
-|---|---|---|
-| id | uuid pk | |
-| user_id | uuid | |
-| title | text | |
-| icon | text | |
-| default_goal_id | uuid, nullable fk → goals | the "remembered link" (§18) — once set, every completed session for this Activity auto-applies to this Goal without asking again |
-| recurrence_rule | text, nullable | e.g. iCal RRULE for §21 |
-
-### `tasks`
-A concrete one-off action (§14).
-
-id, user_id, goal_id (nullable), project_id (nullable), title, date, time, deadline, duration, priority, reminder, recurrence, metric, planned_result, actual_result, status. All fields except title are optional (§14, §40).
+Ongoing activity, independent of any Goal (§19–20). `id, user_id, life_area_id (nullable), title, icon, archived`. No `default_goal_id` column — Activity↔Goal links are many-to-many (§21), modeled by `goal_activity_links` below, not a single FK.
 
 ### `habits`
-Recurring small commitment (§22–23).
+Regularity rule, distinct from Activity (§31). `id, user_id, activity_id (nullable — the "what"), title, target_value, metric_id, archived`. A Habit's own Goal links go through `goal_activity_links` too (source_type = `habit`), the same mechanism Activities use — one fan-out path, not two.
 
-id, user_id, activity_id (nullable fk), goal_id (nullable fk), title, target_per_period, unit, recurrence.
+### `tasks`
+`id, user_id, goal_id (nullable), project_id (nullable), life_area_id (nullable), title, date (nullable — null = Inbox/Unscheduled, §17), time, deadline, duration, priority, reminder_id (nullable), metric_id (nullable), planned_result, actual_result, goal_impact_score (0–100, §50), status (done|partial|missed|rescheduled|in_progress|cancelled), archived`. Almost every field beyond `title` is optional, per §16.
+
+### `schedules` (unified Schedule/RecurrenceRule, §33)
+One recurrence engine for Task, Activity, and Habit — not three. `id, owner_type (task|activity|habit), owner_id, rule (RRULE-style: days of week, time, interval), starts_on, ends_on (nullable)`. Occurrences (what shows up on a given day in Plan/Calendar, §35) are computed from this rule at read time, not pre-materialized as rows.
+
+## Metrics, Sessions, and the multi-goal fan-out
+
+This is the mechanically trickiest part of the concept (§21, §23, §60–62) — worth walking through end to end.
+
+### `metrics`
+A catalog of measurable dimensions, each with a canonical storage unit: `duration_minutes, distance_km, count, pages, amount_minor_units (money, stored as integer minor units + currency), weight_kg`, etc. `id, key, canonical_unit`. Display conversion (km↔mi, kg↔lb, currency symbol) happens in the client from the user's Settings unit preference (§58) — the stored value is always the canonical unit, so analytics never has to guess which unit a historical row used.
+
+### `goal_activity_links`
+The mechanism behind §21 ("one Activity can update multiple Goals, each via a different metric") and behind Habit→Goal links (§22): `id, source_type (activity|habit), source_id, goal_id, metric_id`. Example: Activity **Running** has two rows here — (Running, Goal "Run 500km", metric distance_km) and (Running, Goal "100 Hours Running", metric duration_minutes). One Session against Running fans out to both Goals automatically, each reading the metric it cares about.
 
 ### `sessions`
-One real occurrence of doing something — created by every completion, partial, timer stop, or manual entry (§17, §24).
+The record of one real occurrence (§22). `id, user_id, source_type (task|activity|habit), source_id, date, status (§25), client_event_id (unique per user — the idempotency key, §60: a duplicate submission from a flaky connection with the same client_event_id upserts instead of double-counting), notes`.
 
-| column | type | notes |
-|---|---|---|
-| id | uuid pk | |
-| user_id | uuid | |
-| source_type | enum | `task \| activity \| habit` |
-| source_id | uuid | fk into the matching table |
-| date | date | |
-| planned_amount | numeric, nullable | minutes/km/€/etc, matches the source's unit |
-| actual_amount | numeric, nullable | |
-| status | enum | `done \| partial \| missed \| rescheduled \| in_progress \| cancelled` (§6) |
-| notes | text, nullable | |
+### `session_metric_values`
+A Session can carry more than one metric (§23 — Running has both duration and distance). `id, session_id, metric_id, planned_value (nullable), actual_value`.
 
 ### `progress_events`
-The single fan-out record required by §19/§45 — **one write here per user action**, everything else is derived from it.
+The single fan-out record (§24, §62). Generated (by a DB trigger on `session_metric_values` insert/update) as: for each `session_metric_values` row, join `goal_activity_links` on `(source_type, source_id, metric_id)` to find every Goal that cares about that metric, and write one `progress_events` row per match: `id, user_id, session_id, session_metric_value_id, goal_id, metric_id, amount, created_at`. A Task completion without any Activity/Goal link produces zero progress_events — that's fine, not every Task feeds a Goal.
 
-id, user_id, session_id (fk), goal_id (nullable — resolved via the session's source → its `default_goal_id`/`goal_id`), amount, created_at.
+### Goal progress is a view, not a column
 
-A Postgres trigger `on sessions insert/update` is responsible for:
-1. Writing/updating the matching `progress_events` row.
-2. Recomputing `goals.current_value` for the linked goal (per its `type` logic).
-3. Nothing else is stored redundantly — weekly/monthly/yearly/lifetime numbers, execution rate, pace, and forecast are all **views**, not columns, computed from `sessions`/`progress_events` on read (see below). This is what makes "editing a past Actual recalculates everything downstream" (§29) true by construction rather than by a cache-invalidation step we'd have to maintain.
+This is the §62 correction from Phase 0: `goals.current_value` must not be a stored field a trigger increments, because a stored running total is exactly the "independently maintained number that can desync" §62 forbids. Instead, a view `goal_progress` computes it live:
+- `cumulative | quantity | distance | financial | frequency` → `SUM(progress_events.amount)` for that goal, all time.
+- `target` (e.g. weight) → the `actual_value` from the most recent `session_metric_values` row linked to that goal (a moving-toward-target reading, not a sum).
+- `percentage` → same "most recent reading" logic, or derived from linked Milestones' completion if the Goal is a project-style rollup.
 
-## Derived views (no duplicated app logic, §45)
+Editing or deleting a `session_metric_values` row changes `progress_events` (via the same trigger, on update/delete) which changes what the view aggregates — so §61 ("edit/delete recomputation") falls out of the architecture for free instead of being a separate recompute step someone has to remember to call.
 
-- `activity_stats_weekly` / `_monthly` / `_yearly` / `_lifetime` — per-activity totals, session count, avg session, avg/week (§27–28).
-- `goal_execution_rate` — planned vs actual %, status breakdown counts (§26).
-- `goal_pace` — remaining/time-left vs current rate, ahead/behind (§32).
-- `goal_forecast` — projected completion date from current pace vs deadline (§33).
+### Other rollup views
 
-These views are the single source both the web client and any future Android client read — neither client re-implements the math.
+`activity_stats_weekly/monthly/yearly/lifetime`, `life_area_balance` (Attention / Execution / Goal Progress / Trend, kept as **separate** figures per §63, never blended into one score), `goal_pace`, `goal_forecast`, `execution_rate` — all computed from `sessions` / `session_metric_values` / `progress_events`. Every client (Android now, iOS and the parked web app later) reads these same views, so none of them re-implement the math.
+
+## Supporting entities
+
+- **`skills`** — `id, user_id, title`, plus `skill_sources` (`skill_id, activity_id | goal_id`) mapping which Activities/Goals feed it. Skill "level" is a read-time aggregation over the linked Activities' stats — never a manually incremented value (§51).
+- **`reminders`** — `id, user_id, owner_type (task|habit), owner_id, fires_at | relative_rule, channel`.
+- **`reviews`** — Weekly Review (§53), auto-generated: `id, user_id, period_start, period_end, summary (jsonb: goals progressed, planned/actual/execution, strongest/weakest life area)`, read-only once generated.
+- **`insights`** — Behavioral analytics/recommendations (§54–55): `id, user_id, kind, message, related_goal_id (nullable), status (new|applied|ignored), created_at`.
+
+## Inbox, Overdue, Archive (§17–18, §57)
+
+No separate tables — these are *views over `tasks`*, not distinct entities: Inbox = tasks where `date IS NULL AND NOT archived`; Overdue = tasks where `date < today AND status NOT IN (done, cancelled)`; Archive = `archived = true` on Goals/Projects/Activities/Habits. Keeping these as filters rather than separate tables avoids a second place a task's state could drift out of sync with its row in `tasks`.
 
 ## Relationships at a glance
 
 ```
+users 1─* visions, life_areas, goals, activities, habits, tasks, projects
+life_areas 1─* goals, tasks, projects   (all optional)
 goals 1─* milestones
-goals 1─* projects (optional)
-projects 1─* tasks
-goals 1─* tasks (optional, direct)
-activities *─1 goals (default_goal_id, optional)
-habits *─1 activities (optional), habits *─1 goals (optional)
-tasks/activities/habits 1─* sessions (source_type + source_id)
-sessions 1─1 progress_events
+goals 1─* projects (optional) ─ 1─* tasks
+activities/habits *─* goals   via goal_activity_links (+ metric_id)
+tasks/activities/habits 1─* sessions   (source_type + source_id)
+sessions 1─* session_metric_values
+session_metric_values 1─* progress_events   (fan-out per linked goal)
+skills *─* activities/goals   via skill_sources
 ```

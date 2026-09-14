@@ -1,57 +1,104 @@
 # Functional Analysis
 
-Breakdown of the 48-section Stepwise concept (see `/CLAUDE.md`) into implementation modules. Each module lists its source sections and the concrete behavior it must deliver.
+Breakdown of the Master Product Concept (`/CLAUDE.md`, §1–77) into implementation modules. Supersedes the Phase 0 version, which was written against the earlier 48-section concept.
 
-## 1. Core entities & the cascade rule (§9–19, 21–24)
+## 1. Strategic layer — Vision, Life Areas, Life Plan, Life Balance (§5–8)
 
-Entities: Goal, Activity, Task, Project, Milestone, Habit, Session.
+- **My Vision** (§5): free-text, optional, whole-life or per-Life-Area. Never a required onboarding step.
+- **Life Areas** (§6): user-defined groupings for Goals (Health, Finance, Career, …) — fully customizable (create/rename/reorder/icon), not a fixed enum.
+- **Life Plan** (§7): strategic view of Vision + Life Areas + their Goals. A review screen, not a daily one.
+- **Life Balance** (§8): automatically derived from real data (Goals/Activities/Sessions/Tasks/Habits) — never a manually-set percentage. Reports four *separate* figures per Life Area — Attention, Execution, Goal Progress, Trend (§63) — deliberately not blended into one composite score, since that would misrepresent what's actually true about each dimension.
 
-The mandatory rule (§18, §19, §45): a single user action (✓, Partial, timer stop, manual entry) creates exactly **one** `progress_event`. Everything else — Session, Activity totals, Goal totals, weekly/monthly/yearly/lifetime rollups, execution rate, pace, forecast, charts, comparisons, personal history — is a derived read from that event, never a second manual entry.
+## 2. Today & daily execution (§9, 25–29, 36–39, 43, 50)
 
-Goal ≠ Activity (§16): a Goal can complete and close while its Activity keeps accumulating lifetime history and can be attached to a new Goal.
+- **Today** (§9): Focus item + today's list + a completion counter. No charts, no full stats, no Skills, no Milestones, no Life Balance detail — those live elsewhere.
+- **One-tap complete** (§26, §43): ✓ assumes `actual = planned`, no intermediate form. Partial/Missed/Reschedule/Cancelled reachable via swipe/long-press (§25), not competing buttons.
+- **Six execution statuses** (§25): Done, Partial, Missed, Rescheduled, In Progress, Cancelled — full data model, progressive UI.
+- **Partial completion** (§27–28): a partial amount is stored and counted as-is, never rounded to zero. Planned and Actual always stored separately.
+- **Execution calculation** (§29): Done=100%, Partial=actual/planned, Missed=0%, Cancelled excluded from the denominator, Rescheduled not counted as Missed on its original date. Non-numeric tasks: Done=100%, Partial=a user-set approximate percentage.
+- **Quick Add + Natural Language Quick Add + Progressive Disclosure + Smart Defaults** (§36–39): every creation flow has a 1–2 field fast path; "Boxing tomorrow 19:00 for 1h" parses into structured fields for confirmation, as an *additional* input method, not a replacement for forms; advanced fields (recurrence, goal link, metric, reminder…) live behind "More options"; once a link/recurrence is set once, it's never asked again.
+- **Goal Impact ranking** (§50): a 0–100 Impact Score per Task drives which "High/Medium/Low" label shows and lets Today surface what actually moves a Goal forward, not just what's scheduled.
 
-## 2. Daily execution UX (§2, 4–8, 39–43)
+## 3. Goals & lifecycle (§10–15)
 
-- **Today screen** (§4): today's Focus item + today's list, a completion counter (`3/5`), nothing else — no charts, no full stats, no skill tree, no milestone list.
-- **One-tap complete** (§5, §43): tapping ✓ on a planned item assumes `actual = planned`, no intermediate form. Partial/Missed/Reschedule/Cancel are reachable via swipe/long-press, not shown as competing buttons.
-- **Six statuses** (§6): Done, Partial, Missed, Rescheduled, In Progress, Cancelled — modeled fully in data, surfaced progressively in UI.
-- **Partial completion** (§7, §23): a partial amount (e.g. 40 of 60 min) is stored as-is and counted toward statistics/goal progress; it is never rounded down to zero.
-- **Planned vs Actual** (§8, §26): both values always stored side by side; execution % = actual/planned.
-- **Quick Add** (§39) + **Quick create** (§40) + **Progressive disclosure** (§41): every creation flow has a 1–2 field fast path (title + date, or title + target + deadline) with everything else under "More options". Quick Add is contextual — invoked from inside an Activity, it skips re-selecting that Activity.
-- **Smart defaults** (§43) and **automation of remembered links** (§18, §42): once an Activity is linked to a Goal or a recurrence is set, the system never asks again.
+- **Goal types** (§11), each with distinct math: Cumulative, Quantity, Distance, Financial, Target Value (moves toward a target, doesn't accumulate), Frequency, Percentage/Project.
+- **Simple creation, deep options** (§12): name + target + deadline is a complete Goal; Life Area, milestones, priority, project, metric, schedule, category, description live under "More options".
+- **Goal status / lifecycle** (§13): Active, Paused, Completed, Archived — a separate dimension from any Task/Session execution status. Paused is a real, non-punitive state ("temporarily paused" ≠ failed/cancelled).
+- **Milestones** (§14): optional stages for complex Goals; simple Goals need none.
+- **Projects** (§15): optional Goal→Project→Task grouping for complex Goals; never forced on a simple Goal.
 
-## 3. Planning (§3, 20, 21)
+## 4. Tasks, Inbox, Overdue (§16–18)
 
-- **Navigation** (§3): exactly four tabs — Today, Goals, Plan, Progress — plus a global ➕. No per-entity tabs.
-- **Calendar** (§20): Day/Week/Month/Year views showing Tasks, Activities, Habits, deadlines, milestones, events.
-- **Recurring activities** (§21): created once (e.g. "Boxing, Tue+Thu, 19:00, 1h"), schedule generates automatically thereafter.
+- **Tasks** (§16): almost every field beyond title is optional; a quick task is title + date.
+- **Inbox / Unscheduled** (§17): a task with no date lands here — "capture now, organize later" — not lost, not forced into a schedule immediately.
+- **Overdue** (§18): surfaced as its own block on Today (Complete/Reschedule/Skip/Edit), but never auto-dumped onto today's list — that would flood Today and violate its "not overloaded" requirement (§9).
 
-## 4. Progress & analytics (§25–33, 36–38)
+## 5. Activities, multi-goal linking, Habits, Recurrence, Timer (§19–24, 30–34)
 
-- **Progress hub** (§25): Week/Month/Year/All-Time totals per Activity/Goal/Habit.
-- **Planned vs Actual statistics** (§26): totals plus status breakdown (Done/Partial/Missed/Rescheduled/Cancelled counts).
-- **Period rollups** (§27, §28): per-Activity week/month/year/lifetime, session count, average session length, average/week.
-- **History** (§29): editable log; editing a past Actual recalculates every derived number downstream.
-- **Charts** (§30): trend, calendar heatmap, consistency, cumulative progress — live only in Progress, never on Today.
-- **Period comparison** (§31): e.g. "↑22% vs last month".
-- **Pace** (§32): remaining amount ÷ time left vs current rate → Ahead/Behind.
-- **Forecast** (§33): projected completion date vs deadline, based on current pace.
-- **Behavioral analytics** (§37) and **recommendations** (§38): pattern-based statements derived from stored history (planned vs actual gaps, trend drops, time-of-day completion rates), with a concrete suggested adjustment the user can accept — not a general-purpose chat feature.
+- **Activity ≠ Goal** (§19–20): an Activity outlives any single Goal; completing a Goal never resets or deletes the Activity's history — a new Goal can be attached to the same Activity later.
+- **Activity ↔ multiple Goals, per metric** (§21, §23): one Activity can feed several Goals simultaneously, each via a different metric of the same Session (a Running session's distance feeds a distance Goal, its duration feeds an hours Goal) — modeled by `goal_activity_links` in `/docs/data-model.md`.
+- **Habit ≠ Activity** (§31): Habit is a regularity rule ("how often"), Activity is the thing itself ("what"); completing a Habit creates a Session the same way an Activity does. Habits support Partial the same way (§32).
+- **Unified recurrence** (§30, §33): one Schedule/RecurrenceRule mechanism serves Task, Activity, and Habit — not three separate scheduling systems to keep in sync.
+- **Timer** (§34): optional start/stop convenience; manual duration entry always available as the alternative.
+- **One action → one Progress Event** (§24): the mandatory no-double-entry rule — a single ✓ fans out through the mechanism above to every linked Goal, Activity total, and statistic. This is the same rule as Phase 0's §19, now precisely mechanized via `goal_activity_links` + `progress_events`.
 
-## 5. Goal impact & skills (§34–35)
+## 6. Plan / Calendar (§35)
 
-- **Goal Impact** (§34): tasks are ranked High/Medium/Low by how much they move a linked Goal; Today can surface high-impact items above merely-scheduled ones.
-- **Skills** (§35): derived passively from Activity/Goal data (e.g. hours of Programming), never requiring a separate manual skill-log action.
+Day/Week/Month/Year views showing Tasks, Activities, Habits, deadlines, milestones, events; recurring items appear automatically from the unified Schedule/RecurrenceRule, never re-created manually.
 
-## 6. History & personal record (§29, §36)
+## 7. Progress & analytics (§40–49, §72)
 
-- Full editable history per Activity/Goal.
-- **Personal Progress History** (§36): yearly and lifetime summaries across all Activities/Goals — the product's long-term memory of the person's development, not just a todo log.
+- **Progress hub** (§40–41): Week/Month/Year/All-Time totals; Planned vs Actual with execution % and status-count breakdown (§42).
+- **Per-entity stats** (§43–44): works uniformly across Activities, Goals, Habits, and Life Areas — session count, average session, average/week, lifetime totals.
+- **History** (§45): editable; an edit or delete recomputes every downstream number automatically (architecture guarantee, not a manual step — see `/docs/data-model.md`).
+- **Graphs** (§46): trend, cumulative progress, calendar heatmap, consistency — live only in Progress, never crowding Today.
+- **Period comparison** (§47): e.g. "↑22% vs last month".
+- **Pace** (§48): required vs current rate toward a deadline → Ahead/Behind.
+- **Forecast** (§49): projected completion date vs deadline, explicitly framed as a projection from current data, not a promise.
+- **Drill-down** (§72): Progress → Life Area → Activity → Session History, plus an Overall view — not just a flat list of Activities.
 
-## 7. Explicitly out of scope (§46)
+## 8. Skills (§51)
 
-No networking/CRM features: no contacts, companies, relationship tracking, or networking reminders, ever.
+Derived passively from linked Activities'/Goals' accumulated data — never a manual "+2% Skill" action. A profile/analytical feature, not a daily obligation.
 
-## Product loop (§47–48)
+## 9. History, Personal Progress History, Weekly Review (§45, §52–53)
 
-`GOAL → PLAN → DO → TRACK → ANALYZE → ADJUST → ACHIEVE`, with the Activity surviving past Goal completion. Promise: *"Turn your goals into action."* Principle: *"Powerful underneath. Simple every day."*
+- **Personal Progress History** (§52): yearly and lifetime summaries — the product's long-term memory of the person's development.
+- **Weekly Review** (§53): auto-generated summary (goals progressed, planned/actual/execution, strongest/weakest Life Area, suggested next focus) — the user reviews it, never assembles it by hand.
+
+## 10. Behavioral analytics & recommendations (§54–55)
+
+Pattern-based observations from stored history (planned-vs-actual gaps, trend drops, time-of-day completion differences, at-risk deadlines) paired with a concrete, data-derived suggestion the user can Apply / Ignore / Edit Plan — not a general-purpose chat feature.
+
+## 11. Search & Archive (§56–57)
+
+- **Global Search** (§56): across Goal, Activity, Task, Project, Habit, History — necessary once data volume grows into the hundreds/thousands.
+- **Archive** (§57): Active/Completed/Archived separation for Goals, Projects, Activities, Habits, keeping the active UI uncluttered without deleting history.
+
+## 12. Settings, i18n, units (§58)
+
+Language (Russian + English minimum, fully i18n-ready, no hardcoded strings), Units + Currency (per-user, never hardcoded), Notifications, Account (incl. delete), Export Data, Privacy, Theme, Backup/Sync configuration.
+
+## 13. Technical requirements that aren't a screen (§59–63)
+
+- **Offline-first** (§59): ✓ works with no connectivity; syncs on reconnect. Part of the architecture from the start, not retrofitted.
+- **Idempotency** (§60): a duplicated submission (double-tap on bad connectivity) must never double-count — enforced via a client-generated idempotency key on `sessions` (`/docs/data-model.md`).
+- **Edit/delete recomputation** (§61): changing or deleting a Session correctly recomputes every dependent number (Goal, Month/Year/Lifetime, Pace, Forecast, Life Balance) — guaranteed by computing all of those as views over Sessions/Progress Events rather than cached fields.
+- **Single source of truth** (§62): Sessions/Progress Events only — no independently-stored, manually-maintained totals anywhere, since those are exactly what desyncs over time.
+- **Life Area calculations kept separate** (§63): Attention / Execution / Goal Progress / Trend reported as distinct figures, never combined into one artificial score.
+
+## 14. Screens (§70–71)
+
+Primary (bottom nav): Today, Goals, Plan, Progress. Secondary: My Vision, Life Plan, Life Area, Goal/Activity/Task/Habit/Project/Session Details, History, Personal Progress History, Skills, Weekly Review, Inbox, Search, Archive, Quick Add, Settings, Auth, Onboarding. The Goals screen itself has two lenses (§71): grouped by Life Plan/Life Area, or a flat Active/Paused/Completed list.
+
+## 15. Explicitly out of scope (§69)
+
+No networking/CRM features, ever: no contacts, companies, relationship tracking, or "contact this person" reminders. "Relationships" as a Life Area means the user's own relational goals, not a CRM.
+
+## Product loop, promise, and differentiation (§73–76)
+
+Loop: `MY VISION → LIFE AREAS → GOALS → PLAN → TODAY → DO → TRACK → PROGRESS → ANALYZE → LIFE BALANCE → ADJUST → ACHIEVE → NEW GOALS`. Promise: *"Stepwise connects what you want tomorrow with what you do today."* Principle: *"Powerful underneath. Simple every day."* Every feature is checked against: does it help achieve goals, and does it add a daily action — if the latter, automate/derive/hide/merge before shipping it (§73).
+
+## Change discipline (§77)
+
+Binding on all future implementation work — restated in full in `/CLAUDE.md`. In short: no feature from the concept is cut or reinterpreted without first explaining the problem, naming affected entities/consumers, proposing options, and getting the user's choice.
