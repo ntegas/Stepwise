@@ -1,10 +1,40 @@
-# STEPWISE — ANDROID ARCHITECTURE SPECIFICATION
+# ARCHITECTURE.md — Stepwise Technical Architecture
 
-Canonical technical foundation for Stepwise on Android. Source of truth for product behavior remains `/CLAUDE.md` (Master Product Concept, §1–77) — nothing here overrides it. This document supersedes `/docs/android-stack.md` and `/docs/android-architecture.md`, which were written for a React Native/Expo build; the platform decision has changed to **native Android: Kotlin + Jetpack Compose**, per explicit direction. iOS, App Store, and StoreKit are out of scope for this document by instruction.
+Canonical technical foundation for Stepwise on Android. Source of truth for product behavior remains `/PRODUCT_CANON.md` (Master Product Concept, §1–77) — nothing here overrides it. This document supersedes `/docs/android-stack.md` and `/docs/android-architecture.md`, which were written for a React Native/Expo build; the platform decision has changed to **native Android: Kotlin + Jetpack Compose**, per explicit direction. iOS, App Store, and StoreKit are out of scope for this document by instruction. Formerly `docs/android-architecture-specification.md`, moved to the repo root per the canonical documentation layout (`/CLAUDE.md`).
 
-This is the prerequisite for, in order: Canonical Data Model Specification, Calculation Engine Specification, UX/Navigation Specification, Offline & Sync Specification, Google Play Release Specification, Implementation. None of those should re-derive the decisions made here.
+This is the prerequisite for, in order: Canonical Data Model Specification (extends `/DATA_MODEL.md`), Calculation Engine Specification (`/CALCULATION_ENGINE.md`), UX/Navigation Specification, Offline & Sync Specification, Google Play Release Specification, Implementation. None of those should re-derive the decisions made here. Individual significant decisions from this document and its predecessors are also recorded as standalone files under `/ADR/`. Live phase status: `/PROJECT_STATE.md`.
 
-**Revision status**: two revision rounds so far. Round 1 — the user directed six decisions (Goal `progressMode`, hybrid conflict resolution, a domain-owned `ReminderScheduler` abstraction, a more precise offline-first-safe statement of Progress Event handling plus a decision to not persist `ProgressEvent` as a table, a tightened Task/Session statement, and deterministic recurrence-occurrence identity), applied as B6–B9 plus corresponding edits throughout; closed OQ-1/OQ-2, reframed OQ-3. Round 2 — added the Android Home Screen Widget as a canonical, first-class product requirement (§19), including a new `DomainEventBus` and a local-idempotency tightening (both flagged explicitly as new rather than folded in silently), and OQ-4 (Glance/widget-hosting live verification). See the chat response accompanying each revision for the full change list and current READY/NOT READY status.
+## Access requirement, and why not a Claude Artifact
+
+Stepwise must be usable from a phone and a computer with the same data, with no dependency on any single local machine. The Next.js web app built in Phase 0 stays in the repo as a parked secondary client, not the active development focus. A Claude Artifact was considered early on (zero hosting, instant multi-device URL) and rejected for the primary build: Stepwise's relational model (Goals/Activities/Sessions/Tasks/Habits with cascading cross-entity updates, per-type goal math, pace/forecast analytics) and the requirement to serve a native Android client are better served by a real Postgres schema with SQL views than by an Artifact's document-style database.
+
+## Repository layout
+
+```
+/CLAUDE.md            — session entry point (auto-loaded), points at everything below
+/PRODUCT_CANON.md      — Master Product Concept (the "what and why")
+/ARCHITECTURE.md        — this file
+/DATA_MODEL.md          — entities, relationships, source-of-truth rule
+/DEVELOPMENT_PROTOCOL.md — code-architecture centralization rules
+/ANTI_ERROR_STANDARD.md  — audit/change-management process
+/PROJECT_STATE.md        — live phase/status
+/CALCULATION_ENGINE.md, /DESIGN_SYSTEM.md — scaffolded, filled in their own phase
+/ADR/                    — one file per significant decision
+/docs
+  security/              — SECURITY_ARCHITECTURE.md, THREAT_MODEL.md, SECURITY_TEST_MATRIX.md,
+                            DEPENDENCY_POLICY.md, INCIDENT_RESPONSE.md, AI_CODE_SECURITY.md
+  functional-analysis.md, scope-of-work.md, play-store-checklist.md
+  android-stack.md, android-architecture.md — superseded (React Native era), history only
+/supabase
+  migrations/            — schema, RLS policies, triggers, views (Phase 0 version; superseded by Phase 2's Canonical Data Model)
+/apps
+  web/                   — Next.js app (parked): Today / Goals / Plan / Progress tabs + Quick Add
+/packages
+  domain/                — shared TypeScript types, used by the parked web app only (not the native Android app)
+/android                — native Android Gradle project (Phase 2 onward), multi-module per §5 below
+```
+
+**Revision history**: tracked in `/PROJECT_STATE.md`, not duplicated here.
 
 ---
 
@@ -62,8 +92,8 @@ Blanket timestamp-based last-write-wins across every entity was too coarse for p
 *Downstream impact*: Sync Architecture (§9, rewritten below), the ADR "Conflict resolution" row (updated below), Testing Architecture (§24 — conflict tests now need to cover both tiers: metadata silent-resolve, and Session conflict-copy preservation). No impact on Today, Goals, Activities, Habits, Progress, Analytics, Pace, Forecast, Life Areas, Life Balance, Search, Recurrence's rule engine itself, or Notifications; History gains a forward-looking note that a future UX pass may want to surface conflict copies, which is a UX/Navigation Specification concern, not resolved here.
 
 **B8. Does `ProgressEvent` need to exist as a separate persisted, canonical table? — RESOLVED. No — demoted to a derived view/query, not stored.**
-§64 lists `ProgressEvent` as a domain entity, and the Phase-1.5 data model (`/docs/data-model.md`) made it a trigger-maintained table. Asked to evaluate rather than keep it by default: a trigger-maintained table is *an* implementation of "derived from Sessions," but not the only one, and it reintroduces exactly the kind of thing that can drift from its source if the trigger logic ever has a bug — a materialized copy that must stay in sync with `session_metric_values ⋈ goal_activity_links`, rather than being that join.
-**Resolution:** `ProgressEvent` is **not a stored table**, backend or client. It remains a *conceptual* entity (the fact "this session's metric value contributed X to this goal") but is answered by a query/SQL view over `session_metric_values ⋈ goal_activity_links`, computed fresh on read, exactly as Goal progress itself already is (§7, `/docs/data-model.md`). This is strictly purer under §62's own logic than a trigger-maintained table: a view can't drift from its inputs because it has no independent state to drift. If a specific query pattern ever needs materialization for performance at scale (a single account is expected to reach thousands, not millions, of Sessions over years — not an early concern), the upgrade path is a Postgres `MATERIALIZED VIEW` behind the same read interface, which changes nothing about what any client or calculation sees.
+§64 lists `ProgressEvent` as a domain entity, and the Phase-1.5 data model (`/DATA_MODEL.md`) made it a trigger-maintained table. Asked to evaluate rather than keep it by default: a trigger-maintained table is *an* implementation of "derived from Sessions," but not the only one, and it reintroduces exactly the kind of thing that can drift from its source if the trigger logic ever has a bug — a materialized copy that must stay in sync with `session_metric_values ⋈ goal_activity_links`, rather than being that join.
+**Resolution:** `ProgressEvent` is **not a stored table**, backend or client. It remains a *conceptual* entity (the fact "this session's metric value contributed X to this goal") but is answered by a query/SQL view over `session_metric_values ⋈ goal_activity_links`, computed fresh on read, exactly as Goal progress itself already is (§7, `/DATA_MODEL.md`). This is strictly purer under §62's own logic than a trigger-maintained table: a view can't drift from its inputs because it has no independent state to drift. If a specific query pattern ever needs materialization for performance at scale (a single account is expected to reach thousands, not millions, of Sessions over years — not an early concern), the upgrade path is a Postgres `MATERIALIZED VIEW` behind the same read interface, which changes nothing about what any client or calculation sees.
 *Downstream impact*: every place that referenced "the `progress_events` table" (§9 Sync Architecture, §12 Progress Event Architecture, §15 Analytics Architecture, the ADR) is updated below to say "derived on read from `session_metric_values`/`goal_activity_links`" instead. No behavioral change to Goals/Activities/Tasks/Habits/Sessions/Progress/Analytics/Pace/Forecast/Life Areas/Life Balance/History/Search (all already consumed "Goal progress" as a view, never the raw table, so their contract is unchanged). Offline Sync is simplified, not complicated: there was already no client sync of `progress_events` (B5), so removing it as a *backend-stored* table too removes one internal backend table to reason about, with zero client-facing change. Recurrence/Notifications unaffected.
 
 **B9. Recurrence occurrence identity across devices — refined (not new; sharpens B3).**
@@ -148,7 +178,7 @@ The example above is Stepwise's actual module set, not a generic template — it
 
 ## 6. Domain Architecture
 
-`:core:model` holds the entities enumerated in `/CLAUDE.md` §64 (User, Vision, LifeArea, Goal, Milestone, Project, Task, Activity, Habit, Schedule/RecurrenceRule, Session, ProgressEvent, Metric, MetricValue, GoalActivityLink, Skill, Reminder, WeeklyReview, Insight/Recommendation) as plain Kotlin data classes — no Room `@Entity`, no network `@Serializable` on the same class. `:core:database` and `:core:network` each have their own representations and map to/from `:core:model` at their boundary. This is deliberate duplication in exchange for a real guarantee: a Room schema migration or a backend DTO change can never silently change what the domain layer — and therefore every ViewModel and every calculation — thinks a Goal *is*.
+`:core:model` holds the entities enumerated in `/PRODUCT_CANON.md` §64 (User, Vision, LifeArea, Goal, Milestone, Project, Task, Activity, Habit, Schedule/RecurrenceRule, Session, ProgressEvent, Metric, MetricValue, GoalActivityLink, Skill, Reminder, WeeklyReview, Insight/Recommendation) as plain Kotlin data classes — no Room `@Entity`, no network `@Serializable` on the same class. `:core:database` and `:core:network` each have their own representations and map to/from `:core:model` at their boundary. This is deliberate duplication in exchange for a real guarantee: a Room schema migration or a backend DTO change can never silently change what the domain layer — and therefore every ViewModel and every calculation — thinks a Goal *is*.
 
 Two status axes live on `Goal`/`Task` as separate enums per concept §13/§25, never merged into one: `LifecycleStatus` (Active/Paused/Completed/Archived) and `ExecutionStatus` (Done/Partial/Missed/Rescheduled/InProgress/Cancelled) — the former describes the Goal/Task itself, the latter describes a specific Session/occurrence.
 
@@ -164,7 +194,7 @@ Four distinct layers, per the explicit ask to separate them — this is the answ
 
 - **Domain event source of truth**: the append-oriented fact of what happened — a `Session` + its `SessionMetricValue`s, identified by a client-generated UUID. This *is* the fact; it means the same thing whether it currently lives only on-device or has reached the backend.
 - **Local operational source of truth (Room)**: what the UI actually reads and writes for instant, offline-capable operation. Mirrors the domain events locally, plus may hold a locally-materialized cache of frequently-read numbers (e.g. "this Goal's current progress" for the Goals screen) purely for read performance — that cache is explicitly non-canonical and rebuildable from local Sessions at any time; nothing downstream treats it as authoritative.
-- **Backend persistence (Supabase/Postgres)**: the durable, cross-device copy of the same domain events (`sessions`, `session_metric_values`, and structural entities like `goals`/`activities`), plus the canonical Postgres views (goal progress, rollups, pace, forecast — see `/docs/data-model.md`) computed *directly* from those events on read — **`ProgressEvent` is one of these views, not a stored table** (B8); nothing sits materialized between the raw events and the numbers a client reads. This is the arbiter when devices disagree, and what a new device/reinstall bootstraps from.
+- **Backend persistence (Supabase/Postgres)**: the durable, cross-device copy of the same domain events (`sessions`, `session_metric_values`, and structural entities like `goals`/`activities`), plus the canonical Postgres views (goal progress, rollups, pace, forecast — see `/DATA_MODEL.md`) computed *directly* from those events on read — **`ProgressEvent` is one of these views, not a stored table** (B8); nothing sits materialized between the raw events and the numbers a client reads. This is the arbiter when devices disagree, and what a new device/reinstall bootstraps from.
 - **Derived analytics**: anything computed *from* the above for display, on-device or from a backend view — never itself an independent fact. If a local cached number and the backend's view momentarily disagree (sync lag), the backend view wins and the local cache is refreshed to match once sync completes; the UI should show a subtle "syncing" affordance rather than silently presenting stale derived numbers as final.
 
 No entity keeps an independently-editable running total anywhere in this stack (§62) — the local cache above is a read-optimization, not a second place a fact can be entered or corrected.
@@ -174,6 +204,24 @@ No entity keeps an independently-editable running total anywhere in this stack (
 Every core action (§59: marking a Session, creating a Task, editing History) writes to Room synchronously and returns immediately — the UI never waits on a network round trip for a normal action. That local write also enqueues an outbox entry (§9). Reads for Today/Goals/Plan/Progress come from Room (via Flow) so the screens render instantly from whatever was last synced plus anything done locally since, without waiting for connectivity. A slim "sync status" indicator (not a blocking spinner) reflects outbox depth/last successful sync.
 
 ## 9. Sync Architecture
+
+### 9.0 Transaction boundaries, command idempotency, and the concurrency model (generalized from the Widget pipeline, §19.3)
+
+Per the Security/Transaction/Concurrency standard, this generalizes what §19.3–19.4 already established for one command to every critical multi-entity command in the app.
+
+**Transaction boundaries.** Every critical command (e.g. `CompleteOccurrenceCommand`) defines, up front: its canonical writes, its derived writes, failure behavior, retry behavior, and rollback/recovery behavior. Canonical local state changes execute atomically in one Room transaction where the data logically belongs to one operation — e.g. completing a Task must never leave `Task = DONE` with no Session, or a Session created with its occurrence left un-transitioned. Secondary derived effects (recalculated rollups, the locally-materialized read cache of §7) may be recomputed *after* commit, because they are recoverable projections, not canonical facts — recomputing them from the canonical write is always safe, unlike leaving the canonical write itself half-done.
+
+**Command idempotency.** Every mutating command has a stable identity (already established for Sessions via the client-generated UUID, B4; for occurrences via the deterministic hash, B9; for the Widget's local upsert, §19.4). A network retry, a double-tap, a Widget retry, or process recreation replaying the same command must resolve to the same logical action, never a second one. This is not a special case for any one surface — it's a property every command's identity scheme must have by construction.
+
+**Concurrency model — confirms B7, does not change it.** "Universal last-write-wins is forbidden" was already this project's own conclusion (B7/ADR-006) before the Security/Transaction/Concurrency standard restated it — cross-checked here explicitly, no new decision needed. Restated with the standard's own categories, which map directly onto what §9's bullets below already do:
+- **Independent creates** (two independently-created Sessions): both persist; never treated as competing for one slot (already true — each Session is its own canonical fact, B7).
+- **Same-entity concurrent edit**: revision/version-checked, not blind overwrite (already true — the version-check + conflict-copy design, B7).
+- **Delete**: tombstone semantics, so a deleted row can't resurrect from a stale offline device syncing late (already true, §9 below).
+- **Derived data**: never an authoritative participant in a merge — always recomputed from canonical facts after the canonical write resolves (already true, ADR-004).
+
+**Single-writer semantics where necessary.** For state where concurrent writes are especially dangerous — Timer state, entitlement/subscription state (§19 Billing), server-controlled security flags, authoritative account state — exactly one layer owns the write, and no other layer independently creates a competing truth. Timer already satisfies this by construction (§19.8: the Session row is the only place Timer state is written, by whichever `StartTimerUseCase`/`StopTimerUseCase` call happens to run). Entitlement state's single writer is the backend (`subscriptions` table, written only by the Play RTDN Edge Function and server-side purchase verification, §19 Billing) — the app never writes its own belief about subscription status.
+
+### 9.1 Outbox, retries, versioning
 
 - **Local-first writes**: every mutation lands in Room first, in the same transaction as an outbox row describing it (entity type, entity id, operation, a snapshot of the row, `attempt_count`, `last_error`).
 - **Dirty state**: syncable rows carry `sync_status: synced | pending | conflict` and `local_updated_at`; the outbox is the authoritative work list, `sync_status` is a derived display convenience.
@@ -197,7 +245,7 @@ Every core action (§59: marking a Session, creating a Task, editing History) wr
 
 ## 10. Backend Architecture
 
-Supabase: Postgres (schema per `/docs/data-model.md`, to be extended with the sync metadata columns above in the Canonical Data Model doc), Auth (email/password + Google Sign-In), Realtime (used sparingly — mainly to let a second open device pick up a change without waiting for its own next poll, not as the primary sync transport, which is the pull/push outbox model above), Row Level Security as the sole authorization boundary (the server never trusts a client-supplied `user_id`; RLS derives it from the authenticated JWT on every query), Edge Functions for anything that must run with elevated trust: Play purchase-token verification, RTDN webhook handling, account-deletion cascade.
+Supabase: Postgres (schema per `/DATA_MODEL.md`, to be extended with the sync metadata columns above in the Canonical Data Model doc), Auth (email/password + Google Sign-In), Realtime (used sparingly — mainly to let a second open device pick up a change without waiting for its own next poll, not as the primary sync transport, which is the pull/push outbox model above), Row Level Security as the sole authorization boundary (the server never trusts a client-supplied `user_id`; RLS derives it from the authenticated JWT on every query), Edge Functions for anything that must run with elevated trust: Play purchase-token verification, RTDN webhook handling, account-deletion cascade.
 
 ## 11. Authentication
 
@@ -242,7 +290,7 @@ Today's data comes from several sources (scheduled Task occurrences, planned Act
 
 - **On demand (not cached)**: anything cheap to compute from an already-indexed query — a single Goal's current progress, a single Activity's this-week total.
 - **Cached (locally materialized, rebuildable)**: numbers read very frequently relative to how often they change — Today's agenda, the Goals list's progress bars. Invalidated and recomputed whenever a relevant local write happens (§7's local cache).
-- **Computed as SQL views, not app code (server-side)**: period rollups, pace, forecast, execution rate, Life Balance figures, and Goal progress itself — computed by Postgres views over `sessions`/`session_metric_values`/`goal_activity_links` directly (no intermediate `progress_events` table — B8), per `/docs/data-model.md`, so they're correct by construction rather than by an app-level recompute step.
+- **Computed as SQL views, not app code (server-side)**: period rollups, pace, forecast, execution rate, Life Balance figures, and Goal progress itself — computed by Postgres views over `sessions`/`session_metric_values`/`goal_activity_links` directly (no intermediate `progress_events` table — B8), per `/DATA_MODEL.md`, so they're correct by construction rather than by an app-level recompute step.
 - **Incrementally updated**: none of the above need incremental/streaming update logic — because nothing is a running total that gets incremented, everything is either a cheap direct query or a view recomputed from the (indexed) event log, the "how do we keep an incremental counter correct" problem simply doesn't arise. This is a direct consequence of the §62 source-of-truth decision, not a separate design.
 
 ## 16. Life Balance Architecture
@@ -403,7 +451,7 @@ No conflicts found with already-approved architecture. The two genuinely new pie
 
 ## 20. Billing Architecture
 
-Prepares the plumbing without committing to a monetization model, per `/CLAUDE.md` ("decided later, possibly ads"):
+Prepares the plumbing without committing to a monetization model, per `/PRODUCT_CANON.md` ("decided later, possibly ads"):
 - Google Play Billing Library for purchase flow.
 - **Never trust the client's local billing state as entitlement** — a purchase token is verified server-side (a Supabase Edge Function calling the Play Developer API), and the result is written into a `subscriptions` table (status: active/grace_period/on_hold/cancelled/expired) that the app reads as the actual entitlement source of truth.
 - Google Play Real-time Developer Notifications (RTDN) → an Edge Function keeps `subscriptions` current without requiring the app to be open.
@@ -439,7 +487,7 @@ Room: every schema change ships an explicit `Migration` object; `fallbackToDestr
 
 ## 26. Observability
 
-A single structured-logging facade (e.g. Timber) with tagged categories (`sync`, `calculation`, `auth`) so logs are filterable per concern. Firebase Crashlytics for crash reporting (used alongside Supabase for data — orthogonal concerns, no conflict in using both). Analytics-events SDK choice deferred until the monetization/growth strategy is decided (`/CLAUDE.md`), but the event-emission seam in the domain layer should exist from day one so wiring a provider later doesn't require touching every feature. A debug-only "sync diagnostics" screen (outbox depth, last sync time, last error) — genuinely important for a solo developer debugging real-world sync issues that won't reproduce easily on a dev machine. Debug/verbose logs gated behind `BuildConfig.DEBUG`; never log PII even in debug builds.
+A single structured-logging facade (e.g. Timber) with tagged categories (`sync`, `calculation`, `auth`) so logs are filterable per concern. Firebase Crashlytics for crash reporting (used alongside Supabase for data — orthogonal concerns, no conflict in using both). Analytics-events SDK choice deferred until the monetization/growth strategy is decided (`/PRODUCT_CANON.md`), but the event-emission seam in the domain layer should exist from day one so wiring a provider later doesn't require touching every feature. A debug-only "sync diagnostics" screen (outbox depth, last sync time, last error) — genuinely important for a solo developer debugging real-world sync issues that won't reproduce easily on a dev machine. Debug/verbose logs gated behind `BuildConfig.DEBUG`; never log PII even in debug builds.
 
 ## 27. Dependency Rules
 
@@ -467,7 +515,7 @@ A single structured-logging facade (e.g. Timber) with tagged categories (`sync`,
 
 ## 29. Recommended Implementation Sequence
 
-1. **Canonical Data Model Specification** — extends `/docs/data-model.md` with the concrete Room schema, Postgres schema, and the sync metadata columns (`id: UUID`, `updated_at`, `version`, `deleted_at`, `sync_status`) introduced here.
+1. **Canonical Data Model Specification** — extends `/DATA_MODEL.md` with the concrete Room schema, Postgres schema, and the sync metadata columns (`id: UUID`, `updated_at`, `version`, `deleted_at`, `sync_status`) introduced here.
 2. **Calculation Engine Specification** — the exact formulas per Goal type, pace/forecast math, and the Kotlin/SQL parity requirement from §12/§15.
 3. **UX / Navigation Specification** — screen-by-screen detail on top of `/docs/scope-of-work.md`'s feature list and this document's module boundaries, including the Widget's per-size layouts (§19.9) and its configuration UI (§19.10).
 4. **Offline & Sync Specification** — the detailed outbox schema, WorkManager worker design, and conflict-resolution edge cases beyond what §9 establishes at the architecture level.

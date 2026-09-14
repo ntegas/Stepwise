@@ -1,19 +1,26 @@
 # Stepwise
 
-Turn your goals into action. See `/CLAUDE.md` for the full product concept and `/docs` for the functional analysis, data model, and architecture behind this repo.
+Turn your goals into action. Native Android app (Kotlin + Jetpack Compose) backed by Supabase. See `/CLAUDE.md` for the full canonical documentation index — start there.
 
 ## Status
 
-Phase 0: concept analysis, data model, Supabase schema, and a Next.js app skeleton (auth + empty Today/Goals/Plan/Progress tabs). No feature logic yet — see `/docs/architecture.md` for the build order.
+See `/PROJECT_STATE.md` for the live, detailed phase status. In short: product concept, data model, and technical architecture are canonical and locked; the Android Gradle project and backend schema for Phase 2 haven't been built yet. The Next.js app below is a parked Phase 0 artifact, not the active client.
 
 ## Repository layout
 
 ```
-/CLAUDE.md           — canonical concept, read every session
-/docs                — functional analysis, data model, architecture
-/supabase/migrations — Postgres schema, RLS, cascade trigger, rollup views
-/apps/web            — Next.js app
-/packages/domain     — shared TypeScript types
+/CLAUDE.md            — session entry point (auto-loaded), points at everything below
+/PRODUCT_CANON.md      — product concept
+/ARCHITECTURE.md        — technical architecture
+/DATA_MODEL.md          — entities and relationships
+/DEVELOPMENT_PROTOCOL.md, /ANTI_ERROR_STANDARD.md, /PROJECT_STATE.md
+/CALCULATION_ENGINE.md, /DESIGN_SYSTEM.md — scaffolded
+/ADR/                  — architecture decision records
+/docs/security         — security architecture, threat model, dependency policy, etc.
+/docs                  — supporting breakdowns (functional analysis, scope of work, Play Store checklist)
+/supabase/migrations   — Postgres schema (Phase 0 version; superseded by Phase 2's Canonical Data Model)
+/apps/web              — Next.js app (parked, Phase 0)
+/packages/domain       — shared TypeScript types (web app only)
 ```
 
 ## Running the web app locally

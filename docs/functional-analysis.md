@@ -1,6 +1,6 @@
 # Functional Analysis
 
-Breakdown of the Master Product Concept (`/CLAUDE.md`, §1–77) into implementation modules. Supersedes the Phase 0 version, which was written against the earlier 48-section concept.
+Breakdown of the Master Product Concept (`/PRODUCT_CANON.md`, §1–77) into implementation modules. Supersedes the Phase 0 version, which was written against the earlier 48-section concept.
 
 ## 1. Strategic layer — Vision, Life Areas, Life Plan, Life Balance (§5–8)
 
@@ -36,7 +36,7 @@ Breakdown of the Master Product Concept (`/CLAUDE.md`, §1–77) into implementa
 ## 5. Activities, multi-goal linking, Habits, Recurrence, Timer (§19–24, 30–34)
 
 - **Activity ≠ Goal** (§19–20): an Activity outlives any single Goal; completing a Goal never resets or deletes the Activity's history — a new Goal can be attached to the same Activity later.
-- **Activity ↔ multiple Goals, per metric** (§21, §23): one Activity can feed several Goals simultaneously, each via a different metric of the same Session (a Running session's distance feeds a distance Goal, its duration feeds an hours Goal) — modeled by `goal_activity_links` in `/docs/data-model.md`.
+- **Activity ↔ multiple Goals, per metric** (§21, §23): one Activity can feed several Goals simultaneously, each via a different metric of the same Session (a Running session's distance feeds a distance Goal, its duration feeds an hours Goal) — modeled by `goal_activity_links` in `/DATA_MODEL.md`.
 - **Habit ≠ Activity** (§31): Habit is a regularity rule ("how often"), Activity is the thing itself ("what"); completing a Habit creates a Session the same way an Activity does. Habits support Partial the same way (§32).
 - **Unified recurrence** (§30, §33): one Schedule/RecurrenceRule mechanism serves Task, Activity, and Habit — not three separate scheduling systems to keep in sync.
 - **Timer** (§34): optional start/stop convenience; manual duration entry always available as the alternative.
@@ -50,7 +50,7 @@ Day/Week/Month/Year views showing Tasks, Activities, Habits, deadlines, mileston
 
 - **Progress hub** (§40–41): Week/Month/Year/All-Time totals; Planned vs Actual with execution % and status-count breakdown (§42).
 - **Per-entity stats** (§43–44): works uniformly across Activities, Goals, Habits, and Life Areas — session count, average session, average/week, lifetime totals.
-- **History** (§45): editable; an edit or delete recomputes every downstream number automatically (architecture guarantee, not a manual step — see `/docs/data-model.md`).
+- **History** (§45): editable; an edit or delete recomputes every downstream number automatically (architecture guarantee, not a manual step — see `/DATA_MODEL.md`).
 - **Graphs** (§46): trend, cumulative progress, calendar heatmap, consistency — live only in Progress, never crowding Today.
 - **Period comparison** (§47): e.g. "↑22% vs last month".
 - **Pace** (§48): required vs current rate toward a deadline → Ahead/Behind.
@@ -82,7 +82,7 @@ Language (Russian + English minimum, fully i18n-ready, no hardcoded strings), Un
 ## 13. Technical requirements that aren't a screen (§59–63)
 
 - **Offline-first** (§59): ✓ works with no connectivity; syncs on reconnect. Part of the architecture from the start, not retrofitted.
-- **Idempotency** (§60): a duplicated submission (double-tap on bad connectivity) must never double-count — enforced via a client-generated idempotency key on `sessions` (`/docs/data-model.md`).
+- **Idempotency** (§60): a duplicated submission (double-tap on bad connectivity) must never double-count — enforced via a client-generated idempotency key on `sessions` (`/DATA_MODEL.md`).
 - **Edit/delete recomputation** (§61): changing or deleting a Session correctly recomputes every dependent number (Goal, Month/Year/Lifetime, Pace, Forecast, Life Balance) — guaranteed by computing all of those as views over Sessions/Progress Events rather than cached fields.
 - **Single source of truth** (§62): Sessions/Progress Events only — no independently-stored, manually-maintained totals anywhere, since those are exactly what desyncs over time.
 - **Life Area calculations kept separate** (§63): Attention / Execution / Goal Progress / Trend reported as distinct figures, never combined into one artificial score.
@@ -101,4 +101,4 @@ Loop: `MY VISION → LIFE AREAS → GOALS → PLAN → TODAY → DO → TRACK �
 
 ## Change discipline (§77)
 
-Binding on all future implementation work — restated in full in `/CLAUDE.md`. In short: no feature from the concept is cut or reinterpreted without first explaining the problem, naming affected entities/consumers, proposing options, and getting the user's choice.
+Binding on all future implementation work — restated in full in `/PRODUCT_CANON.md`. In short: no feature from the concept is cut or reinterpreted without first explaining the problem, naming affected entities/consumers, proposing options, and getting the user's choice.
