@@ -22,8 +22,8 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
 
     testOptions {
@@ -33,8 +33,19 @@ android {
     }
 }
 
+// JDK 21, matching :core:model (the project's other genuinely-run-locally-and-in-CI
+// module) and the single JDK the CI workflow actually installs ("Set up JDK 21") —
+// not :core:designsystem's JDK 17 (that module never runs a Test task with real
+// runtime dependencies, so its toolchain choice was never exercised the way this
+// one is). A real CI failure (run 34987253276) showed why the two can't be mixed
+// carelessly here: with jvmToolchain(17), both testDebugUnitTest classes failed
+// with java.lang.UnsupportedClassVersionError at class-load time, before any test
+// method ran — some class on the Robolectric/androidx-test/JUnit4 runtime classpath
+// needs a newer JVM than a separately-provisioned JDK 17 toolchain supplied. Using
+// the same JDK 21 the whole rest of the build already runs under removes the
+// mismatch entirely rather than chasing which specific dependency needed it.
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(21)
 }
 
 // Room schema export via a plain KSP arg rather than the separate `androidx.room`
