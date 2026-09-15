@@ -1,0 +1,10 @@
+root = true
+
+[*.{kt,kts}]
+# ktlint's default FunctionNaming rule expects camelCase — Compose components
+# are PascalCase by convention (they read as components, e.g. StepwiseButton).
+# detekt has its own equivalent override in config/detekt/detekt.yml; this is
+# ktlint's separate mechanism for the same, expected Compose/linter friction
+# (DEV-003, discovered via a real CI ktlint failure once actual Compose code
+# existed to check).
+ktlint_function_naming_ignore_when_annotated_with = Composable

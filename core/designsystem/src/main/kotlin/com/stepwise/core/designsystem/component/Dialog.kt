@@ -29,8 +29,9 @@ fun StepwiseDialog(
         confirmButton = {
             TextButton(onClick = onConfirm) { Text(confirmLabel) }
         },
-        dismissButton = dismissLabel?.let {
-            { TextButton(onClick = onDismiss) { Text(it) } }
-        },
+        dismissButton =
+            dismissLabel?.let {
+                { TextButton(onClick = onDismiss) { Text(it) } }
+            },
     )
 }

@@ -45,9 +45,10 @@ fun StepwiseEmptyState(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                modifier = Modifier
-                    .size(StepwiseIconSize.extraLarge)
-                    .padding(bottom = StepwiseSpacing.medium),
+                modifier =
+                    Modifier
+                        .size(StepwiseIconSize.extraLarge)
+                        .padding(bottom = StepwiseSpacing.medium),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -96,9 +97,10 @@ fun StepwiseErrorState(
         Icon(
             imageVector = Icons.Filled.Warning,
             contentDescription = null,
-            modifier = Modifier
-                .size(StepwiseIconSize.extraLarge)
-                .padding(bottom = StepwiseSpacing.medium),
+            modifier =
+                Modifier
+                    .size(StepwiseIconSize.extraLarge)
+                    .padding(bottom = StepwiseSpacing.medium),
             tint = MaterialTheme.colorScheme.error,
         )
         Text(
