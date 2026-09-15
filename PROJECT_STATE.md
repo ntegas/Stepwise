@@ -14,8 +14,9 @@ Live status tracker. This is the one place build-order/phase history lives — o
 | 1.6.2 | Done | Android Home Screen Widget added as a canonical, first-class requirement — new `:feature:widget` module, `DomainEventBus`, local-idempotency tightening, Timer modeled as an `IN_PROGRESS` Session, full affected-consumer inventory and 10 acceptance criteria ↔ test mappings. OQ-4 added (Glance/widget-hosting live verification). |
 | 1.6.3 | Done | Canonical documentation restructured to the full set below; `DEVELOPMENT_PROTOCOL.md` (50 code-centralization rules) and the Security/Transaction/Concurrency standard (`docs/security/*`, plus Transaction/Concurrency folded into `ARCHITECTURE.md`) added. |
 | 1.7 | Done | Master Autonomous Development Plan reviewed; root-level canonical file layout confirmed as canonical over the plan's `docs/`-nested alternative (Option A). `ROADMAP.md` and `DEVELOPMENT_LOG.md` created; `ANTI_ERROR_STANDARD.md` §0 (read-first) and §10 (periodic retrospective) added; S0-S3 Security Review Levels added to `SECURITY_ARCHITECTURE.md`; Skill Graph/RPG guardrail added to `PRODUCT_CANON.md`; old `ARCHITECTURE.md` §29 superseded by `ROADMAP.md` (sync-metadata column list preserved into `DATA_MODEL.md` first); `CLAUDE.md` and `DEVELOPMENT_PROTOCOL.md` updated to point at the new files. |
-| DEV-000 | Done | Repository & Architecture Preflight — see findings below. No owner-level blocker found; proceeding automatically into DEV-001 per standing instruction. |
-| DEV-001+ | Not started | Full sequence now tracked in `/ROADMAP.md`, not here — this table stops enumerating individual DEV tasks to avoid two places tracking the same sequence and drifting apart. |
+| DEV-000 | Done | Repository & Architecture Preflight — see `/DEVELOPMENT_LOG.md`. No owner-level blocker found; proceeded automatically into DEV-001 per standing instruction. |
+| DEV-001 | Done | Development Foundation — see findings below. Root Gradle project + `:core:common` (Clock, IdGenerator, AppError/AppResult, Logger, DispatcherProvider), genuinely built and unit-tested locally. Hilt, repository interfaces, and every other module deferred with stated reasons (see below); no owner-level blocker. |
+| DEV-002+ | Not started | Full sequence now tracked in `/ROADMAP.md`, not here — this table stops enumerating individual DEV tasks to avoid two places tracking the same sequence and drifting apart. |
 
 ## What exists right now
 
@@ -25,7 +26,7 @@ Live status tracker. This is the one place build-order/phase history lives — o
 - **Process**: `ANTI_ERROR_STANDARD.md` (now with §0 read-first and §10 periodic retrospective), `DEVELOPMENT_PROTOCOL.md`, `ROADMAP.md` (DEV-000...DEV-037 + operating rules), `DEVELOPMENT_LOG.md` (historical journal) — all current.
 - **Security**: `docs/security/` — current, including S0-S3 Security Review Levels in `SECURITY_ARCHITECTURE.md`.
 - **Not yet populated** (by design, per explicit instruction — do not fill ahead of their phase): `CALCULATION_ENGINE.md`, `DESIGN_SYSTEM.md`.
-- **Code**: none Android yet. `/apps/web` (Next.js, Phase 0) and `/supabase/migrations` (Phase 0 schema) exist but are both superseded/parked — neither is the active build target. No `/android` Gradle project, no `.github/` CI workflows exist yet.
+- **Code**: a real Gradle project exists at the repo root (`settings.gradle.kts`, `gradle/libs.versions.toml`, wrapper pinned to Gradle 8.14.5) with one module, `:core:common` (pure Kotlin/JVM — Clock, IdGenerator, AppError/AppResult, Logger, DispatcherProvider), built and unit-tested (10/10 passing) in this sandbox without any Android SDK dependency. No `:app`, no Android module, no `.github/` CI workflows exist yet — see DEV-001 findings below for what was deferred and why. `/apps/web` (Next.js, Phase 0) and `/supabase/migrations` (Phase 0 schema) remain superseded/parked.
 
 ## DEV-000 — Repository & Architecture Preflight findings
 
@@ -41,6 +42,26 @@ Audited the actual repository state (not assumed) on 2026-09-15, branch `claude/
 - **Security configuration**: nothing to audit yet at the code level; `docs/security/*` (policy layer) is current and ahead of code, which is the intended order.
 
 **Conclusion**: no owner-level blocker. Nothing to preserve from a prior Android build (there isn't one) and nothing to unwind. DEV-001 (Development Foundation) starts clean, scoped exactly to `/ROADMAP.md`'s DEV-001 description — Gradle conventions, module boundaries, Hilt, dependency governance, environment configuration, `Clock`, IDs, application errors, logging, coroutine conventions, architectural contracts, repository interfaces where justified. No speculative infrastructure beyond that.
+
+## DEV-001 — Development Foundation findings
+
+Scoped per `/ROADMAP.md`'s DEV-001 description and its own "do not create speculative infrastructure" constraint. Anti-duplication search first (`/ANTI_ERROR_STANDARD.md` §1): DEV-000 already confirmed no existing Gradle/Android project anywhere in the repo, so nothing to search for or reuse — this is a from-scratch foundation, not a reconciliation.
+
+**Built and verified now:**
+- Root Gradle project: `settings.gradle.kts` (declares only modules that exist — see below), `gradle/libs.versions.toml` (one version catalog, per `DEVELOPMENT_PROTOCOL.md` rule 37), root `build.gradle.kts`, `gradle.properties`, and a wrapper pinned to **Gradle 8.14.5** (bumped from the sandbox's installed 8.14.3 after the real build surfaced a genuine Kotlin-2.4.20-requires-≥8.14.4 warning — fixed by upgrading the wrapper, not by suppressing the warning or downgrading Kotlin; 8.x rather than the current 9.7.1 line, to stay on the version family Android Gradle Plugin actually supports once it's introduced).
+- `:core:common` — pure Kotlin/JVM module (no Android dependency, per ARCHITECTURE.md §27, so it stays realistic for a future Kotlin Multiplatform iOS path): `Clock`/`SystemClock` (rule 11), `IdGenerator`/`UuidIdGenerator` using `kotlin.uuid.Uuid` rather than `java.util.UUID` (keeps the module JVM-only-dependency-free), `AppError`/`AppResult` sealed hierarchies (rule 18, matching the exact Domain/Validation/Database/Network/Auth/Sync/Billing naming), `Logger` interface (rule 44 — contract only; a concrete Android sink is added when `:app` exists), `DispatcherProvider`/`StandardDispatcherProvider` (io/default/main/unconfined, per ARCHITECTURE.md §3). Test fixtures (`FakeClock`, `FakeIdGenerator`, `TestDispatcherProvider`) live in a `testFixtures` source set so later modules reuse them instead of writing their own (rule 41).
+- **10 JVM unit tests, genuinely executed in this sandbox, 10/10 passing, 0 skipped** (`./gradlew clean build` from a cold cache, wrapper-fetched Gradle 8.14.5, zero compiler warnings). This is real `VERIFIED` status, not an assertion — see the commit for the exact command run.
+
+**Deliberately deferred, with reasons (not silently dropped):**
+- **Every other module** in ARCHITECTURE.md §5's target graph (`:core:model`, `:core:calculation`, `:domain`, `:core:database`, `:core:network`, `:core:sync`, `:data`, `:core:designsystem`, `:core:notifications`, `:app`, every `:feature:*`) — each would be an empty shell with no real content until its own DEV task (`:core:model`/`:core:calculation`/`:domain` → DEV-004; `:core:designsystem` → DEV-003; `:core:database` → DEV-005; `:data` → DEV-006; `:core:network` → DEV-007; `:core:sync` → DEV-008; `:core:notifications` → DEV-027; `:app` + first `:feature:*` → DEV-015). Creating them now would be exactly the "speculative infrastructure" DEV-001 says not to build.
+- **Hilt** — Hilt applies at the Android/`:app`/feature layer (ARCHITECTURE.md §3), and no such module exists yet; adding it now would mean a dependency with nothing consuming it, which `DEPENDENCY_POLICY.md` itself rules out ("nothing gets added... without actual necessity"). Its version will be selected and pinned in the version catalog when `:app` is created (DEV-015).
+- **Repository interfaces** — "where justified" per DEV-001's own wording; none are justified yet because no domain entities exist to type them against (that's DEV-004's Canonical Data Model). Adding them now would mean guessing at shapes DEV-004 might change.
+- **Android-flavored Gradle convention plugins / `build-logic`** — with a single module, there is nothing yet to share conventions across; introduced when a second JVM/Android module exists (tracked here, not silently dropped).
+- **Environment configuration (dev/staging/prod separation)** — genuinely belongs with DEV-002 (Security & Quality Foundation), since it's inseparable from the secrets/build-variant policy that task establishes; doing it now ahead of that policy would risk redoing it.
+
+**Verification status**: `:core:common` is **VERIFIED** (built and tested in this sandbox — see above). No `NOT VERIFIED — ANDROID SDK REQUIRED` entries yet, because nothing Android-SDK-dependent was created this task; that starts at DEV-003.
+
+**Conclusion**: no owner-level blocker. Proceeding into DEV-002 (Security & Quality Foundation) per standing instruction.
 
 ## VERIFICATION DEBT
 
@@ -60,4 +81,4 @@ A DEV task is not considered production-verified while a required Android-specif
 
 ## Current gate
 
-DEV-000 found no owner-level blocker (see findings above). Per the user's explicit standing instruction, the project **proceeds automatically into DEV-001** without waiting for further confirmation. `/ROADMAP.md` §"Checkpoints" identifies where independent external review is expected (starting DEV-004) — the project does not otherwise pause between DEV tasks.
+DEV-000 and DEV-001 both found no owner-level blocker (see findings above). Per the user's explicit standing instruction, the project **proceeds automatically into DEV-002** without waiting for further confirmation. `/ROADMAP.md` §"Checkpoints" identifies where independent external review is expected (starting DEV-004) — the project does not otherwise pause between DEV tasks.

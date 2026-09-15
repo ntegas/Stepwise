@@ -1,0 +1,21 @@
+[versions]
+# One version catalog project-wide (DEVELOPMENT_PROTOCOL.md rule 37) — no module
+# pins a library version independently. Entries below are only for dependencies
+# actually consumed by an existing module today; a version is added here only
+# when a DEV task actually needs it (DEPENDENCY_POLICY.md — "actually necessary"),
+# not speculatively for future modules.
+kotlin = "2.4.20"
+kotlinx-coroutines = "1.11.0"
+kotlinx-datetime = "0.8.0"
+junit-jupiter = "5.13.4"
+kotlin-test = "2.4.20"
+
+[libraries]
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
+kotlin-test-junit5 = { module = "org.jetbrains.kotlin:kotlin-test-junit5", version.ref = "kotlin-test" }
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

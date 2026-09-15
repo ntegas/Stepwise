@@ -4,7 +4,7 @@ Turn your goals into action. Native Android app (Kotlin + Jetpack Compose) backe
 
 ## Status
 
-See `/PROJECT_STATE.md` for the live, detailed phase status. In short: product concept, data model, and technical architecture are canonical and locked; the Android Gradle project and backend schema for Phase 2 haven't been built yet. The Next.js app below is a parked Phase 0 artifact, not the active client.
+See `/PROJECT_STATE.md` for the live, detailed phase status. In short: product concept, data model, and technical architecture are canonical and locked; a Gradle project exists with one pure-Kotlin/JVM module (`:core:common`) — no Android module/`:app` yet, that starts DEV-003+. Backend schema for the real data model hasn't been built yet either. The Next.js app below is a parked Phase 0 artifact, not the active client.
 
 ## Repository layout
 
@@ -23,7 +23,16 @@ See `/PROJECT_STATE.md` for the live, detailed phase status. In short: product c
 /supabase/migrations   — Postgres schema (Phase 0 version; superseded by Phase 2's Canonical Data Model)
 /apps/web              — Next.js app (parked, Phase 0)
 /packages/domain       — shared TypeScript types (web app only)
+/core/common           — Android build: pure Kotlin/JVM module (Clock, IdGenerator, AppError, Logger, DispatcherProvider)
 ```
+
+## Building the Gradle project
+
+```bash
+./gradlew build
+```
+
+Only `:core:common` exists so far (pure Kotlin/JVM, no Android SDK needed — this builds and runs its unit tests in any environment with JDK 17+ and network access to Maven Central). The Android application module and everything depending on the Android Gradle Plugin (Room, Compose, `:app`) don't exist yet; see `/ROADMAP.md` for the module-by-module build order and `/PROJECT_STATE.md`'s VERIFICATION DEBT section for what still needs an Android SDK/CI to verify once those modules exist.
 
 ## Running the web app locally
 
