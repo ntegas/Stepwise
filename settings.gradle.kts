@@ -17,11 +17,12 @@ dependencyResolutionManagement {
 
 rootProject.name = "stepwise-android"
 
-// Module set is intentionally minimal right now. ARCHITECTURE.md §5 defines the
-// full target module graph (:app, :core:model, :core:calculation, :domain,
-// :core:database, :core:network, :core:sync, :data, :core:designsystem,
-// :core:notifications, :feature:*), but DEV-001 only creates modules it actually
-// populates with real code today, per ROADMAP.md's "do not create speculative
-// infrastructure." Every other module is added by the DEV task that first needs it
-// (see ROADMAP.md), not scaffolded empty ahead of time.
+// Module set stays minimal on purpose. ARCHITECTURE.md §5 defines the full target
+// module graph (:app, :core:model, :core:calculation, :domain, :core:database,
+// :core:network, :core:sync, :data, :core:notifications, :feature:*) — each is
+// added only by the DEV task that actually populates it with real code, per
+// ROADMAP.md's "do not create speculative infrastructure." :core:common (DEV-001)
+// and :core:designsystem (DEV-003) exist because those tasks build real content
+// into them now.
 include(":core:common")
+include(":core:designsystem")

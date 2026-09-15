@@ -8,6 +8,15 @@ import io.gitlab.arturbosch.detekt.extensions.DetektExtension
 // purely-additive plugins this `subprojects` block is enough; introduce
 // build-logic when a module needs a genuinely different (e.g. Android-specific)
 // convention, not before.
+// AGP/Compose plugins are deliberately NOT declared here (even as `apply false`):
+// the root project is always configured, on every invocation, regardless of which
+// module's task is requested or whether `--configure-on-demand` is used — so an
+// unresolvable plugin reference at root breaks every module's build, including
+// pure-JVM ones with no Android dependency at all. Verified empirically in this
+// sandbox: declaring `com.android.library apply false` here broke `:core:common`'s
+// previously-working build, because `dl.google.com` (where AGP is hosted) is
+// blocked. Each Android-dependent module declares and versions its own AGP/Compose
+// plugins directly in its own build.gradle.kts instead (see core/designsystem).
 plugins {
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.detekt) apply false

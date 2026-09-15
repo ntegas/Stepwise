@@ -29,6 +29,14 @@ jobs:
           distribution: temurin
           java-version: "21"
 
+      # DEV-003 adds the first Android-Gradle-Plugin-dependent module
+      # (:core:designsystem). GitHub-hosted runners aren't behind the sandbox's
+      # proxy restriction that blocks dl.google.com, so AGP itself resolves fine
+      # here — this step only guards against the separate, well-known pitfall of
+      # unaccepted SDK licenses / a missing compileSdk 36 platform.
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
 

@@ -12,8 +12,16 @@ kotlin-test = "2.4.20"
 # Pinned to the last stable 1.x line under the pre-rename coordinates
 # (io.gitlab.arturbosch.detekt). detekt 2.0 exists only as an alpha
 # (dev.detekt coordinates) as of this pin — reconsider once 2.0 is stable.
+# Verified working under Gradle 9.6.0 in this sandbox (DEV-003) despite a
+# known upstream Gradle-9 friction report against an older Kotlin version —
+# tested empirically here with Kotlin 2.4.20, not assumed either way.
 detekt = "1.23.8"
 ktlint-gradle = "14.2.0"
+# AGP 9.4.0 requires Gradle >=9.6.0 (checked live against the official AGP
+# release notes on 2026-09-15) — this is why the wrapper was bumped from
+# 8.14.5 to 9.6.0 as part of this DEV task, not speculatively in DEV-001.
+android-gradle-plugin = "9.4.0"
+compose-bom = "2026.08.00"
 
 [libraries]
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
@@ -21,8 +29,18 @@ kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-t
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
 kotlin-test-junit5 = { module = "org.jetbrains.kotlin:kotlin-test-junit5", version.ref = "kotlin-test" }
+compose-bom = { module = "androidx.compose:compose-bom", version.ref = "compose-bom" }
+compose-ui = { module = "androidx.compose.ui:ui" }
+compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
+compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
+compose-foundation = { module = "androidx.compose.foundation:foundation" }
+compose-material3 = { module = "androidx.compose.material3:material3" }
+compose-material-icons-core = { module = "androidx.compose.material:material-icons-core" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+android-library = { id = "com.android.library", version.ref = "android-gradle-plugin" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint-gradle" }
