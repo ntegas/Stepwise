@@ -1,6 +1,6 @@
 # DESIGN_SYSTEM.md — Design Tokens & Reusable Components
 
-Implemented in `:core:designsystem` (ARCHITECTURE.md §5: depends on nothing but Compose — no `:core:model`, no domain types, no Room/network). Real values below are DEV-003's deliverable; **all of it is `NOT VERIFIED — ANDROID SDK REQUIRED`** locally (this sandbox cannot resolve the Android Gradle Plugin — `dl.google.com` is blocked — so nothing in this module compiles here). Verified via GitHub Actions instead; see `PROJECT_STATE.md`'s VERIFICATION DEBT section for the current status of that check.
+Implemented in `:core:designsystem` (ARCHITECTURE.md §5: depends on nothing but Compose — no `:core:model`, no domain types, no Room/network). Real values below are DEV-003's deliverable. **VERIFIED** — compiles, and passes ktlint + detekt — via a real GitHub Actions CI run (see `PROJECT_STATE.md`'s DEV-003 findings for the full account of what that took). This sandbox itself can no longer build any part of this repository locally at all (not just this module) — see `PROJECT_STATE.md`'s VERIFICATION DEBT for why; CI is the sole source of truth for this build going forward.
 
 ## Provisional visual identity — not a locked brand decision
 

@@ -17,7 +17,7 @@ Live status tracker. This is the one place build-order/phase history lives — o
 | DEV-000 | Done | Repository & Architecture Preflight — see `/DEVELOPMENT_LOG.md`. No owner-level blocker found; proceeded automatically into DEV-001 per standing instruction. |
 | DEV-001 | Done | Development Foundation — see findings below. Root Gradle project + `:core:common` (Clock, IdGenerator, AppError/AppResult, Logger, DispatcherProvider), genuinely built and unit-tested locally. Hilt, repository interfaces, and every other module deferred with stated reasons (see below); no owner-level blocker. |
 | DEV-002 | Done | Security & Quality Foundation — see findings below. ktlint + detekt static analysis wired into the default `build`/`check` lifecycle; first GitHub Actions CI workflow (build/test/lint/static-analysis, dependency review, secret scan) — confirmed green on its first real run. |
-| DEV-003 | In progress | Design System Foundation — see findings below. `:core:designsystem` written (tokens + 10 generic components); the Android Gradle Plugin bump this required (AGP 9.4.0 → Gradle 9.6.0) is verified against `:core:common` locally, but `:core:designsystem` itself is NOT VERIFIED locally (AGP unresolvable in this sandbox) pending its first CI run. |
+| DEV-003 | Done | Design System Foundation — see findings below. `:core:designsystem` written (tokens + 10 generic components) and **confirmed CI-green** after 14 real CI iterations — most spent on a genuine Gradle plugin-resolution bug misdiagnosed for a long time as an AGP-version problem (see findings). This sandbox can no longer build any part of the repo locally at all (accepted trade-off, see VERIFICATION DEBT) — CI is now the sole source of truth. |
 | DEV-004+ | Not started | Full sequence now tracked in `/ROADMAP.md`, not here — this table stops enumerating individual DEV tasks to avoid two places tracking the same sequence and drifting apart. |
 
 ## What exists right now
@@ -27,7 +27,8 @@ Live status tracker. This is the one place build-order/phase history lives — o
 - **Data model**: `DATA_MODEL.md` — conceptual entities, relationships, and sync metadata columns; the concrete Room/Postgres schema is DEV-004/DEV-005's job, not yet written.
 - **Process**: `ANTI_ERROR_STANDARD.md` (now with §0 read-first and §10 periodic retrospective), `DEVELOPMENT_PROTOCOL.md`, `ROADMAP.md` (DEV-000...DEV-037 + operating rules), `DEVELOPMENT_LOG.md` (historical journal) — all current.
 - **Security**: `docs/security/` — current, including S0-S3 Security Review Levels in `SECURITY_ARCHITECTURE.md`.
-- **Not yet populated** (by design, per explicit instruction — do not fill ahead of their phase): `CALCULATION_ENGINE.md`, `DESIGN_SYSTEM.md`.
+- **Not yet populated** (by design, per explicit instruction — do not fill ahead of their phase): `CALCULATION_ENGINE.md`.
+- **`DESIGN_SYSTEM.md`** — now filled in and CI-verified (DEV-003).
 - **Code**: a real Gradle project exists at the repo root (`settings.gradle.kts`, `gradle/libs.versions.toml`, wrapper pinned to Gradle 8.14.5) with one module, `:core:common` (pure Kotlin/JVM — Clock, IdGenerator, AppError/AppResult, Logger, DispatcherProvider), built and unit-tested (10/10 passing) in this sandbox without any Android SDK dependency. No `:app`, no Android module, no `.github/` CI workflows exist yet — see DEV-001 findings below for what was deferred and why. `/apps/web` (Next.js, Phase 0) and `/supabase/migrations` (Phase 0 schema) remain superseded/parked.
 
 ## DEV-000 — Repository & Architecture Preflight findings
@@ -88,34 +89,50 @@ Scoped per `/ROADMAP.md`'s DEV-002 description. Much of "security documentation,
 
 ## DEV-003 — Design System Foundation findings
 
-Scoped per `/ROADMAP.md`'s DEV-003 description ("build semantic color tokens, typography, spacing, shapes, elevation, motion, light/dark theme, core reusable components... do not redesign every screen yet"). This is the first DEV task needing the Android Gradle Plugin, which triggered a real, unplanned compatibility problem worth recording in full.
+Scoped per `/ROADMAP.md`'s DEV-003 description ("build semantic color tokens, typography, spacing, shapes, elevation, motion, light/dark theme, core reusable components... do not redesign every screen yet"). This is the first DEV task needing the Android Gradle Plugin, and it took **14 real CI iterations** to go green — most of that chasing a misdiagnosis, not fighting 14 independent bugs. Recorded here in full, honestly, per `ANTI_ERROR_STANDARD.md` §10 — the length and the wrong turn are exactly what a retrospective is for, not something to smooth over. Full push-by-push detail is in `DEVELOPMENT_LOG.md`; this is the organized summary.
 
-**A genuine structural finding, found and fixed before writing any design-system code**: adding `:core:designsystem` (which needs `com.android.library`) to the same multi-project Gradle build as `:core:common` broke `:core:common`'s previously-VERIFIED build too — Gradle configures every project in the tree by default regardless of which module's task is requested, so an unresolvable AGP plugin (`dl.google.com` is blocked in this sandbox) failed the whole build, not just the Android module. Fixed two ways, both necessary:
-1. AGP/Compose plugins are declared only inside `core/designsystem/build.gradle.kts` itself, never at root (even as `apply false`) — the root project is always configured, so anything unresolvable there breaks everything.
-2. `org.gradle.configureondemand=true` added to `gradle.properties` — without it, Gradle still configures every subproject (including `:core:designsystem`) even when only `:core:common`'s task is requested. Verified empirically: `:core:common:build` (10/10 tests) passes cleanly with this in place, `:core:designsystem` fails immediately at plugin resolution as expected — exactly the isolation needed to keep local pure-JVM verification working alongside an Android module this sandbox can't build.
+**What actually happened, grouped by real cause (not 14 flat steps):**
 
-**A second real compatibility fact, checked live rather than assumed**: AGP jumped to a 9.x major version line; AGP 9.4.0 (current stable, checked against the official Android Developers release notes on 2026-09-15) requires Gradle ≥9.6.0 — well past the 8.14.5 pinned in DEV-001. The wrapper was bumped to Gradle 9.6.0, and — since a known Gradle-9-compatibility issue was reported against detekt 1.23.8 (with an older Kotlin version) — this was verified empirically against `:core:common`'s existing build before proceeding, not assumed either way: 10/10 tests still pass, only a harmless upstream detekt deprecation warning (removal scheduled for Gradle 10, not 9) appears.
+1. **Iteration 1 — unrelated CI setup bug.** `android-actions/setup-android@v4` (added preemptively) tries to install a long-removed legacy SDK package and fails outright. Removed — GitHub-hosted runners already ship a working, license-accepted Android SDK, so the step was solving a problem that didn't exist.
 
-**Built (all `NOT VERIFIED — ANDROID SDK REQUIRED` locally — see below)**:
-- `:core:designsystem` module: `com.android.library` + Compose, `compileSdk 36` (mandatory for new submissions since 2026-08-31 per `docs/play-store-checklist.md` — already in effect, not a future deadline), `minSdk 26` (a stated, revisable technical default, not a product decision — reasoned the same way the Kotlin/Gradle version pins were in DEV-001).
+2. **Iterations 2–8 — a genuine, sustained misdiagnosis.** The recurring error `org.jetbrains.kotlin.android ... already on the classpath with an unknown version` (and, separately, a `KotlinAndroidTarget`/`BaseVariant` crash) was read as AGP 9.4.0's new "built-in Kotlin" support being broken. Tried, in order: removing the explicit `kotlin-android` plugin, removing `kotlin-compose` too, confirming the crash persisted with neither applied (seemingly proving it was AGP's own bug), then `android.builtInKotlin=false` and `android.newDsl=false` (the documented opt-out pair) — the crash went away but the *original* classpath error came back identically. This was not wasted effort — downgrading to AGP 8.13.2 at the end of this chain (to escape the theory entirely) is what later exposed iteration 12's real, unrelated Compose-BOM finding — but the AGP-9-built-in-Kotlin theory itself was wrong throughout.
+
+3. **Iterations 9–11 — the real plugin-resolution bug.** Root `build.gradle.kts` only ever declared `kotlin-jvm` as `apply false` (for `:core:common`). `org.jetbrains.kotlin.jvm` and `org.jetbrains.kotlin.android` are different plugin IDs backed by the same underlying Kotlin Gradle Plugin artifact — resolving `kotlin-android` for the first time inside `:core:designsystem`'s own `plugins{}` block collided with it, independent of AGP version (confirmed by reproducing the identical error under plain AGP 8.13.2). Fixing it required declaring **every** plugin used anywhere in the build — `kotlin-android`, `kotlin-compose`, and finally `android.library` (real AGP) itself — as `apply false` at root, the standard Android Studio multi-module convention every earlier iteration had deviated from specifically to keep `:core:common` locally buildable in this sandbox (`dl.google.com` blocked). That deviation is what caused the whole bug class. **This is a real, permanent trade-off, not a temporary one**: this sandbox can no longer build any part of this repository locally at all — see VERIFICATION DEBT below.
+
+4. **Iteration 12 — a real, separate version-floor finding.** With plugin resolution finally clean, AGP 8.13.2 turned out to be flatly incompatible with Compose BOM `2026.08.00` anyway: its own dependencies (`androidx.compose.animation:animation-core-android:1.12.0` and others) require AGP ≥9.1.0 and `compileSdk` ≥37 — caught via a real CI AAR-metadata failure, not guessed. Moved back to **AGP 9.4.0** (the version iterations 2–8 spent so long fighting for the wrong reason) plus `compileSdk 37`.
+
+5. **Iterations 13–14 — ordinary compile/lint fixes, nothing mysterious.** First real compilation surfaced a JVM-target mismatch (Java pinned to 17, Kotlin defaulting to 21 — fixed with `kotlin { jvmToolchain(17) }`, the same pattern `:core:common` uses); 47 detekt findings and 31 ktlint findings, both dominated by the same well-known Compose-vs-JVM-linter friction (`FunctionNaming`/`LongParameterList` expecting camelCase/short signatures, Compose using PascalCase components with many parameters) — fixed via `config/detekt/detekt.yml` (`ignoreAnnotated: ["Composable"]`) and a root `.editorconfig` (`ktlint_function_naming_ignore_when_annotated_with = Composable`), both now inherited by every future module automatically. The remaining findings were real: `MagicNumber` on color/easing literals (fixed via `ignorePropertyDeclaration` plus extracting 4 named-argument color values into named constants) and `MatchingDeclarationName` on 3 files (fixed via renames — `Spacing.kt`→`StepwiseSpacing.kt`, `Motion.kt`→`StepwiseMotion.kt` — and splitting `BottomNavigation.kt` so `StepwiseNavigationItem` has its own file).
+
+**Built and now genuinely CI-verified**:
+- `:core:designsystem` module: `com.android.library` 9.4.0 + Compose, `compileSdk 37`, `minSdk 26` (a stated, revisable technical default, not a product decision).
 - Full token set + `StepwiseTheme` and 10 generic reusable components — see `/DESIGN_SYSTEM.md` for the complete breakdown, including which components (`StepwiseGoalCard`/`StepwiseTaskRow`/`StepwiseActivityRow`) were deliberately deferred to DEV-004+ because they'd need to guess at domain-model shapes that don't exist yet.
-- CI workflow extended with `android-actions/setup-android@v4` ahead of the Gradle build step, to avoid the well-known unaccepted-SDK-license pitfall on GitHub-hosted runners — not yet confirmed necessary or sufficient until the first real CI run.
 
-**Regression check found and fixed one more thing while touching `DESIGN_SYSTEM.md`**: its old scaffold cited `DEVELOPMENT_PROTOCOL.md` "rule C3–C4" for accessibility — off by one against the document's actual current numbering (rules 23–24, not 22–23). Checked the sibling "A4/A5/A7/D2"-style citations elsewhere in the repo (`CALCULATION_ENGINE.md`, `docs/security/SECURITY_ARCHITECTURE.md`, `ADR/ADR-005`) against `DEVELOPMENT_PROTOCOL.md`'s real numbering too — those were all actually correct, so only the one reference was fixed, not a systemic renumbering bug like the earlier §25/§29 cases.
+**Regression check found and fixed one more thing while touching `DESIGN_SYSTEM.md`**: its old scaffold cited `DEVELOPMENT_PROTOCOL.md` "rule C3–C4" for accessibility — off by one against the document's actual current numbering (rules 23–24, not 22–23). Checked the sibling "A4/A5/A7/D2"-style citations elsewhere in the repo against the real numbering too — those were all correct, so this was an isolated slip, not a systemic renumbering bug.
 
-**Verification status**: everything in `:core:designsystem` is `NOT VERIFIED — ANDROID SDK REQUIRED` until the first CI run is checked (this sandbox cannot resolve AGP at all — not even `ktlintCheck` can run against this module locally, since Gradle fails at plugin resolution before ktlint's task graph is even built). `:core:common` remains genuinely `VERIFIED` under the new Gradle 9.6.0 + `configureondemand` setup. See `DEVELOPMENT_LOG.md` for the CI check's outcome once performed.
+**Verification status**: `:core:designsystem` — compilation, ktlint, and detekt — is **VERIFIED**, confirmed via a real green GitHub Actions run (run [34966319372](https://github.com/ntegas/Stepwise/actions/runs/34966319372), commit `5ae16a5`, checked via the Actions API, not assumed). See `DEVELOPMENT_LOG.md` for the full iteration-by-iteration account.
+
+**Conclusion**: no owner-level blocker. DEV-003 is closed. Proceeding into DEV-004 (Canonical Data Model) — flagged in `/ROADMAP.md` as a major architectural checkpoint, larger and more consequential than DEV-000–003, so it gets a higher care/effort level and a full read of `ARCHITECTURE.md`/`DATA_MODEL.md` before any code.
 
 ## VERIFICATION DEBT
 
 ```text
-DEV-003
-- :core:designsystem compilation (AGP/Compose) — NOT VERIFIED — ANDROID SDK REQUIRED
-- ktlint/detekt over :core:designsystem's Kotlin sources — NOT VERIFIED — ANDROID SDK REQUIRED
-  (cannot run at all locally: Gradle fails at AGP plugin resolution before ktlint's
-  task graph is built, so even non-Android-specific lint checks are blocked)
+DEV-003 — CLOSED
+- :core:designsystem compilation (AGP/Compose) — VERIFIED (CI run 34966319372)
+- ktlint/detekt over :core:designsystem's Kotlin sources — VERIFIED (same run)
+
+New, permanent, sandbox-only limitation (not itself a defect — see DEV-003 findings
+iteration 9-11 for why):
+- This sandbox can no longer run ANY Gradle task locally, for ANY module, including
+  :core:common — root build.gradle.kts must declare android.library apply-false
+  (required once any Android module coexists with a pure-JVM one), and the root
+  project is always configured regardless of which task is requested, so this
+  triggers an AGP-resolution attempt against dl.google.com (blocked here) on every
+  invocation. Real GitHub Actions CI has full internet access and is unaffected —
+  CI is now the sole source of truth for this entire repository's build, not just
+  the Android-specific parts of it.
 ```
 
-A DEV task is not considered production-verified while a required Android-specific check for it remains listed here as outstanding.
+A DEV task is not considered production-verified while a required check for it remains listed here as outstanding.
 
 ## Open items requiring a decision (not blocking further doc work, but blocking implementation)
 
@@ -124,4 +141,4 @@ A DEV task is not considered production-verified while a required Android-specif
 
 ## Current gate
 
-DEV-000 and DEV-001 both found no owner-level blocker (see findings above). Per the user's explicit standing instruction, the project **proceeds automatically into DEV-002** without waiting for further confirmation. `/ROADMAP.md` §"Checkpoints" identifies where independent external review is expected (starting DEV-004) — the project does not otherwise pause between DEV tasks.
+DEV-000 through DEV-003 all found no owner-level blocker (see findings above). Per the user's explicit standing instruction, the project **proceeds automatically between DEV tasks** without waiting for further confirmation on each one. `/ROADMAP.md` §"Checkpoints" identifies where independent external review is expected — **DEV-004 is the first such checkpoint**, flagged as a major architectural checkpoint bigger than DEV-000–003, so it is announced with a higher recommended care/effort level and a full read of `ARCHITECTURE.md`/`DATA_MODEL.md` before any code, rather than started the same way as DEV-001–003.
