@@ -36,6 +36,7 @@ import androidx.room.TypeConverters
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
+@Suppress("TooManyFunctions") // One DAO accessor per entity — a real database's genuine surface, not a design smell.
 abstract class StepwiseDatabase : RoomDatabase() {
     abstract fun visionDao(): VisionDao
 

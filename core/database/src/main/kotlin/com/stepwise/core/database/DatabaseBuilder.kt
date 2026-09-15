@@ -12,6 +12,7 @@ import androidx.room.Room
  * No `.fallbackToDestructiveMigration()` — see [STEPWISE_DATABASE_MIGRATIONS]'s KDoc for
  * why that's never acceptable for this app's data.
  */
+@Suppress("SpreadOperator") // Room's addMigrations is vararg; the array is tiny and this runs once at startup.
 fun buildStepwiseDatabase(context: Context): StepwiseDatabase =
     Room
         .databaseBuilder(context.applicationContext, StepwiseDatabase::class.java, StepwiseDatabase.DATABASE_NAME)

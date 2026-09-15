@@ -18,6 +18,7 @@ import kotlin.time.Instant
  * rather than each entity inventing its own encoding (`DEVELOPMENT_PROTOCOL.md`'s
  * centralization principle).
  */
+@Suppress("TooManyFunctions") // Deliberately one class for every converter, per the centralization comment above.
 class Converters {
     @TypeConverter
     fun instantToEpochMillis(value: Instant?): Long? = value?.toEpochMilliseconds()
