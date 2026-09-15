@@ -1,6 +1,9 @@
+// No explicit `kotlin.android` plugin: AGP 9.0+ has built-in Kotlin support
+// enabled by default, and applying `org.jetbrains.kotlin.android` on top of it
+// fails ("plugin is already on the classpath with an unknown version") — found
+// via the actual CI failure, not assumed from AGP 8.x-era habit.
 plugins {
     alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
 

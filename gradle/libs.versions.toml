@@ -39,7 +39,11 @@ compose-material-icons-core = { module = "androidx.compose.material:material-ico
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+# No kotlin-android entry: AGP 9.0+ has built-in Kotlin support enabled by
+# default, and applying org.jetbrains.kotlin.android on top of it fails
+# ("plugin is already on the classpath with an unknown version") — found via
+# an actual CI failure in DEV-003, not assumed. Not needed as long as every
+# Android module here uses AGP 9.x.
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 android-library = { id = "com.android.library", version.ref = "android-gradle-plugin" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
