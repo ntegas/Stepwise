@@ -27,10 +27,10 @@ class Converters {
     fun epochMillisToInstant(value: Long?): Instant? = value?.let { Instant.fromEpochMilliseconds(it) }
 
     @TypeConverter
-    fun localDateToEpochDay(value: LocalDate?): Int? = value?.toEpochDays()
+    fun localDateToEpochDay(value: LocalDate?): Long? = value?.toEpochDays()
 
     @TypeConverter
-    fun epochDayToLocalDate(value: Int?): LocalDate? = value?.let { LocalDate.fromEpochDays(it) }
+    fun epochDayToLocalDate(value: Long?): LocalDate? = value?.let { LocalDate.fromEpochDays(it) }
 
     @TypeConverter
     fun localTimeToSecondOfDay(value: LocalTime?): Int? =
