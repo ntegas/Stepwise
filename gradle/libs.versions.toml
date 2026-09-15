@@ -44,7 +44,14 @@ kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 # ("plugin is already on the classpath with an unknown version") — found via
 # an actual CI failure in DEV-003, not assumed. Not needed as long as every
 # Android module here uses AGP 9.x.
-kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+#
+# No kotlin-compose entry either: applying org.jetbrains.kotlin.plugin.compose
+# crashed AGP's own plugin application (KotlinAndroidTarget / BaseVariant
+# incompatibility with AGP 9.4.0) — a second actual CI failure. AGP 9.x
+# supplies a default Compose compiler on its own via `buildFeatures.compose`;
+# this plugin is only needed to override that default with a specific
+# compiler version, not required yet. Re-add only once this incompatibility
+# is confirmed fixed upstream (Kotlin or AGP release notes), not speculatively.
 android-library = { id = "com.android.library", version.ref = "android-gradle-plugin" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint-gradle" }

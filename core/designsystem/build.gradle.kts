@@ -1,10 +1,19 @@
 // No explicit `kotlin.android` plugin: AGP 9.0+ has built-in Kotlin support
 // enabled by default, and applying `org.jetbrains.kotlin.android` on top of it
 // fails ("plugin is already on the classpath with an unknown version") — found
-// via the actual CI failure, not assumed from AGP 8.x-era habit.
+// via an actual CI failure, not assumed from AGP 8.x-era habit.
+//
+// No explicit `org.jetbrains.kotlin.plugin.compose` either: applying it here
+// crashed AGP's plugin application itself ("Could not create an instance of
+// type KotlinAndroidTarget... com/android/build/gradle/api/BaseVariant") — a
+// real incompatibility between this Kotlin plugin's Android-target bridging
+// code and AGP 9.4.0's already-changed legacy Variant API surface, found via
+// a second actual CI failure. AGP supplies a default Compose compiler on its
+// own when `buildFeatures.compose = true` is set (confirmed live, not
+// assumed) — the Kotlin plugin is only needed to override that default with
+// a specific compiler version, which isn't required yet.
 plugins {
     alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.compose)
 }
 
 // Depends on nothing but Compose (ARCHITECTURE.md §5) — no :core:model, no
