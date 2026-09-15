@@ -5,7 +5,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 class AppResultTest {
-
     @Test
     fun `map transforms a Success value and leaves Failure untouched`() {
         val success: AppResult<Int> = AppResult.Success(2)
@@ -40,30 +39,32 @@ class AppResultTest {
 
     @Test
     fun `each AppError kind carries its own classification`() {
-        val errors = listOf(
-            AppError.Domain("domain rule violated"),
-            AppError.Validation("invalid value", field = "targetValue"),
-            AppError.Database("constraint failed"),
-            AppError.Network("no connection", retryable = true),
-            AppError.Auth("session expired"),
-            AppError.Sync("conflict", retryable = false),
-            AppError.Billing("purchase not verified"),
-            AppError.Unexpected("unclassified failure"),
-        )
+        val errors =
+            listOf(
+                AppError.Domain("domain rule violated"),
+                AppError.Validation("invalid value", field = "targetValue"),
+                AppError.Database("constraint failed"),
+                AppError.Network("no connection", retryable = true),
+                AppError.Auth("session expired"),
+                AppError.Sync("conflict", retryable = false),
+                AppError.Billing("purchase not verified"),
+                AppError.Unexpected("unclassified failure"),
+            )
 
         // Exhaustiveness: every AppError subtype above must map to a distinct, stable label.
-        val labels = errors.map {
-            when (it) {
-                is AppError.Domain -> "domain"
-                is AppError.Validation -> "validation"
-                is AppError.Database -> "database"
-                is AppError.Network -> "network"
-                is AppError.Auth -> "auth"
-                is AppError.Sync -> "sync"
-                is AppError.Billing -> "billing"
-                is AppError.Unexpected -> "unexpected"
+        val labels =
+            errors.map {
+                when (it) {
+                    is AppError.Domain -> "domain"
+                    is AppError.Validation -> "validation"
+                    is AppError.Database -> "database"
+                    is AppError.Network -> "network"
+                    is AppError.Auth -> "auth"
+                    is AppError.Sync -> "sync"
+                    is AppError.Billing -> "billing"
+                    is AppError.Unexpected -> "unexpected"
+                }
             }
-        }
 
         assertEquals(
             listOf("domain", "validation", "database", "network", "auth", "sync", "billing", "unexpected"),

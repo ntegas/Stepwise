@@ -4,13 +4,12 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.time.Clock as KotlinClock
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
+import kotlin.time.Clock as KotlinClock
 
 @OptIn(ExperimentalTime::class)
 class ClockTest {
-
     @Test
     fun `todayIn returns the calendar date for the given time zone`() {
         // 2026-09-15T23:30:00Z is still 2026-09-15 in UTC but already 2026-09-16 in UTC+1.

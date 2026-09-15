@@ -13,8 +13,25 @@ package com.stepwise.core.common
  * `docs/security/SECURITY_ARCHITECTURE.md`'s logging security rule.
  */
 interface Logger {
-    fun debug(tag: String, message: String)
-    fun info(tag: String, message: String)
-    fun warn(tag: String, message: String, throwable: Throwable? = null)
-    fun error(tag: String, message: String, throwable: Throwable? = null)
+    fun debug(
+        tag: String,
+        message: String,
+    )
+
+    fun info(
+        tag: String,
+        message: String,
+    )
+
+    fun warn(
+        tag: String,
+        message: String,
+        throwable: Throwable? = null,
+    )
+
+    fun error(
+        tag: String,
+        message: String,
+        throwable: Throwable? = null,
+    )
 }

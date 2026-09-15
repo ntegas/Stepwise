@@ -74,3 +74,17 @@ Two genuine findings from actually running the build (not just writing it):
 - Kotlin 2.4.20's Gradle plugin warned that Gradle 8.14.3 (the sandbox's installed version) is below its minimum-supported 8.14.4 floor. Fixed properly — bumped the wrapper to Gradle 8.14.5 (confirmed reachable and fetchable) rather than suppressing the warning or downgrading Kotlin, and stayed on the 8.x line rather than jumping to the current 9.7.1 given the still-unverified Android Gradle Plugin compatibility question that a future Android module will raise.
 
 Retrospective note: this is exactly the kind of thing the environment-verification framework anticipated — a pure-Kotlin/JVM module can be genuinely built and tested in this sandbox (Maven Central and the Gradle Plugin Portal are both reachable even though `dl.google.com` is not), so `VERIFIED` here is a real, executed claim, not a placeholder. No `NOT VERIFIED — ANDROID SDK REQUIRED` entries were needed for DEV-001 because nothing Android-SDK-dependent was built — that starts at DEV-003.
+
+## DEV-002 — Security & Quality Foundation (in progress at time of writing)
+
+Wired `detekt` (1.23.8) and `ktlint` (14.2.0) into the root `build.gradle.kts`'s `subprojects` block, so every module — current and future — inherits the same static-analysis/formatting config automatically, per `DEVELOPMENT_PROTOCOL.md` rule 42's "one formatter, one static-analysis config" requirement. Running `ktlintCheck` for the first time against the DEV-001 code found real style violations (multi-parameter constructors not one-per-line, one misordered import) — fixed with `./gradlew ktlintFormat`, then re-verified clean. `./gradlew build` now runs compile + tests + `ktlintCheck` + `detekt` as one command.
+
+Wrote the first GitHub Actions workflow (`.github/workflows/ci.yml`): build/test/lint/static-analysis, a PR-only dependency-review job, and a secret-scan job.
+
+Two genuine findings from verifying dependencies before use (`DEPENDENCY_POLICY.md`), not assumed from memory:
+- `gitleaks-action@v2` stops working entirely on 2026-09-16 (tomorrow, relative to when this was written) because GitHub is removing the Node 20 runtime its old build depends on — `@v3` is required. Caught by checking current status live rather than using a remembered version.
+- `gitleaks-action` (even `@v3`) requires a paid license for scanning more than one repository under an *organization* account (free for a personal account). Rather than gamble on which kind of account this repository ends up under, the secret-scan job runs the underlying open-source `gitleaks` CLI (MIT-licensed) directly via its official `ghcr.io/gitleaks/gitleaks` container image — sidesteps the licensing question entirely rather than working around it.
+
+Action versions (`actions/checkout@v7`, `actions/setup-java@v6`, `gradle/actions/setup-gradle@v6`, `actions/dependency-review-action@v5`) were all verified live on 2026-09-15 before use, matching the "verify before implementation" instruction from the environment/decisions round — none were assumed from training data.
+
+This entry will be updated once the workflow's first real run on GitHub Actions is checked (this sandbox cannot execute GitHub Actions directly, only inspect the result of a run after pushing).

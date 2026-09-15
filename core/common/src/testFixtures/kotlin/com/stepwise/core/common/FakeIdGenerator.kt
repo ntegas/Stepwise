@@ -5,7 +5,9 @@ package com.stepwise.core.common
  * so an idempotency/convergence test can assert on a specific, predictable ID instead
  * of a random UUID.
  */
-class FakeIdGenerator(private val prefix: String = "id") : IdGenerator {
+class FakeIdGenerator(
+    private val prefix: String = "id",
+) : IdGenerator {
     private var counter = 0
 
     override fun newId(): String {

@@ -12,12 +12,13 @@ import kotlin.time.Instant
  * future module that depends on `:core:common` can reuse this one fake instead of
  * writing its own.
  */
-class FakeClock(private var instant: Instant) : Clock {
+class FakeClock(
+    private var instant: Instant,
+) : Clock {
     override fun now(): Instant = instant
 
     @OptIn(ExperimentalTime::class)
-    override fun todayIn(timeZone: TimeZone): LocalDate =
-        instant.toLocalDateTime(timeZone).date
+    override fun todayIn(timeZone: TimeZone): LocalDate = instant.toLocalDateTime(timeZone).date
 
     fun advanceTo(newInstant: Instant) {
         instant = newInstant

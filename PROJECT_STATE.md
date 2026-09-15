@@ -16,7 +16,8 @@ Live status tracker. This is the one place build-order/phase history lives — o
 | 1.7 | Done | Master Autonomous Development Plan reviewed; root-level canonical file layout confirmed as canonical over the plan's `docs/`-nested alternative (Option A). `ROADMAP.md` and `DEVELOPMENT_LOG.md` created; `ANTI_ERROR_STANDARD.md` §0 (read-first) and §10 (periodic retrospective) added; S0-S3 Security Review Levels added to `SECURITY_ARCHITECTURE.md`; Skill Graph/RPG guardrail added to `PRODUCT_CANON.md`; old `ARCHITECTURE.md` §29 superseded by `ROADMAP.md` (sync-metadata column list preserved into `DATA_MODEL.md` first); `CLAUDE.md` and `DEVELOPMENT_PROTOCOL.md` updated to point at the new files. |
 | DEV-000 | Done | Repository & Architecture Preflight — see `/DEVELOPMENT_LOG.md`. No owner-level blocker found; proceeded automatically into DEV-001 per standing instruction. |
 | DEV-001 | Done | Development Foundation — see findings below. Root Gradle project + `:core:common` (Clock, IdGenerator, AppError/AppResult, Logger, DispatcherProvider), genuinely built and unit-tested locally. Hilt, repository interfaces, and every other module deferred with stated reasons (see below); no owner-level blocker. |
-| DEV-002+ | Not started | Full sequence now tracked in `/ROADMAP.md`, not here — this table stops enumerating individual DEV tasks to avoid two places tracking the same sequence and drifting apart. |
+| DEV-002 | In progress | Security & Quality Foundation — see findings below. ktlint + detekt static analysis wired and verified locally; first GitHub Actions CI workflow written, pending its first confirmed run. |
+| DEV-003+ | Not started | Full sequence now tracked in `/ROADMAP.md`, not here — this table stops enumerating individual DEV tasks to avoid two places tracking the same sequence and drifting apart. |
 
 ## What exists right now
 
@@ -62,6 +63,27 @@ Scoped per `/ROADMAP.md`'s DEV-001 description and its own "do not create specul
 **Verification status**: `:core:common` is **VERIFIED** (built and tested in this sandbox — see above). No `NOT VERIFIED — ANDROID SDK REQUIRED` entries yet, because nothing Android-SDK-dependent was created this task; that starts at DEV-003.
 
 **Conclusion**: no owner-level blocker. Proceeding into DEV-002 (Security & Quality Foundation) per standing instruction.
+
+## DEV-002 — Security & Quality Foundation findings
+
+Scoped per `/ROADMAP.md`'s DEV-002 description. Much of "security documentation, trust boundaries, secret policy, dependency policy" already existed from Phase 1.7 (`docs/security/*`) — this task is about the *tooling* that enforces those policies in code, not re-documenting them.
+
+**Built and verified now:**
+- **Static analysis + formatting**: `detekt` (`io.gitlab.arturbosch.detekt`, 1.23.8 — the last stable release; detekt 2.0 exists only as an alpha under new `dev.detekt` coordinates, checked live rather than assumed, so the pin stays on 1.x) and `ktlint` (`org.jlleitschuh.gradle.ktlint`, 14.2.0), both wired once in the root `build.gradle.kts`'s `subprojects` block so every current and future module inherits them automatically (`DEVELOPMENT_PROTOCOL.md` rule 42 — one formatter, one static-analysis config). No bespoke detekt rule-set file yet — its default ruleset is enough until a real deviation is needed.
+- Running these for real against `:core:common` found genuine style violations in the DEV-001 code (multi-parameter constructors not one-per-line, one misordered import) — fixed via `./gradlew ktlintFormat`, not by hand-editing to game the checker. `./gradlew build` now runs compile + unit tests + `ktlintCheck` + `detekt` as one command, confirmed via a cold `clean build`.
+- **First GitHub Actions CI workflow** (`.github/workflows/ci.yml`): a `build` job (checkout, JDK 21, `gradle/actions/setup-gradle`, `./gradlew build`), a `dependency-review` job (`actions/dependency-review-action`, PR-only, minimum permissions), and a `secret-scan` job (official `ghcr.io/gitleaks/gitleaks` image run directly via Docker, sidestepping `gitleaks-action`'s per-organization license question entirely — see below). Action versions (`actions/checkout@v7`, `actions/setup-java@v6`, `gradle/actions/setup-gradle@v6`, `actions/dependency-review-action@v5`) were verified live on 2026-09-15, not recalled from training data — re-verify before assuming they're still current at a later date.
+- **A genuine, dated finding from that verification pass**: `gitleaks-action` requires a paid license for scanning more than one repo under an *organization* account (free for personal-account repos) — checked before use rather than added blind, per `DEPENDENCY_POLICY.md`. Sidestepped by running the underlying open-source `gitleaks` CLI (MIT-licensed) directly via its official container image instead of the Action wrapper, which avoids the licensing question regardless of how this repository is ever hosted.
+
+**Deliberately deferred, with reasons:**
+- **Production/debug build-variant separation** — a real Gradle/Android build-type concept that needs an actual Android application module to attach to; premature before `:app` exists (DEV-015). The *policy* (`docs/security/SECURITY_ARCHITECTURE.md`'s environment-isolation rule) already covers what it must satisfy once built.
+- **Dev/staging/prod environment configuration** — same reasoning; there's no build variant or backend environment yet to configure.
+- **Security test foundation** — the JUnit5 + `testFixtures` pattern from DEV-001 already is that foundation; no security-specific subsystem (auth, RLS, billing) exists yet to write a security test against.
+- **Per-subsystem threat modeling** — `THREAT_MODEL.md`'s own stated policy is to write each subsystem's threat model when that subsystem is actually designed (DEV-007 Auth, DEV-008 Sync, etc.), not ahead of it; that policy stands, nothing new needed here.
+- **A bespoke detekt rule-set / dependency-vulnerability database scan (OWASP Dependency-Check style)** — GitHub's native `dependency-review-action` (PR-time) plus GitHub's own Dependabot alerts (a repository setting, not something this session can toggle) already cover the CI-gate requirement `SECURITY_TEST_MATRIX.md` names; a heavier local SCA tool is added only if a real gap in that coverage shows up.
+
+**Verification status**: everything except the CI workflow's actual execution is **VERIFIED** locally (real command output: ktlint found and fixed real violations, detekt and the full `build` passed clean on a cold run). The workflow itself is `NOT VERIFIED — CI EXECUTION REQUIRED` until it has actually run on GitHub — this sandbox cannot execute GitHub Actions directly, only check its result after a push via the GitHub API. See `DEVELOPMENT_LOG.md` for that check's outcome once performed.
+
+**Conclusion**: no owner-level blocker in the local work. DEV-002 is not marked fully closed until the first CI run is confirmed green (or fixed if it isn't) — see `DEVELOPMENT_LOG.md`.
 
 ## VERIFICATION DEBT
 

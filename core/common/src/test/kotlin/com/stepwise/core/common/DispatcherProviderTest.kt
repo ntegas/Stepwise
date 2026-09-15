@@ -6,17 +6,18 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class DispatcherProviderTest {
-
     @Test
-    fun `TestDispatcherProvider runs work deterministically under runTest`() = runTest {
-        val dispatchers: DispatcherProvider = TestDispatcherProvider()
+    fun `TestDispatcherProvider runs work deterministically under runTest`() =
+        runTest {
+            val dispatchers: DispatcherProvider = TestDispatcherProvider()
 
-        val result = withContext(dispatchers.io) {
-            1 + 1
+            val result =
+                withContext(dispatchers.io) {
+                    1 + 1
+                }
+
+            assertEquals(2, result)
         }
-
-        assertEquals(2, result)
-    }
 
     @Test
     fun `StandardDispatcherProvider exposes the real platform dispatchers`() {

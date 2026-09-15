@@ -11,7 +11,10 @@ sealed class AppError {
     abstract val cause: Throwable?
 
     /** A business/domain rule was violated (e.g. an operation not valid for the entity's current state). */
-    data class Domain(override val message: String, override val cause: Throwable? = null) : AppError()
+    data class Domain(
+        override val message: String,
+        override val cause: Throwable? = null,
+    ) : AppError()
 
     /** User input failed validation (e.g. a negative duration, an impossible metric value). */
     data class Validation(
@@ -21,7 +24,10 @@ sealed class AppError {
     ) : AppError()
 
     /** A local persistence (Room) failure. */
-    data class Database(override val message: String, override val cause: Throwable? = null) : AppError()
+    data class Database(
+        override val message: String,
+        override val cause: Throwable? = null,
+    ) : AppError()
 
     /** A network/backend call failed. [retryable] distinguishes a transient failure from a permanent one. */
     data class Network(
@@ -31,7 +37,10 @@ sealed class AppError {
     ) : AppError()
 
     /** Authentication/authorization failed (not signed in, session expired, access denied). */
-    data class Auth(override val message: String, override val cause: Throwable? = null) : AppError()
+    data class Auth(
+        override val message: String,
+        override val cause: Throwable? = null,
+    ) : AppError()
 
     /** A sync-engine-specific failure (outbox, conflict resolution, upload/download). */
     data class Sync(
@@ -41,10 +50,16 @@ sealed class AppError {
     ) : AppError()
 
     /** A Google Play Billing-specific failure. */
-    data class Billing(override val message: String, override val cause: Throwable? = null) : AppError()
+    data class Billing(
+        override val message: String,
+        override val cause: Throwable? = null,
+    ) : AppError()
 
     /** Anything not classifiable above — never presented to the user as-is without a fallback message. */
-    data class Unexpected(override val message: String, override val cause: Throwable? = null) : AppError()
+    data class Unexpected(
+        override val message: String,
+        override val cause: Throwable? = null,
+    ) : AppError()
 }
 
 /**
@@ -53,13 +68,19 @@ sealed class AppError {
  * of catching exceptions (module architecture, ARCHITECTURE.md §5: "Result/AppError types").
  */
 sealed class AppResult<out T> {
-    data class Success<T>(val value: T) : AppResult<T>()
-    data class Failure(val error: AppError) : AppResult<Nothing>()
+    data class Success<T>(
+        val value: T,
+    ) : AppResult<T>()
 
-    inline fun <R> map(transform: (T) -> R): AppResult<R> = when (this) {
-        is Success -> Success(transform(value))
-        is Failure -> this
-    }
+    data class Failure(
+        val error: AppError,
+    ) : AppResult<Nothing>()
+
+    inline fun <R> map(transform: (T) -> R): AppResult<R> =
+        when (this) {
+            is Success -> Success(transform(value))
+            is Failure -> this
+        }
 
     inline fun onSuccess(action: (T) -> Unit): AppResult<T> {
         if (this is Success) action(value)

@@ -1,0 +1,66 @@
+name: CI
+
+# DEV-002 (Security & Quality Foundation, ROADMAP.md): the first CI quality gate.
+# Action versions below were verified live (not from training-data memory) on
+# 2026-09-15 per DEPENDENCY_POLICY.md — re-check before assuming they're still
+# current. gitleaks is pinned to `:latest` deliberately: a secret scanner's value
+# is its up-to-date detection ruleset, unlike a build dependency where
+# reproducibility matters more.
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build, test, lint, static analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      # Runs compilation, unit tests, ktlintCheck, and detekt — all three are
+      # wired into the `check` lifecycle task (build.gradle.kts), so one command
+      # is the single source of truth for "does this pass," locally and in CI.
+      - name: Build
+        run: ./gradlew build
+
+  dependency-review:
+    name: Dependency review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Dependency review
+        uses: actions/dependency-review-action@v5
+
+  secret-scan:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        run: docker run --rm -v "$(pwd):/repo" ghcr.io/gitleaks/gitleaks:latest detect --source /repo --no-banner --redact -v
