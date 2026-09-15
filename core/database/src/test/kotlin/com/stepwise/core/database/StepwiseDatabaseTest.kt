@@ -4,16 +4,22 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.stepwise.core.model.ExecutableKind
 import com.stepwise.core.model.ExecutionStatus
+import com.stepwise.core.model.Goal
 import com.stepwise.core.model.GoalId
 import com.stepwise.core.model.GoalProgressMode
 import com.stepwise.core.model.GoalType
 import com.stepwise.core.model.LifecycleStatus
 import com.stepwise.core.model.MetricId
+import com.stepwise.core.model.Session
 import com.stepwise.core.model.SessionId
+import com.stepwise.core.model.SessionMetricValue
 import com.stepwise.core.model.SessionMetricValueId
 import com.stepwise.core.model.SyncMetadata
+import com.stepwise.core.model.Task
 import com.stepwise.core.model.TaskId
 import com.stepwise.core.model.UserId
+import com.stepwise.core.model.Vision
+import com.stepwise.core.model.VisionId
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
@@ -56,8 +62,8 @@ class StepwiseDatabaseTest {
     fun `vision round-trips through the mapper and DAO`() =
         runTest {
             val vision =
-                com.stepwise.core.model.Vision(
-                    id = com.stepwise.core.model.VisionId("vision-1"),
+                Vision(
+                    id = VisionId("vision-1"),
                     userId = UserId("user-1"),
                     lifeAreaId = null,
                     content = "Run a marathon this year",
@@ -74,7 +80,7 @@ class StepwiseDatabaseTest {
     fun `goal type-converters round-trip enums and dates correctly`() =
         runTest {
             val goal =
-                com.stepwise.core.model.Goal(
+                Goal(
                     id = GoalId("goal-1"),
                     userId = UserId("user-1"),
                     lifeAreaId = null,
@@ -103,7 +109,7 @@ class StepwiseDatabaseTest {
     fun `upsertSessionWithMetricValues commits the session and every metric value together`() =
         runTest {
             val session =
-                com.stepwise.core.model.Session(
+                Session(
                     id = SessionId("session-1"),
                     userId = UserId("user-1"),
                     sourceType = ExecutableKind.ACTIVITY,
@@ -115,7 +121,7 @@ class StepwiseDatabaseTest {
                     sync = syncMetadata,
                 ).toEntity()
             val durationValue =
-                com.stepwise.core.model.SessionMetricValue(
+                SessionMetricValue(
                     id = SessionMetricValueId("smv-duration"),
                     sessionId = SessionId("session-1"),
                     metricId = MetricId("duration_minutes"),
@@ -124,7 +130,7 @@ class StepwiseDatabaseTest {
                     sync = syncMetadata,
                 ).toEntity()
             val distanceValue =
-                com.stepwise.core.model.SessionMetricValue(
+                SessionMetricValue(
                     id = SessionMetricValueId("smv-distance"),
                     sessionId = SessionId("session-1"),
                     metricId = MetricId("distance_km"),
@@ -163,7 +169,7 @@ class StepwiseDatabaseTest {
         id: String,
         date: LocalDate?,
         archived: Boolean,
-    ) = com.stepwise.core.model.Task(
+    ) = Task(
         id = TaskId(id),
         userId = UserId("user-1"),
         goalId = null,
