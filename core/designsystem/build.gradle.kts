@@ -1,7 +1,11 @@
-// AGP 8.13 (gradle/libs.versions.toml — see that file for why DEV-003 stepped
-// back from AGP 9.4.0's built-in-Kotlin support after 8 CI failures) has no
-// built-in Kotlin support: kotlin-android and kotlin-compose are applied
-// explicitly, the standard model for any AGP 8.x Android module.
+// AGP is back on 9.4.0 (gradle/libs.versions.toml — see that file for the full
+// DEV-003 iteration history). Compose BOM 2026.08.00's own dependencies
+// (androidx.compose.animation:animation-core-android:1.12.0 and others)
+// require AGP >=9.1.0 and compileSdk >=37 — AGP 8.13.2 (tried at iterations
+// 9-11) can't satisfy that at all, independent of anything else. kotlin-android
+// and kotlin-compose are still applied explicitly rather than relying on
+// AGP 9's built-in Kotlin support — see gradle.properties' android.
+// builtInKotlin=false comment for why.
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
@@ -14,10 +18,12 @@ plugins {
 android {
     namespace = "com.stepwise.core.designsystem"
 
-    // 36 per docs/play-store-checklist.md's Target API level requirement, which
-    // became mandatory for new-app submission on 2026-08-31 — already in effect
-    // as of this pin, not a future deadline. AGP 9.4.0 supports up to API 37.
-    compileSdk = 36
+    // 37, not the docs/play-store-checklist.md-mandated minimum of 36: Compose
+    // BOM 2026.08.00's own dependencies (androidx.compose.animation:animation-
+    // core-android:1.12.0 and others, discovered via a real CI AAR-metadata
+    // failure at DEV-003 iteration 11) require compiling against API 37 or
+    // later. AGP 9.4.0 supports up to API 37, so this is within range.
+    compileSdk = 37
 
     defaultConfig {
         // No canonical minSdk decision exists elsewhere yet; 26 (Android 8.0) is a
