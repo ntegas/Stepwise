@@ -14,6 +14,8 @@ See `/PROJECT_STATE.md` for the live, detailed phase status. In short: product c
 /ARCHITECTURE.md        — technical architecture
 /DATA_MODEL.md          — entities and relationships
 /DEVELOPMENT_PROTOCOL.md, /ANTI_ERROR_STANDARD.md, /PROJECT_STATE.md
+/ROADMAP.md             — DEV-000...DEV-037 implementation sequence + operating process
+/DEVELOPMENT_LOG.md     — append-only historical journal
 /CALCULATION_ENGINE.md, /DESIGN_SYSTEM.md — scaffolded
 /ADR/                  — architecture decision records
 /docs/security         — security architecture, threat model, dependency policy, etc.

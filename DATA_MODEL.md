@@ -84,6 +84,18 @@ Editing or deleting a `session_metric_values` row changes `progress_events` (via
 
 No separate tables — these are *views over `tasks`*, not distinct entities: Inbox = tasks where `date IS NULL AND NOT archived`; Overdue = tasks where `date < today AND status NOT IN (done, cancelled)`; Archive = `archived = true` on Goals/Projects/Activities/Habits. Keeping these as filters rather than separate tables avoids a second place a task's state could drift out of sync with its row in `tasks`.
 
+## Sync metadata columns (applies to every synced table)
+
+Every table that syncs between device and backend (i.e. everything above except pure read-time views) carries the same sync metadata columns, so the sync engine (`/ARCHITECTURE.md` §9, ADR-006) has one uniform shape to reason about rather than a per-table special case:
+
+- `id: UUID` — client-generated, stable across devices; this is what makes independent-Session convergence and deterministic occurrence identity (`/ARCHITECTURE.md` §9, ADR-005) work without a server round-trip to get an ID first.
+- `updated_at` — last-write timestamp, used by the low-risk-metadata last-write-wins path.
+- `version` — monotonically incremented on every write, used by the version-checked conflict path for progress-affecting entities (Sessions, materialized occurrences) so a stale write is detected rather than silently overwriting newer data.
+- `deleted_at` — tombstone marker; a delete sets this rather than removing the row, so a stale offline device's edit to an already-deleted record doesn't resurrect it (`/ARCHITECTURE.md` §9, ADR-006).
+- `sync_status` — local-only (not synced itself): tracks whether a row has pending outbound changes, is confirmed synced, or is in conflict, for the offline-first outbox (`/ARCHITECTURE.md` §9.1).
+
+This list originated in the now-superseded `/ARCHITECTURE.md` §29 ("Recommended Implementation Sequence") and is preserved here as the canonical, single location for it — §29 is superseded by `/ROADMAP.md`'s DEV-004 (Canonical Data Model) and DEV-008 (Sync Engine), which is where these columns get their concrete Room/Postgres schema.
+
 ## Relationships at a glance
 
 ```

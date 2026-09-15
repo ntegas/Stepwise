@@ -4,6 +4,17 @@ Security is a cross-cutting architectural requirement for domain, database, sync
 
 Sibling documents: `THREAT_MODEL.md`, `SECURITY_TEST_MATRIX.md`, `DEPENDENCY_POLICY.md`, `INCIDENT_RESPONSE.md`, `AI_CODE_SECURITY.md`.
 
+## Security Review Levels (S0–S3)
+
+Every DEV task and every substantial change is classified into one of four levels before work starts, so the review bar is set upfront rather than discovered afterward. `/ROADMAP.md` DEV-task descriptions and PR/change summaries should name the level they operate at when it isn't S0/S1.
+
+- **S0 — Security-neutral.** Pure visual/layout changes with no data, auth, or trust-boundary involvement.
+- **S1 — Low security relevance.** Ordinary local features that don't touch auth, money, or cross-user data.
+- **S2 — Security-sensitive.** Touches things that can go wrong in a way that matters but isn't catastrophic if caught in review: DB mutations, sync, deep links, notifications, import/export, widget execution.
+- **S3 — Security-critical.** Auth, RLS, Billing, authorization, encryption, secrets, account deletion, privileged backend functions, Play Integrity.
+
+**S3 requires an independent verification strategy: implementation → automated security checks → independent review → security-specific tests → acceptance.** The same author (Claude included) must not be the sole author of both the S3 implementation and the tests offered as proof it's safe — this is not a suggestion, it's the gate. Claude's own confidence in its implementation is never sufficient to mark S3 work security-accepted; per `AI_CODE_SECURITY.md`, an AI does not have the authority to certify the security of its own code. See `SECURITY_TEST_MATRIX.md` "Independent verification for security-critical code" for the mechanics of how that independent check is actually satisfied in this repository.
+
 ## Trust boundaries
 
 **The Android client is an untrusted environment**, including our own official app build. A user can modify the APK, run a rooted/emulated environment, intercept calls, alter the local database, call the Supabase API directly, or replay requests. Backend authorization must never be based on a client-asserted claim (`"userId": "123"`, `"premium": true`) — the backend establishes identity and authorization context itself, from the authenticated request, never from client-supplied fields.

@@ -2,6 +2,10 @@
 
 This formalizes the process already used across this project's architecture work (Phase 1.5 concept reconciliation, the Android Architecture Specification's consistency audit, the Widget addition, the centralization-rules pass). It is binding on all future work, human or AI. See also `/docs/security/AI_CODE_SECURITY.md` for the security-specific extension of this standard (rules 28, 33–36 of the Security/Transaction/Concurrency standard).
 
+## 0. Read this file first
+
+This file is read in full before starting any task in this repository — analysis, documentation, or code, no exceptions for tasks that look small or routine. The point is to catch a mistake before it's made by having the relevant rule already in view, not to re-derive it afterward from a retrospective. If a task is already in progress when this file is updated with a new rule, the new rule applies from that point forward in the same task.
+
 ## 1. Before creating anything new — anti-duplication search
 
 Before adding a new service, use case, repository, helper, formatter, calculation, or component: search the repo for an existing canonical implementation first. A new implementation is justified only when the search comes back empty, and the search itself (what was searched, what was found) is worth stating in the change summary, not just the conclusion.
@@ -51,3 +55,11 @@ When a change is substantial enough to warrant it, the response accompanying it 
 - An AI's own claim that its implementation is "secure" / "correct" / "tested" is not evidence — see `/docs/security/AI_CODE_SECURITY.md`.
 - Never weaken, delete, or skip a failing test to reach a green build without stating the reason separately and getting it reviewed.
 - A new dependency an AI proposes is verified independently before use (real package, real maintainer, license, vulnerability history) — never installed just because it was suggested.
+
+## 10. Periodic Retrospective
+
+At meaningful intervals (a completed development stage, a checkpoint in `ROADMAP.md`, or whenever asked), review recent work for: what was attempted, what failed or had to be redone, why it happened, and what durable rule — if it had already been in force — would have prevented it.
+
+- The retrospective event itself (what was reviewed, what was found — including "nothing new found") is recorded in `DEVELOPMENT_LOG.md`, since that file is the historical record of what happened and when.
+- If the review surfaces a genuinely new durable rule not already covered by an existing section here, it is added to this file as a new numbered item — `DEVELOPMENT_LOG.md` records that the lesson was found; this file is what makes it binding on future work.
+- A retrospective that finds nothing new is still worth recording — it confirms the standard is currently sufficient, which is itself useful history.

@@ -1,6 +1,6 @@
 # DESIGN_SYSTEM.md — Scaffold
 
-**Not yet populated.** Real content (actual color values, type scale, spacing scale, component visual specs) is written during the UX/Navigation Specification phase per `ARCHITECTURE.md` §29 / `PROJECT_STATE.md`. This file exists now so the canonical documentation set (`DEVELOPMENT_PROTOCOL.md` §47) is complete, and so the *structural* requirement — what must be centralized, and which components must exist — is registered ahead of time without jumping ahead on visual decisions.
+**Not yet populated.** Real content (actual color values, type scale, spacing scale, component visual specs) is written during `/ROADMAP.md`'s DEV-003 (Design System Foundation), per `/PROJECT_STATE.md`. This file exists now so the canonical documentation set (`DEVELOPMENT_PROTOCOL.md` §47) is complete, and so the *structural* requirement — what must be centralized, and which components must exist — is registered ahead of time without jumping ahead on visual decisions.
 
 ## What this document will cover, per `DEVELOPMENT_PROTOCOL.md` rule C1
 
