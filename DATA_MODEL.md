@@ -6,7 +6,16 @@ All tables carry `user_id uuid references auth.users` and RLS restricting rows t
 
 ## Entity list (§64)
 
-`User · Vision · LifeArea · Goal · Milestone · Project · Task · Activity · Habit · Schedule/RecurrenceRule · Session · SessionMetricValue · ProgressEvent · Metric · GoalActivityLink · Skill · Reminder · Review · Insight`
+`User · Vision · LifeArea · Goal · Milestone · Project · Task · Activity · Habit · Schedule/RecurrenceRule · RecurrenceOccurrence · Session · SessionMetricValue · ProgressEvent · Metric · GoalActivityLink · Skill · Reminder · Review · Insight`
+
+## The canonical Kotlin domain model (DEV-004)
+
+This document describes the entities conceptually and their Postgres shape. The **authoritative, field-by-field CANONICAL / DERIVED / LOCAL STATE / SYNC METADATA ownership tagging** `/ROADMAP.md`'s DEV-004 requires ("no ambiguous ownership") lives as KDoc directly on the actual Kotlin types in `core/model/src/main/kotlin/com/stepwise/core/model/` — kept there rather than duplicated here, per `/ANTI_ERROR_STANDARD.md` §1: a tag on a field and the field itself can never drift apart if they're the same place in the source, whereas a parallel doc listing would need to be kept in sync by hand. Read this document for *what an entity means and why*; read `:core:model` for *exactly what owns each field*. Highlights worth stating here since they affect this document's own field lists:
+
+- **SYNC METADATA** actually carried on the domain model is narrower than the full "sync metadata columns" list below: `updated_at`, `version`, `deleted_at` (`SyncMetadata.kt`) — `sync_status` is deliberately **excluded** as **LOCAL STATE**, not a domain fact (it only tracks whether *this device's* outbox has a pending write; it belongs to `:core:database`'s Room entity, DEV-005, not `:core:model`).
+- `Metric` carries no `user_id` and no sync metadata at all — read as a genuinely global, shared reference catalog (`/DATA_MODEL.md`'s own `metrics` section is the one entity that never mentions `user_id`), not per-user data.
+- Every polymorphic owner/source reference (`schedules.owner_id`, `sessions.source_id`, `goal_activity_links.source_id`) is a plain `String` on the Kotlin side too, not a typed ID — the `*_type` column is the discriminant a mapper resolves it through, matching this document's own Postgres shape rather than introducing a different pattern at the Kotlin layer.
+- `RecurrencePattern` (daily/weekly/every-N-days/monthly/custom, `/ARCHITECTURE.md` §13) and `RecurrenceOccurrence`'s deterministic-ID computation (`OccurrenceIdentity.kt`, decision B9) are modeled and unit-tested in `:core:model` — genuinely verifiable in this sandbox (pure Kotlin/JVM, no Room/network), unlike `:core:designsystem`.
 
 ## Strategic layer
 
@@ -36,10 +45,15 @@ Ongoing activity, independent of any Goal (§19–20). `id, user_id, life_area_i
 Regularity rule, distinct from Activity (§31). `id, user_id, activity_id (nullable — the "what"), title, target_value, metric_id, archived`. A Habit's own Goal links go through `goal_activity_links` too (source_type = `habit`), the same mechanism Activities use — one fan-out path, not two.
 
 ### `tasks`
-`id, user_id, goal_id (nullable), project_id (nullable), life_area_id (nullable), title, date (nullable — null = Inbox/Unscheduled, §17), time, deadline, duration, priority, reminder_id (nullable), metric_id (nullable), planned_result, actual_result, goal_impact_score (0–100, §50), status (done|partial|missed|rescheduled|in_progress|cancelled), archived`. Almost every field beyond `title` is optional, per §16.
+`id, user_id, goal_id (nullable), project_id (nullable), life_area_id (nullable), title, date (nullable — null = Inbox/Unscheduled, §17), time, deadline, duration, priority, reminder_id (nullable), metric_id (nullable), planned_result, goal_impact_score (0–100, §50), archived`. Almost every field beyond `title` is optional, per §16.
+
+**Correction found at DEV-004** (`/ANTI_ERROR_STANDARD.md` §2 — a real inconsistency, resolved with stated reasoning, not silently picked): this list previously also named `actual_result` and `status` as columns here, but `/ARCHITECTURE.md` §6's decision **B1** states plainly that "Task has no independently-editable actual-execution field" — anything the UI shows as "Task Actual"/"Task Status" is a read projection off the Task's linked `sessions`, never a second place either value can be entered. Treated the same way this document already treats `goals.current_value` (§62 — a view, not a column): both are **not stored columns** on `tasks` at all. `/ARCHITECTURE.md` is what this document is meant to conform to (its own §5 doc-hierarchy statement), so B1 wins this tension. See `core/model/.../Task.kt` for the full reasoning inline.
 
 ### `schedules` (unified Schedule/RecurrenceRule, §33)
-One recurrence engine for Task, Activity, and Habit — not three. `id, owner_type (task|activity|habit), owner_id, rule (RRULE-style: days of week, time, interval), starts_on, ends_on (nullable)`. Occurrences (what shows up on a given day in Plan/Calendar, §35) are computed from this rule at read time, not pre-materialized as rows.
+One recurrence engine for Task, Activity, and Habit — not three. `id, user_id, owner_type (task|activity|habit), owner_id, rule (RRULE-style: days of week, time, interval), starts_on, ends_on (nullable)`. Occurrences (what shows up on a given day in Plan/Calendar, §35) are computed from this rule at read time, not pre-materialized as rows.
+
+### `recurrence_occurrences` (materialized occurrences, §35, `/ARCHITECTURE.md` §13)
+Not in this document before DEV-004 — `/ARCHITECTURE.md` §13 described the concept but deferred "the occurrence table's exact shape" to this Canonical Data Model layer. A row exists only once an occurrence needs to carry individual state; the common case (an unmodified date the rule implies) is a **virtual** occurrence, not a row at all. `id` (a **deterministic** hash of `(recurrence_rule_id, occurrence_date)`, decision B9 — not a randomly chosen UUID, so two devices that independently materialize "the same" occurrence converge on one row), `recurrence_rule_id, occurrence_date, rescheduled_to_date (nullable), skipped, session_id (nullable — set once executed)`.
 
 ## Metrics, Sessions, and the multi-goal fan-out
 
@@ -104,6 +118,9 @@ life_areas 1─* goals, tasks, projects   (all optional)
 goals 1─* milestones
 goals 1─* projects (optional) ─ 1─* tasks
 activities/habits *─* goals   via goal_activity_links (+ metric_id)
+tasks/activities/habits 1─* schedules   (owner_type + owner_id)
+schedules 1─* recurrence_occurrences   (deterministic id, decision B9)
+recurrence_occurrences 0─1 sessions   (set once executed)
 tasks/activities/habits 1─* sessions   (source_type + source_id)
 sessions 1─* session_metric_values
 session_metric_values 1─* progress_events   (fan-out per linked goal)

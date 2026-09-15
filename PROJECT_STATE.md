@@ -18,18 +18,19 @@ Live status tracker. This is the one place build-order/phase history lives — o
 | DEV-001 | Done | Development Foundation — see findings below. Root Gradle project + `:core:common` (Clock, IdGenerator, AppError/AppResult, Logger, DispatcherProvider), genuinely built and unit-tested locally. Hilt, repository interfaces, and every other module deferred with stated reasons (see below); no owner-level blocker. |
 | DEV-002 | Done | Security & Quality Foundation — see findings below. ktlint + detekt static analysis wired into the default `build`/`check` lifecycle; first GitHub Actions CI workflow (build/test/lint/static-analysis, dependency review, secret scan) — confirmed green on its first real run. |
 | DEV-003 | Done | Design System Foundation — see findings below. `:core:designsystem` written (tokens + 10 generic components) and **confirmed CI-green** after 14 real CI iterations — most spent on a genuine Gradle plugin-resolution bug misdiagnosed for a long time as an AGP-version problem (see findings). This sandbox can no longer build any part of the repo locally at all (accepted trade-off, see VERIFICATION DEBT) — CI is now the sole source of truth. |
-| DEV-004+ | Not started | Full sequence now tracked in `/ROADMAP.md`, not here — this table stops enumerating individual DEV tasks to avoid two places tracking the same sequence and drifting apart. |
+| DEV-004 | Done | Canonical Data Model *(checkpoint)* — see findings below. `:core:model` (pure Kotlin, 11 entities + enums + `OccurrenceIdentity`), every field tagged CANONICAL/DERIVED/LOCAL STATE/SYNC METADATA in KDoc, genuinely built+tested locally (6/6 tests) — the first DEV task since DEV-001 this sandbox can fully verify itself. One real inconsistency between `DATA_MODEL.md` and `ARCHITECTURE.md` (Task's `actual_result`/`status`) found and resolved. |
+| DEV-005+ | Not started | Full sequence now tracked in `/ROADMAP.md`, not here — this table stops enumerating individual DEV tasks to avoid two places tracking the same sequence and drifting apart. |
 
 ## What exists right now
 
 - **Product**: `PRODUCT_CANON.md` — Master Product Concept, complete and current, including the Skill Graph/RPG guardrail.
 - **Architecture**: `ARCHITECTURE.md` — canonical and detailed (native Android/Kotlin/Compose, offline-first, Supabase, Widget, security posture, testing strategy, ADR, open questions). §29 (old implementation sequence) marked superseded by `ROADMAP.md`.
-- **Data model**: `DATA_MODEL.md` — conceptual entities, relationships, and sync metadata columns; the concrete Room/Postgres schema is DEV-004/DEV-005's job, not yet written.
+- **Data model**: `DATA_MODEL.md` — conceptual entities, relationships, and sync metadata columns, now cross-referencing `:core:model`'s field-by-field ownership tagging (DEV-004). The concrete Room schema is DEV-005's job, not yet written.
 - **Process**: `ANTI_ERROR_STANDARD.md` (now with §0 read-first and §10 periodic retrospective), `DEVELOPMENT_PROTOCOL.md`, `ROADMAP.md` (DEV-000...DEV-037 + operating rules), `DEVELOPMENT_LOG.md` (historical journal) — all current.
 - **Security**: `docs/security/` — current, including S0-S3 Security Review Levels in `SECURITY_ARCHITECTURE.md`.
 - **Not yet populated** (by design, per explicit instruction — do not fill ahead of their phase): `CALCULATION_ENGINE.md`.
 - **`DESIGN_SYSTEM.md`** — now filled in and CI-verified (DEV-003).
-- **Code**: a real Gradle project exists at the repo root (`settings.gradle.kts`, `gradle/libs.versions.toml`, wrapper pinned to Gradle 8.14.5) with one module, `:core:common` (pure Kotlin/JVM — Clock, IdGenerator, AppError/AppResult, Logger, DispatcherProvider), built and unit-tested (10/10 passing) in this sandbox without any Android SDK dependency. No `:app`, no Android module, no `.github/` CI workflows exist yet — see DEV-001 findings below for what was deferred and why. `/apps/web` (Next.js, Phase 0) and `/supabase/migrations` (Phase 0 schema) remain superseded/parked.
+- **Code**: a real Gradle project exists at the repo root (`settings.gradle.kts`, `gradle/libs.versions.toml`, wrapper pinned to Gradle 9.6.0 — bumped from 8.14.5 at DEV-003 for AGP 9.4.0). Three modules: `:core:common` (pure Kotlin/JVM — Clock, IdGenerator, AppError/AppResult, Logger, DispatcherProvider), `:core:designsystem` (Android/Compose — design tokens + 10 reusable components, CI-verified only, DEV-003), `:core:model` (pure Kotlin/JVM — the canonical domain model, DEV-004, genuinely built+tested in this sandbox). No `:app` module or `:domain` yet. `/apps/web` (Next.js, Phase 0) and `/supabase/migrations` (Phase 0 schema) remain superseded/parked.
 
 ## DEV-000 — Repository & Architecture Preflight findings
 
@@ -111,7 +112,25 @@ Scoped per `/ROADMAP.md`'s DEV-003 description ("build semantic color tokens, ty
 
 **Verification status**: `:core:designsystem` — compilation, ktlint, and detekt — is **VERIFIED**, confirmed via a real green GitHub Actions run (run [34966319372](https://github.com/ntegas/Stepwise/actions/runs/34966319372), commit `5ae16a5`, checked via the Actions API, not assumed). See `DEVELOPMENT_LOG.md` for the full iteration-by-iteration account.
 
-**Conclusion**: no owner-level blocker. DEV-003 is closed. Proceeding into DEV-004 (Canonical Data Model) — flagged in `/ROADMAP.md` as a major architectural checkpoint, larger and more consequential than DEV-000–003, so it gets a higher care/effort level and a full read of `ARCHITECTURE.md`/`DATA_MODEL.md` before any code.
+**Conclusion**: no owner-level blocker. DEV-003 is closed.
+
+## DEV-004 — Canonical Data Model findings *(checkpoint)*
+
+Scoped per `/ROADMAP.md`'s DEV-004 description: design and document canonical domain semantics for Vision, Life Area, Goal, Goal Metric, Goal progress mode, Milestone, Project, Task, Activity, Habit, Session, Session metrics, schedules, recurrence, occurrence identity, execution states, relationships, sync metadata — explicitly tagged CANONICAL / DERIVED / LOCAL STATE / SYNC METADATA, no ambiguous ownership. Flagged in `/ROADMAP.md` as a major architectural checkpoint, so read `ARCHITECTURE.md`/`DATA_MODEL.md` in full before writing anything, per the standing higher-care instruction for checkpoints.
+
+**Deliverable**: `:core:model`, a new pure-Kotlin/JVM module — 11 files, 630 lines, zero project dependencies (only `kotlinx-datetime`) — covering every entity DEV-004 names: `Vision`, `LifeArea`, `Goal`/`Milestone`/`Project`, `Activity`/`Habit`, `Task`, `RecurrenceRule`/`RecurrencePattern`/`RecurrenceOccurrence`, `Metric`/`GoalActivityLink`, `Session`/`SessionMetricValue`, plus the enums (`GoalType`, `GoalProgressMode`, `LifecycleStatus`, `ExecutionStatus`, `ExecutableKind`, `ProgressSourceKind`), typed IDs for every entity, `SyncMetadata`, and `OccurrenceIdentity` (the deterministic-hash function behind decision B9). Every field carries a CANONICAL/DERIVED/LOCAL STATE/SYNC METADATA tag in its KDoc — kept in the code itself, not a separate doc that could drift from it (`/ANTI_ERROR_STANDARD.md` §1), with `/DATA_MODEL.md` extended to point at it rather than duplicate it.
+
+**Deliberately deferred, with reasons** (not in `/ROADMAP.md`'s DEV-004 entity list): `Skill`/`SkillSource` (no DEV task currently owns building it structurally; a passive derived aggregation over Activities/Goals per concept §51, revisit around DEV-011/012), `Reminder` (DEV-027 Notifications — only a `ReminderId` exists now so `Task`/`Habit` can reference one), `Review`/`Insight` (DEV-024 History/Review/Insights), `User` (Supabase Auth's own entity, not a domain type this module shapes).
+
+**A genuine, real inconsistency found between `ARCHITECTURE.md` and `DATA_MODEL.md`, resolved with stated reasoning per `/ANTI_ERROR_STANDARD.md` §2** (not silently picked either way): `DATA_MODEL.md`'s `tasks` field list named `actual_result` and `status` as stored columns, but `ARCHITECTURE.md` §6's decision **B1** states "Task has no independently-editable actual-execution field" — both should be a read projection off the Task's linked Sessions, exactly like `goals.current_value` (§62). Resolved in B1's favor (`ARCHITECTURE.md` is what `DATA_MODEL.md` is meant to conform to, per §5's own doc-hierarchy statement): both fields are **not stored** in `Task` — `DATA_MODEL.md`'s `tasks` section corrected to match.
+
+**Two additional entities modeled that weren't fully spelled out before**: `RecurrenceOccurrence` (`ARCHITECTURE.md` §13 described the concept and explicitly deferred "the occurrence table's exact shape" to this layer — now a concrete type, `DATA_MODEL.md`'s entity list and relationship diagram updated) and `RecurrencePattern` (a sealed class covering §13's "daily, weekly, selected weekdays, every-N-days, monthly, and a bounded custom form").
+
+**One deliberate design consolidation, stated explicitly rather than done silently**: `DATA_MODEL.md` names `schedules.owner_type`/`owner_id` and `sessions.source_type`/`source_id` as two separate polymorphic-owner mechanisms, but both range over exactly `{Task, Activity, Habit}` — consolidated into one shared `ExecutableKind` enum (`DEVELOPMENT_PROTOCOL.md`'s centralization principle: one shape, not two identical ones) rather than two enums with identical cases. `GoalActivityLink.sourceType` stays its own, narrower `ProgressSourceKind` (`{Activity, Habit}` only — a bare Task has no Goal-metric link of its own), since reusing `ExecutableKind` there would leave a `TASK` case meaningless.
+
+**Verification status — genuinely `VERIFIED` locally, not just CI-pending**: `:core:model` is pure Kotlin/JVM with zero Android dependency, exactly the module class `/ROADMAP.md`'s Environment & Verification Debt framework identifies as sandbox-buildable ("this sandbox does implementation, pure-JVM tests... for `:core:model`... deliberately Android-SDK-free"). Verified via a real `./gradlew :core:model:build` run: 6/6 unit tests pass (`OccurrenceIdentity` determinism — same `(rule, date)` always converges on one ID, different inputs never collide; `SyncMetadata.isDeleted`), detekt clean, ktlint clean (after `ktlintFormat`), zero compiler warnings (an initial `kotlinx.datetime.Instant` deprecation warning was found and fixed by switching to `kotlin.time.Instant`, not left as noise). Root `build.gradle.kts`'s `android.library apply false` (DEV-003's own accepted trade-off) was temporarily commented out for this one local verification run only, since it blocks *every* local Gradle invocation regardless of target module — restored immediately after, confirmed via `git diff` showing no residual change. Will be re-confirmed by real CI on push, same as every other module.
+
+**Conclusion**: no owner-level blocker. DEV-004 is closed. This is the first checkpoint per `/ROADMAP.md`'s Checkpoints section (DEV-004, DEV-009, DEV-015, DEV-022, DEV-030, DEV-034, DEV-037) — per that section's own instruction ("do not wait... unless explicitly instructed to stop"), the repository is left coherent and easy to review, and work proceeds into DEV-005 (Room Persistence Foundation) automatically.
 
 ## VERIFICATION DEBT
 
@@ -119,6 +138,11 @@ Scoped per `/ROADMAP.md`'s DEV-003 description ("build semantic color tokens, ty
 DEV-003 — CLOSED
 - :core:designsystem compilation (AGP/Compose) — VERIFIED (CI run 34966319372)
 - ktlint/detekt over :core:designsystem's Kotlin sources — VERIFIED (same run)
+
+DEV-004 — CLOSED, no debt
+- :core:model compilation, unit tests, ktlint, detekt — VERIFIED locally (genuine
+  run, not CI-pending) — see DEV-004 findings above for the local-only, restored-
+  before-commit root build.gradle.kts workaround this required.
 
 New, permanent, sandbox-only limitation (not itself a defect — see DEV-003 findings
 iteration 9-11 for why):
@@ -141,4 +165,4 @@ A DEV task is not considered production-verified while a required check for it r
 
 ## Current gate
 
-DEV-000 through DEV-003 all found no owner-level blocker (see findings above). Per the user's explicit standing instruction, the project **proceeds automatically between DEV tasks** without waiting for further confirmation on each one. `/ROADMAP.md` §"Checkpoints" identifies where independent external review is expected — **DEV-004 is the first such checkpoint**, flagged as a major architectural checkpoint bigger than DEV-000–003, so it is announced with a higher recommended care/effort level and a full read of `ARCHITECTURE.md`/`DATA_MODEL.md` before any code, rather than started the same way as DEV-001–003.
+DEV-000 through DEV-004 all found no owner-level blocker (see findings above). DEV-004 was `/ROADMAP.md`'s first checkpoint (§"Checkpoints": DEV-004, DEV-009, DEV-015, DEV-022, DEV-030, DEV-034, DEV-037) — left in a coherent, easy-to-review state per that section's own instruction. Per the user's explicit direction for this task specifically, work paused here for a check-in rather than proceeding automatically into DEV-005 — the general standing instruction to proceed automatically between DEV tasks resumes once the user confirms.
