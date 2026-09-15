@@ -41,11 +41,17 @@ import io.gitlab.arturbosch.detekt.extensions.DetektExtension
 // even for a task that only targets :core:common) — CI is the source of truth
 // for this build from here on, which was already true for anything touching
 // :core:designsystem.
+// DEV-005 (:core:database, Room+KSP) applied ANTI_ERROR_STANDARD.md §11's rule
+// directly: ksp is declared apply-false here from the start, rather than
+// discovering the gap the way DEV-003 did. Not Google-Maven-hosted (KSP resolves
+// from Maven Central/Gradle Plugin Portal), so this carries none of the
+// dl.google.com risk android.library does.
 plugins {
     alias(libs.plugins.android.library) apply false
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.kotlin.android) apply false
     alias(libs.plugins.kotlin.compose) apply false
+    alias(libs.plugins.ksp) apply false
     alias(libs.plugins.detekt) apply false
     alias(libs.plugins.ktlint) apply false
 }

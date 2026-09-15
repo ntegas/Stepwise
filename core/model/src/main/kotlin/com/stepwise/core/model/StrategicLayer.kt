@@ -1,9 +1,13 @@
 package com.stepwise.core.model
 
-import kotlin.time.Instant
-
 /**
  * Free-text strategic statement (concept §5). All fields **CANONICAL** except [sync] and [id].
+ *
+ * Fixed at DEV-005 (`/ANTI_ERROR_STANDARD.md` §2): this originally also carried its own
+ * `updatedAt: Instant`, duplicating [SyncMetadata.updatedAt] — `/DATA_MODEL.md`'s `visions`
+ * field list has exactly one `updated_at` column, not two. "When was this last changed" is
+ * already [sync]'s job; a Vision has no separate creation-vs-modification distinction worth
+ * a second timestamp (unlike [Goal]/[Task]'s genuinely distinct `createdAt`).
  *
  * @param lifeAreaId null = a whole-life vision, not scoped to one [LifeArea] (`/DATA_MODEL.md`).
  */
@@ -12,7 +16,6 @@ data class Vision(
     val userId: UserId,
     val lifeAreaId: LifeAreaId?,
     val content: String,
-    val updatedAt: Instant,
     val sync: SyncMetadata,
 )
 

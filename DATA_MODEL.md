@@ -17,6 +17,12 @@ This document describes the entities conceptually and their Postgres shape. The 
 - Every polymorphic owner/source reference (`schedules.owner_id`, `sessions.source_id`, `goal_activity_links.source_id`) is a plain `String` on the Kotlin side too, not a typed ID — the `*_type` column is the discriminant a mapper resolves it through, matching this document's own Postgres shape rather than introducing a different pattern at the Kotlin layer.
 - `RecurrencePattern` (daily/weekly/every-N-days/monthly/custom, `/ARCHITECTURE.md` §13) and `RecurrenceOccurrence`'s deterministic-ID computation (`OccurrenceIdentity.kt`, decision B9) are modeled and unit-tested in `:core:model` — genuinely verifiable in this sandbox (pure Kotlin/JVM, no Room/network), unlike `:core:designsystem`.
 
+## The concrete Room schema (DEV-005)
+
+`:core:database` (`core/database/src/main/kotlin/com/stepwise/core/database/`) is the physical SQLite schema behind every entity above — one Room `@Entity`/`@Dao` pair per `:core:model` type, plus a `toDomain()`/`toEntity()` mapper pair, so Room's own types never leak past this module's boundary (`/ARCHITECTURE.md` §5). It adds nothing conceptually new to this document: `SyncColumns` is `SyncMetadata`'s exact 3-column shape `@Embedded` into every syncable entity, and `Converters` (one class, centralizing every `@TypeConverter`) is how the Kotlin-level types above (`Instant`, `LocalDate`, `LocalTime`, enums, `RecurrencePattern`) actually get stored as SQLite primitives. `Metric` is the one entity with neither `user_id` nor sync columns, matching its "global catalog" status above.
+
+A genuine bug was found and fixed while writing this layer: `Vision` (`:core:model`, DEV-004) originally carried both its own `updatedAt` field and `sync.updatedAt` — two columns where this document's `visions` section (above) has always specified exactly one `updated_at`. Fixed by removing the duplicate field from `Vision` itself; this section's own field list was already correct and needed no change.
+
 ## Strategic layer
 
 ### `visions`
