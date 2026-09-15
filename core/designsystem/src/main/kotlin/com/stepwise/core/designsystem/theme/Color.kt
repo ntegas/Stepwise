@@ -37,6 +37,14 @@ private val Neutral90 = Color(0xFFE4E2E6)
 private val Neutral95 = Color(0xFFF2F0F4)
 private val Neutral99 = Color(0xFFFDFBFF)
 
+// Dark-scheme-only "container" tones one step darker than their Neutral40
+// equivalent would be — Material3's tonal system has no single named stop for
+// these, so they're their own named constants rather than inline literals.
+private val IndigoContainerDark = Color(0xFF1A3AA8)
+private val TealContainerDark = Color(0xFF00504A)
+private val AmberContainerDark = Color(0xFF6B3C00)
+private val RedContainerDark = Color(0xFF93000A)
+
 internal val StepwiseLightColorScheme = lightColorScheme(
     primary = Indigo40,
     onPrimary = Color.White,
@@ -65,19 +73,19 @@ internal val StepwiseLightColorScheme = lightColorScheme(
 internal val StepwiseDarkColorScheme = darkColorScheme(
     primary = Indigo80,
     onPrimary = Indigo20,
-    primaryContainer = Color(0xFF1A3AA8),
+    primaryContainer = IndigoContainerDark,
     onPrimaryContainer = Indigo90,
     secondary = Teal80,
     onSecondary = Teal20,
-    secondaryContainer = Color(0xFF00504A),
+    secondaryContainer = TealContainerDark,
     onSecondaryContainer = Teal90,
     tertiary = Amber80,
     onTertiary = Amber20,
-    tertiaryContainer = Color(0xFF6B3C00),
+    tertiaryContainer = AmberContainerDark,
     onTertiaryContainer = Amber90,
     error = Red80,
     onError = Red20,
-    errorContainer = Color(0xFF93000A),
+    errorContainer = RedContainerDark,
     onErrorContainer = Red90,
     background = Neutral10,
     onBackground = Neutral90,

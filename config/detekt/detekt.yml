@@ -1,0 +1,29 @@
+# Extends detekt's own default ruleset (buildUponDefaultConfig = true in root
+# build.gradle.kts) — only the rules below are overridden, everything else
+# stays at detekt's default. First real deviation from the defaults, added at
+# DEV-003 once actual Compose code hit two well-known, expected frictions
+# between detekt's JVM-oriented defaults and Compose's function-as-component
+# convention (root build.gradle.kts's own comment names this as the trigger
+# condition for adding a config file — not done speculatively ahead of it).
+
+naming:
+  FunctionNaming:
+    # Composable functions are PascalCase by Compose convention (they read as
+    # components, e.g. StepwiseButton) — not a naming violation.
+    ignoreAnnotated: ["Composable"]
+
+complexity:
+  LongParameterList:
+    # Compose components commonly take more parameters than a typical JVM
+    # function (modifier, content slots, callbacks) without that being a real
+    # design smell — DEV-003's StepwiseDialog/StepwiseTopBar are ordinary
+    # examples, not code that needs restructuring.
+    ignoreAnnotated: ["Composable"]
+
+style:
+  MagicNumber:
+    # Color token files (theme/Color.kt) are lists of named color constants
+    # assigned directly to properties (e.g. `private val Indigo40 = Color(0xFF...)`)
+    # — the property name already is the "well named constant" the default
+    # rule asks for; there's no further constant to extract.
+    ignorePropertyDeclaration: true

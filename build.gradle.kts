@@ -54,12 +54,13 @@ subprojects {
     apply(plugin = "io.gitlab.arturbosch.detekt")
     apply(plugin = "org.jlleitschuh.gradle.ktlint")
 
-    // No custom rule-set file yet — detekt's own default ruleset is sufficient
-    // for now; a bespoke config.yml is added only once a real deviation from the
-    // defaults is actually needed (same "don't build it before it's justified"
-    // principle as DEV-001), not pre-authored empty.
+    // config/detekt/detekt.yml (added at DEV-003 iteration 13, once real Compose
+    // code hit real detekt findings — not pre-authored empty) only overrides
+    // FunctionNaming/LongParameterList/MagicNumber for Compose's conventions;
+    // buildUponDefaultConfig keeps every other rule at detekt's default.
     extensions.configure<DetektExtension> {
         buildUponDefaultConfig = true
         parallel = true
+        config.setFrom(files("$rootDir/config/detekt/detekt.yml"))
     }
 }

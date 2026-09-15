@@ -44,6 +44,16 @@ android {
     }
 }
 
+// Without this, Kotlin compilation defaults to whatever JDK is running Gradle
+// (21 in CI) while the block above pins Java compilation to 17, and AGP fails
+// the build outright on that mismatch ("Inconsistent JVM Target Compatibility
+// Between Java and Kotlin Tasks" — a real CI failure, DEV-003 iteration 12).
+// :core:common already uses the same jvmToolchain(...) pattern for the same
+// reason (it targets 21, since it has no Android compileOptions to match).
+kotlin {
+    jvmToolchain(17)
+}
+
 dependencies {
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
