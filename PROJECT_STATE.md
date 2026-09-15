@@ -16,7 +16,7 @@ Live status tracker. This is the one place build-order/phase history lives — o
 | 1.7 | Done | Master Autonomous Development Plan reviewed; root-level canonical file layout confirmed as canonical over the plan's `docs/`-nested alternative (Option A). `ROADMAP.md` and `DEVELOPMENT_LOG.md` created; `ANTI_ERROR_STANDARD.md` §0 (read-first) and §10 (periodic retrospective) added; S0-S3 Security Review Levels added to `SECURITY_ARCHITECTURE.md`; Skill Graph/RPG guardrail added to `PRODUCT_CANON.md`; old `ARCHITECTURE.md` §29 superseded by `ROADMAP.md` (sync-metadata column list preserved into `DATA_MODEL.md` first); `CLAUDE.md` and `DEVELOPMENT_PROTOCOL.md` updated to point at the new files. |
 | DEV-000 | Done | Repository & Architecture Preflight — see `/DEVELOPMENT_LOG.md`. No owner-level blocker found; proceeded automatically into DEV-001 per standing instruction. |
 | DEV-001 | Done | Development Foundation — see findings below. Root Gradle project + `:core:common` (Clock, IdGenerator, AppError/AppResult, Logger, DispatcherProvider), genuinely built and unit-tested locally. Hilt, repository interfaces, and every other module deferred with stated reasons (see below); no owner-level blocker. |
-| DEV-002 | In progress | Security & Quality Foundation — see findings below. ktlint + detekt static analysis wired and verified locally; first GitHub Actions CI workflow written, pending its first confirmed run. |
+| DEV-002 | Done | Security & Quality Foundation — see findings below. ktlint + detekt static analysis wired into the default `build`/`check` lifecycle; first GitHub Actions CI workflow (build/test/lint/static-analysis, dependency review, secret scan) — confirmed green on its first real run. |
 | DEV-003+ | Not started | Full sequence now tracked in `/ROADMAP.md`, not here — this table stops enumerating individual DEV tasks to avoid two places tracking the same sequence and drifting apart. |
 
 ## What exists right now
@@ -81,9 +81,9 @@ Scoped per `/ROADMAP.md`'s DEV-002 description. Much of "security documentation,
 - **Per-subsystem threat modeling** — `THREAT_MODEL.md`'s own stated policy is to write each subsystem's threat model when that subsystem is actually designed (DEV-007 Auth, DEV-008 Sync, etc.), not ahead of it; that policy stands, nothing new needed here.
 - **A bespoke detekt rule-set / dependency-vulnerability database scan (OWASP Dependency-Check style)** — GitHub's native `dependency-review-action` (PR-time) plus GitHub's own Dependabot alerts (a repository setting, not something this session can toggle) already cover the CI-gate requirement `SECURITY_TEST_MATRIX.md` names; a heavier local SCA tool is added only if a real gap in that coverage shows up.
 
-**Verification status**: everything except the CI workflow's actual execution is **VERIFIED** locally (real command output: ktlint found and fixed real violations, detekt and the full `build` passed clean on a cold run). The workflow itself is `NOT VERIFIED — CI EXECUTION REQUIRED` until it has actually run on GitHub — this sandbox cannot execute GitHub Actions directly, only check its result after a push via the GitHub API. See `DEVELOPMENT_LOG.md` for that check's outcome once performed.
+**Verification status**: **VERIFIED**, both locally and on GitHub. Locally: ktlint found and fixed real violations, detekt and the full `build` passed clean on a cold run. On GitHub (run [34935726894](https://github.com/ntegas/Stepwise/actions/runs/34935726894), commit `842e7db`, checked via the Actions API, not assumed): the `build` job (compile + unit tests + ktlintCheck + detekt) succeeded, the `secret-scan` job (gitleaks) succeeded, and `dependency-review` correctly skipped (it only runs on `pull_request` events — this was a push, so skipping was the intended behavior, not a failure).
 
-**Conclusion**: no owner-level blocker in the local work. DEV-002 is not marked fully closed until the first CI run is confirmed green (or fixed if it isn't) — see `DEVELOPMENT_LOG.md`.
+**Conclusion**: no owner-level blocker. DEV-002 is closed. Proceeding into DEV-003 (Design System Foundation) per standing instruction.
 
 ## VERIFICATION DEBT
 

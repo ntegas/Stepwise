@@ -87,4 +87,8 @@ Two genuine findings from verifying dependencies before use (`DEPENDENCY_POLICY.
 
 Action versions (`actions/checkout@v7`, `actions/setup-java@v6`, `gradle/actions/setup-gradle@v6`, `actions/dependency-review-action@v5`) were all verified live on 2026-09-15 before use, matching the "verify before implementation" instruction from the environment/decisions round — none were assumed from training data.
 
+**First CI run confirmed** (run [34935726894](https://github.com/ntegas/Stepwise/actions/runs/34935726894), commit `842e7db`, checked via the GitHub Actions API rather than assumed): `build` (compile + unit tests + ktlintCheck + detekt) succeeded, `secret-scan` (gitleaks) succeeded, `dependency-review` correctly skipped (push event, not a pull request — that job is intentionally PR-only). DEV-002 is closed.
+
+Retrospective note: this is the first time in the project that a claim of "the CI workflow works" was checked against an actual run rather than left as "should work once it runs" — the workflow was pushed, then its result was read back via `mcp__github__actions_get`/`actions_list` before declaring the task done, closing the loop the `NOT VERIFIED — CI EXECUTION REQUIRED` label exists for.
+
 This entry will be updated once the workflow's first real run on GitHub Actions is checked (this sandbox cannot execute GitHub Actions directly, only inspect the result of a run after pushing).
