@@ -1,10 +1,7 @@
-// AGP 9.4.0's built-in Kotlin support crashes on plugin application no matter
-// which Kotlin plugins are or aren't applied here — a genuine AGP 9.4.0 bug
-// (KotlinAndroidTarget / BaseVariant), confirmed via CI failures, not fixable
-// from this module. Disabled globally via android.builtInKotlin=false in the
-// root gradle.properties (see that file for the full story), which puts every
-// Android module back on the pre-AGP-9 model: apply kotlin-android and
-// kotlin-compose explicitly, same as any AGP 8.x project would.
+// AGP 8.13 (gradle/libs.versions.toml — see that file for why DEV-003 stepped
+// back from AGP 9.4.0's built-in-Kotlin support after 8 CI failures) has no
+// built-in Kotlin support: kotlin-android and kotlin-compose are applied
+// explicitly, the standard model for any AGP 8.x Android module.
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)

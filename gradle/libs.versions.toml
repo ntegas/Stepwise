@@ -12,15 +12,19 @@ kotlin-test = "2.4.20"
 # Pinned to the last stable 1.x line under the pre-rename coordinates
 # (io.gitlab.arturbosch.detekt). detekt 2.0 exists only as an alpha
 # (dev.detekt coordinates) as of this pin — reconsider once 2.0 is stable.
-# Verified working under Gradle 9.6.0 in this sandbox (DEV-003) despite a
-# known upstream Gradle-9 friction report against an older Kotlin version —
-# tested empirically here with Kotlin 2.4.20, not assumed either way.
+# Verified working under Gradle 8.14.5 (DEV-001/DEV-002).
 detekt = "1.23.8"
 ktlint-gradle = "14.2.0"
-# AGP 9.4.0 requires Gradle >=9.6.0 (checked live against the official AGP
-# release notes on 2026-09-15) — this is why the wrapper was bumped from
-# 8.14.5 to 9.6.0 as part of this DEV task, not speculatively in DEV-001.
-android-gradle-plugin = "9.4.0"
+# DEV-003 initially pinned 9.4.0 (which requires Gradle >=9.6.0) for its
+# built-in-Kotlin support, but 8 real CI failures across that feature area
+# (see gradle.properties for the full account) led to stepping back to the
+# last stable pre-9.0 line instead — no built-in-Kotlin code path to fight,
+# just the classic explicit-plugin model every AGP 8.x project already uses.
+# AGP 8.13 supports compileSdk up to API level 36.1 (developer.android.com/
+# build/releases/agp-8-13-0-release-notes, checked live), so compileSdk 36
+# (core/designsystem/build.gradle.kts) is unaffected. Gradle wrapper reverted
+# to 8.14.5 to match (AGP 8.13's minimum is Gradle 8.13).
+android-gradle-plugin = "8.13.2"
 compose-bom = "2026.08.00"
 
 [libraries]
@@ -39,12 +43,9 @@ compose-material-icons-core = { module = "androidx.compose.material:material-ico
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
-# AGP 9.4.0's built-in Kotlin support (the AGP 9.0+ default) crashes on plugin
-# application regardless of which Kotlin plugins we apply ourselves — see
-# gradle.properties' android.builtInKotlin=false comment for the full story
-# (confirmed via CI failures, not assumed). With built-in Kotlin disabled,
-# modules go back to applying kotlin-android and kotlin-compose explicitly,
-# the pre-AGP-9 model — re-adding both entries here for that.
+# AGP 8.13 (see android-gradle-plugin above) has no built-in Kotlin support —
+# this is the classic, universally-supported model: every AGP-8.x Android
+# module applies these explicitly.
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 android-library = { id = "com.android.library", version.ref = "android-gradle-plugin" }
