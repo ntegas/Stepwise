@@ -76,3 +76,23 @@ dependencies {
     testImplementation(libs.room.testing)
     testImplementation(libs.kotlinx.coroutines.test)
 }
+
+// Robolectric's sandbox classloader reflectively opens JDK internals (java.lang,
+// java.util, ...) that the JPMS module system blocks by default from JDK 17+ —
+// without these, every Robolectric-backed test fails at class-load time with
+// java.lang.IllegalAccessException from AndroidInterceptors (a real CI failure,
+// run 34987949082, not a hypothetical). This is Robolectric's own documented
+// fix for JDK 17+, not project-specific.
+tasks.withType<Test>().configureEach {
+    jvmArgs(
+        "--add-opens=java.base/java.lang=ALL-UNNAMED",
+        "--add-opens=java.base/java.util=ALL-UNNAMED",
+        "--add-opens=java.base/java.util.concurrent=ALL-UNNAMED",
+        "--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED",
+        "--add-opens=java.base/java.io=ALL-UNNAMED",
+        "--add-opens=java.base/java.net=ALL-UNNAMED",
+        "--add-opens=java.base/java.security=ALL-UNNAMED",
+        "--add-opens=java.base/java.text=ALL-UNNAMED",
+        "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED",
+    )
+}
