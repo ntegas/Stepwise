@@ -30,13 +30,16 @@ jobs:
           java-version: "21"
 
       # DEV-003 adds the first Android-Gradle-Plugin-dependent module
-      # (:core:designsystem). GitHub-hosted runners aren't behind the sandbox's
-      # proxy restriction that blocks dl.google.com, so AGP itself resolves fine
-      # here — this step only guards against the separate, well-known pitfall of
-      # unaccepted SDK licenses / a missing compileSdk 36 platform.
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v4
-
+      # (:core:designsystem). GitHub-hosted ubuntu-latest runners ship with an
+      # Android SDK preinstalled (cmdline-tools, platform-tools, accepted
+      # licenses) and aren't behind the sandbox's proxy restriction that blocks
+      # dl.google.com, so AGP itself resolves fine and Gradle/AGP auto-download
+      # fetches any missing platform (e.g. compileSdk 36) — no extra setup step
+      # needed. (A prior attempt added android-actions/setup-android@v4 here as
+      # a preemptive safety net; it failed outright — it tries to install the
+      # long-removed legacy "tools" SDK package by default — so it was removed
+      # rather than fought with, since the preinstalled SDK already covers what
+      # it was meant to guard against.)
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
 
