@@ -159,6 +159,8 @@ Scoped per `/ROADMAP.md`'s DEV-005 description: entities, relations, DAOs, index
 
 **Sixth real CI run (34988427735, commit `4449a81`) failed identically** — same 4 `StepwiseDatabaseTest` tests, same `AndroidInterceptors`/`IllegalAccessException` signature, meaning the `--add-opens` set added in the previous fix was real but incomplete. Rather than guess again, checked Robolectric's actual documented JDK 17+ configuration live (web search, multiple corroborating sources including a real-world PR applying the identical fix to another Android project): two flags were missing — `--add-opens=java.base/jdk.internal.access=ALL-UNNAMED` and `--add-opens=java.desktop/java.awt.font=ALL-UNNAMED` (the latter specifically for `AndroidInterceptors`' font-related reflection). Added both to the existing `jvmArgs(...)` block.
 
+**Seventh CI run (35080743961, commit `277db5e`) — GREEN.** Confirmed via the Actions API: `BUILD SUCCESSFUL`, all `:core:database` tests pass (9/9 — 5 `RecurrencePatternConverterTest` + 4 `StepwiseDatabaseTest`, including the `@Transaction` and Robolectric-backed DAO round-trip tests), detekt clean, ktlint clean. DEV-005 is closed. **Six real CI iterations were needed** (detekt suppressions → ktlint FQN wrapping → `Long`/`Int` compiler error → JDK toolchain mismatch → incomplete `--add-opens` set → the remaining two `--add-opens` flags) — every one a genuine, previously-undetectable-in-this-sandbox defect this module's total lack of local verification (unlike `:core:model`) made unavoidable, not repeated carelessness on the same issue. Each iteration is documented above with its own root cause and fix, per `/ANTI_ERROR_STANDARD.md`'s honesty requirement, rather than collapsed into "fixed CI issues."
+
 **Conclusion**: no owner-level blocker. DEV-005 is closed once CI confirms green (see VERIFICATION DEBT for the run link). Not a `/ROADMAP.md` checkpoint — the repository is left coherent, and work proceeds into DEV-006 (Repository & Offline Data Layer) once the product owner confirms, per this session's established task-by-task check-in pattern.
 
 ## VERIFICATION DEBT
@@ -173,12 +175,13 @@ DEV-004 — CLOSED, no debt
   run, not CI-pending) — see DEV-004 findings above for the local-only, restored-
   before-commit root build.gradle.kts workaround this required.
 
-DEV-005 — CLOSED pending CI confirmation (see PROJECT_STATE.md's DEV-005 findings
-for why no local verification is possible for this module specifically)
-- :core:database compilation, Robolectric DAO tests, ktlint, detekt — CI-only,
-  same class of debt as :core:designsystem (DEV-003). Manual line-by-line code
-  review substituted for local build/test; see DEV-005 findings above for what
-  that review covered and the two defects it found and fixed pre-commit.
+DEV-005 — CLOSED, no debt
+- :core:database compilation, Robolectric DAO tests (9/9), ktlint, detekt — CI
+  VERIFIED (run 35080743961, commit 277db5e), same class of debt as
+  :core:designsystem (DEV-003) in that no local run was ever possible here, but
+  now closed by a genuine green run rather than left CI-pending. See DEV-005
+  findings above for the manual pre-commit review this module got in place of
+  local verification, and the 6 real CI iterations it still took to reach green.
 
 New, permanent, sandbox-only limitation (not itself a defect — see DEV-003 findings
 iteration 9-11 for why):
@@ -201,4 +204,4 @@ A DEV task is not considered production-verified while a required check for it r
 
 ## Current gate
 
-DEV-000 through DEV-005 all found no owner-level blocker (see findings above). DEV-004 was `/ROADMAP.md`'s first checkpoint; DEV-005 is not a checkpoint. Per the user's explicit "DEV-005 далее" instruction, work proceeded through DEV-005 and paused here for a check-in — the general standing instruction to proceed automatically between DEV tasks resumes once the user confirms whether to continue into DEV-006 (Repository & Offline Data Layer).
+DEV-000 through DEV-005 all found no owner-level blocker (see findings above). DEV-004 was `/ROADMAP.md`'s first checkpoint; DEV-005 is not a checkpoint. Per the user's explicit "DEV-005 далее" instruction, work proceeded through DEV-005, including 6 real CI iterations to reach a genuinely green build, and paused here for a check-in — the general standing instruction to proceed automatically between DEV tasks resumes once the user confirms whether to continue into DEV-006 (Repository & Offline Data Layer).
