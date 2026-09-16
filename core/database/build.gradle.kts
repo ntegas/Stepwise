@@ -81,8 +81,12 @@ dependencies {
 // java.util, ...) that the JPMS module system blocks by default from JDK 17+ —
 // without these, every Robolectric-backed test fails at class-load time with
 // java.lang.IllegalAccessException from AndroidInterceptors (a real CI failure,
-// run 34987949082, not a hypothetical). This is Robolectric's own documented
-// fix for JDK 17+, not project-specific.
+// run 34987949082, not a hypothetical). The first attempt at this set (run
+// 34988427735) was still missing jdk.internal.access and java.desktop/
+// java.awt.font — Robolectric's own AndroidInterceptors reflects into both,
+// and the identical IllegalAccessException persisted until both were added.
+// This full list matches Robolectric's own documented JDK 17+ configuration,
+// not something specific to this project.
 tasks.withType<Test>().configureEach {
     jvmArgs(
         "--add-opens=java.base/java.lang=ALL-UNNAMED",
@@ -94,5 +98,7 @@ tasks.withType<Test>().configureEach {
         "--add-opens=java.base/java.security=ALL-UNNAMED",
         "--add-opens=java.base/java.text=ALL-UNNAMED",
         "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED",
+        "--add-opens=java.base/jdk.internal.access=ALL-UNNAMED",
+        "--add-opens=java.desktop/java.awt.font=ALL-UNNAMED",
     )
 }
