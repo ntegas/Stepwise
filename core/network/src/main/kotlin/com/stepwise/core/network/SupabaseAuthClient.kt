@@ -44,7 +44,10 @@ class SupabaseAuthClient(
     fun observeUserId(): Flow<UserId?> =
         client.auth.sessionStatus.scan<SessionStatus, UserId?>(null) { lastKnownUserId, status ->
             when (status) {
-                is SessionStatus.Authenticated -> status.session.user?.id?.let(::UserId)
+                is SessionStatus.Authenticated ->
+                    status.session.user
+                        ?.id
+                        ?.let(::UserId)
                 is SessionStatus.NotAuthenticated -> null
                 is SessionStatus.RefreshFailure, SessionStatus.Initializing -> lastKnownUserId
             }
