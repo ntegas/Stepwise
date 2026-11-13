@@ -1,6 +1,6 @@
 # Data Model
 
-Reconciled against the Master Product Concept (`/CLAUDE.md`, §1–77). This supersedes the Phase 0 data model: the biggest change is that **no entity stores its own progress as an editable column** (§62) — Goal progress, Life Area aggregates, and every period rollup are views computed from `sessions` / `session_metric_values` / `progress_events`, never a cached number a trigger writes and something else could desync from. The Phase 0 migration (`0001_init.sql`) predates this correction and will be superseded by a Phase 2 migration built against this document — it is not reused as-is.
+Reconciled against the Master Product Concept (`/CLAUDE.md`, §1–77). This supersedes the Phase 0 data model: the biggest change is that **no entity stores its own progress as an editable column** (§62) — Goal progress, Life Area aggregates, and every period rollup are views computed live from `sessions` / `session_metric_values` / `goal_activity_links` (B8 — no intermediate `progress_events` table), never a cached number a trigger writes and something else could desync from. The Phase 0 migration (`0001_init.sql`) predates this correction and will be superseded by a Phase 2 migration built against this document — it is not reused as-is.
 
 All tables carry `user_id uuid references auth.users` and RLS restricting rows to their owner (single-tenant-per-account; no sharing/networking, §69).
 
@@ -77,21 +77,24 @@ The record of one real occurrence (§22). `id, user_id, source_type (task|activi
 ### `session_metric_values`
 A Session can carry more than one metric (§23 — Running has both duration and distance). `id, session_id, metric_id, planned_value (nullable), actual_value`.
 
-### `progress_events`
-The single fan-out record (§24, §62). Generated (by a DB trigger on `session_metric_values` insert/update) as: for each `session_metric_values` row, join `goal_activity_links` on `(source_type, source_id, metric_id)` to find every Goal that cares about that metric, and write one `progress_events` row per match: `id, user_id, session_id, session_metric_value_id, goal_id, metric_id, amount, created_at`. A Task completion without any Activity/Goal link produces zero progress_events — that's fine, not every Task feeds a Goal.
+### `progress_events` — not a stored table (correction found at DEV-007)
+
+**Real inconsistency found and resolved here** (`/ANTI_ERROR_STANDARD.md` §2, same resolution mechanism already used for the Task `actual_result`/`status` correction at DEV-004): this section previously described `progress_events` as a table a DB trigger writes rows into on `session_metric_values` insert/update. That directly contradicts `/ARCHITECTURE.md`, which states three times, unambiguously (§7 Persistence Architecture: "`ProgressEvent` is one of these views, not a stored table (B8)"; §12 Progress Event Architecture: "`ProgressEvent` is not retained as a separate persisted entity (B8)... computed fresh from `session_metric_values` and `goal_activity_links` rather than stored as its own row"; §15 Analytics Architecture: "no intermediate `progress_events` table — B8") that B8 rejected a stored table in favor of a pure derivation. This section predates B8 and was never updated to match — `/ARCHITECTURE.md` §5's own doc-hierarchy statement makes it, not this section, authoritative, so B8 wins the same way B1 won the Task tension.
+
+The fan-out (§24, §62) is instead computed live, on read: for each `session_metric_values` row, join `goal_activity_links` on `(source_type, source_id, metric_id)` to find every Goal that cares about that metric, and derive `amount` per match — directly inside the `goal_progress` view (below) and any other view that needs this join, never materialized as its own row anywhere. A Task completion without any Activity/Goal link contributes nothing — that's fine, not every Task feeds a Goal. Building this derivation is DEV-019's job (Progress Calculation Engine); DEV-007's backend schema intentionally stops at the structural/write-path tables and does not include this view yet (see `PROJECT_STATE.md`'s DEV-007 findings).
 
 ### Goal progress is a view, not a column
 
 This is the §62 correction from Phase 0: `goals.current_value` must not be a stored field a trigger increments, because a stored running total is exactly the "independently maintained number that can desync" §62 forbids. Instead, a view `goal_progress` computes it live:
-- `cumulative | quantity | distance | financial | frequency` → `SUM(progress_events.amount)` for that goal, all time.
+- `cumulative | quantity | distance | financial | frequency` → `SUM(amount)` over the live `session_metric_values ⋈ goal_activity_links` join for that goal, all time (the fan-out above — no intermediate table to sum over).
 - `target` (e.g. weight) → the `actual_value` from the most recent `session_metric_values` row linked to that goal (a moving-toward-target reading, not a sum).
 - `percentage` → same "most recent reading" logic, or derived from linked Milestones' completion if the Goal is a project-style rollup.
 
-Editing or deleting a `session_metric_values` row changes `progress_events` (via the same trigger, on update/delete) which changes what the view aggregates — so §61 ("edit/delete recomputation") falls out of the architecture for free instead of being a separate recompute step someone has to remember to call.
+Editing or deleting a `session_metric_values` row changes what that live join produces on its very next read — so §61 ("edit/delete recomputation") falls out of the architecture for free instead of being a separate recompute step someone has to remember to call, and with no trigger-maintained row that could lag behind the edit.
 
 ### Other rollup views
 
-`activity_stats_weekly/monthly/yearly/lifetime`, `life_area_balance` (Attention / Execution / Goal Progress / Trend, kept as **separate** figures per §63, never blended into one score), `goal_pace`, `goal_forecast`, `execution_rate` — all computed from `sessions` / `session_metric_values` / `progress_events`. Every client (Android now, iOS and the parked web app later) reads these same views, so none of them re-implement the math.
+`activity_stats_weekly/monthly/yearly/lifetime`, `life_area_balance` (Attention / Execution / Goal Progress / Trend, kept as **separate** figures per §63, never blended into one score), `goal_pace`, `goal_forecast`, `execution_rate` — all computed from `sessions` / `session_metric_values` / `goal_activity_links` directly (the same live join as `goal_progress` above, never a `progress_events` table). Every client (Android now, iOS and the parked web app later) reads these same views, so none of them re-implement the math.
 
 ## Supporting entities
 
@@ -129,6 +132,6 @@ schedules 1─* recurrence_occurrences   (deterministic id, decision B9)
 recurrence_occurrences 0─1 sessions   (set once executed)
 tasks/activities/habits 1─* sessions   (source_type + source_id)
 sessions 1─* session_metric_values
-session_metric_values 1─* progress_events   (fan-out per linked goal)
+session_metric_values *─* goals   via goal_activity_links, joined live on read (fan-out per linked goal, no stored progress_events row — B8)
 skills *─* activities/goals   via skill_sources
 ```
