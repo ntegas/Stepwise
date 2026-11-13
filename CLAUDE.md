@@ -19,6 +19,8 @@ This file is auto-loaded at the start of every Claude Code session opened agains
 - **`/ADR/`** — one file per significant architecture decision. Check here before revisiting something that looks already-decided.
 - **`/docs/security/`** — `SECURITY_ARCHITECTURE.md` (includes the S0-S3 Security Review Levels), `THREAT_MODEL.md`, `SECURITY_TEST_MATRIX.md`, `DEPENDENCY_POLICY.md`, `INCIDENT_RESPONSE.md`, `AI_CODE_SECURITY.md`. Security is cross-cutting, not a post-development pass — read the relevant file for whatever layer you're touching (domain, sync, backend, auth, widget, notifications, billing, CI/dependencies).
 - `/docs/functional-analysis.md`, `/docs/scope-of-work.md`, `/docs/play-store-checklist.md` — supporting breakdowns, referenced from the canonical docs above.
+- `/docs/dev-plan-detailed.md` — per-DEV-task prompt/expected-result/verification-checklist detail for the same DEV-000...DEV-037 sequence `/ROADMAP.md` governs; `/ROADMAP.md` and the repository stay authoritative where the two disagree.
+- `.claude/agents/stepwise-*.md` — the internal review panel (architecture/design/logic/security/adversarial/user-flow reviewers + an administrator) invoked per DEV task before commit; see `/ROADMAP.md`'s "Internal Review Panel" section for when each runs and what it does and doesn't substitute for.
 - `/docs/android-stack.md`, `/docs/android-architecture.md` — superseded (React Native/Expo era). Historical only; never build against them.
 
 ## The one rule that overrides convenience

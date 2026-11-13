@@ -6,6 +6,8 @@ Live position (current task, blockers, decisions made, verification debt) is tra
 
 This document originates from the user's "Master Autonomous Development Plan," corrected by the explicit decisions in the round that also produced `/ANTI_ERROR_STANDARD.md` §0/§10 (see `/DEVELOPMENT_LOG.md`, Phase 1.8): canonical files stay root-level (not nested under `docs/`), and the roadmap lives here rather than inside `DEVELOPMENT_PROTOCOL.md`.
 
+`/docs/dev-plan-detailed.md` carries a per-DEV-task elaboration (prompt, expected result, verification checklist) of the same DEV-000...DEV-037 sequence — a detail layer, not a competing source of truth. This file stays authoritative for sequence, checkpoints, and process; where the two disagree, this file and the actual repository state win, per that document's own stated relationship to it.
+
 ## Operating Mode
 
 Work continuously through the approved DEV sequence below. For every DEV task, the cycle is:
@@ -172,6 +174,24 @@ Final independent audit across Product correctness, UX, Architecture, Data integ
 ## Checkpoints
 
 Expect independent external architecture/product/security review after approximately: DEV-004, DEV-009, DEV-015, DEV-022, DEV-030, DEV-034, DEV-037. Do not wait at these checkpoints unless explicitly instructed to stop — instead, leave the repository in a coherent state, update `PROJECT_STATE.md`, make the checkpoint easy to review, and continue if no blocking decision exists. The reviewer may inspect several completed DEV tasks together.
+
+## Internal Review Panel
+
+Added when continuous autonomous operation across DEV-006...DEV-037 was confirmed (see `/DEVELOPMENT_LOG.md`), to give each DEV task's diff a second look before commit without waiting on a human in the loop for every ordinary change. Six specialized critic subagents live in `.claude/agents/`, one per concern, plus an orchestrator:
+
+- `stepwise-architecture-reviewer` — module boundaries, centralization, ADR consistency.
+- `stepwise-design-reviewer` — Design System token reuse, progressive disclosure, UX-promise violations.
+- `stepwise-logic-reviewer` — domain/calculation correctness, idempotency, transaction boundaries, acceptance-criteria↔test coverage.
+- `stepwise-security-reviewer` — checklist-style S0-S3 review against `docs/security/*`.
+- `stepwise-adversarial-reviewer` — the "hacker" seat: actively tries to break the change (replay, forgery, injection, race conditions, client-trust bypass) rather than checking a list.
+- `stepwise-user-flow-reviewer` — walks concrete end-user scenarios against `PRODUCT_CANON.md`'s promise, looking for friction or broken cascades.
+- `stepwise-review-administrator` — decides which of the above a given DEV task actually needs (by security level and what it touches; the full panel runs at every checkpoint regardless), and synthesizes their findings into one BLOCKER/CRITICAL/HIGH/MEDIUM/LOW/IMPROVEMENT-sorted verdict (the same scale DEV-037's final audit uses).
+
+Each reviewer file documents its own exact trigger conditions and what it checks — this list is the index, not the authority; read the agent file itself before assuming what it covers.
+
+**This panel does not satisfy `/docs/security/AI_CODE_SECURITY.md`'s independent-review requirement for S3 work.** Every reviewer here is the same AI family as the implementer, so a clean panel result is additional internal quality assurance, never the independent-author verification S3 work requires (a genuinely separate reviewer — e.g. Codex per "Other AI Agents" below, or the product owner). Never report S3 work as "reviewed and cleared" on the panel's authority alone.
+
+A BLOCKER or CRITICAL finding blocks commit until resolved. Escalation-worthy findings (per this document's own "Stop and request a decision" list above) go to the product owner, not into a deferred-TODO note.
 
 ## Commit Discipline
 
