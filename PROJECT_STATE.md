@@ -269,19 +269,23 @@ DEV-006 — CLOSED, no debt
   real CI iterations — see DEV-006 findings above, including one genuine
   logic bug (Room/coroutines cancellation handling), not just style issues.
 
-DEV-007 — OPEN (not CI-pending for lack of a check — genuinely two different kinds
-of debt, stated separately rather than conflated):
+DEV-007 — CLOSED for CI purposes, OPEN on the independent-review item (two
+genuinely different kinds of debt, stated separately rather than conflated):
 - supabase/migrations/0002_canonical_schema.sql, supabase/tests/rls_adversarial_test.sql
   — VERIFIED, but LOCALLY, against real Postgres 16 with an auth.uid()/auth.users
   shim (not a live Supabase project) — see DEV-007 findings above. This is real,
   executed evidence, not CI-pending, but it is also explicitly NOT the independent
   S3 review AI_CODE_SECURITY.md requires (same AI authored the schema and the test).
 - core/network, data's new auth code (SupabaseClientFactory, SupabaseAuthClient,
-  EncryptedPrefsSessionManager, AuthRepositoryImpl, NetworkErrorMapping) — CI-only,
-  same class of debt as every Android module since DEV-003; additionally, the
-  RestException-subtype branch of NetworkErrorMapping.kt has zero test coverage
-  (could not verify a real supabase-kt exception's constructor compiles from this
-  sandbox) — a real coverage gap for a security-relevant function, not just an
+  EncryptedPrefsSessionManager, AuthRepositoryImpl, NetworkErrorMapping) — CI
+  VERIFIED (run 43451715912, commit c8833cd — two real CI iterations: a
+  kspDebugKotlin JsonDecodingException on the first attempt, confirmed a repeat
+  of DEV-006's own build-cache flake by re-running once and it not recurring;
+  then a genuine ktlint chain-wrapping finding on SupabaseAuthClient.kt:47,
+  fixed). The RestException-subtype branch of NetworkErrorMapping.kt still has
+  zero test coverage (could not verify a real supabase-kt exception's
+  constructor compiles from this sandbox) — a real coverage gap for a
+  security-relevant function, not just an
   environment limitation, until CI/an independent reviewer adds it.
 - The independent S3 review itself (a genuinely separate reviewer — human or a
   different AI family — re-deriving or materially extending the RLS adversarial
