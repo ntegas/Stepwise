@@ -198,6 +198,10 @@ Scoped per `/ROADMAP.md`'s DEV-006 description: repository contracts/implementat
 
 **Third real CI run (43419724585, commit `2b9cb51`) failed on an actual test, not a style check** — the first substantive failure past lint since DEV-006 started. `RepositoryTest`'s own "error mapping" test (closing the database, then calling `getById`) failed with an *uncaught* `kotlinx.coroutines.JobCancellationException` instead of the expected `AppResult.Failure(AppError.Database)`. Root cause, a genuine logic bug rather than a tooling disagreement: Room signals "the database was closed mid-call" with a `JobCancellationException` — a `CancellationException` subtype — but one tied to *Room's own* internal job, not the calling coroutine's. `runCatchingDatabaseCall`'s blanket "rethrow every `CancellationException`" rule (written at DEV-006's initial implementation, intended to protect real structured-concurrency cancellation) couldn't tell the two apart, so it rethrew Room's internal signal as if the caller's own coroutine had been cancelled — exactly backwards, since the caller's own scope was still active the whole time. Fixed by checking `currentCoroutineContext().isActive` inside the `CancellationException` catch: only rethrow when *this coroutine's own* job is actually inactive (a genuine cancellation); otherwise map it to `AppError.Database` like any other Room failure, since a "foreign" cancellation masquerading as the caller's own would otherwise let coroutines' machinery silently treat a real failure as an expected, silent cancellation — a worse outcome than the original over-broad rethrow. `DataErrorMappingTest.kt` was rewritten to test both branches for real (a genuinely-self-cancelled job's `CancellationException` still rethrows; a foreign one gets wrapped) rather than the single contrived "just throw `CancellationException`" case it had before, which didn't actually distinguish the two and would have passed either way.
 
+**Fourth CI run (43420493546, commit `2c998d2`) — GREEN.** Confirmed via the Actions API: `BUILD SUCCESSFUL`. DEV-006 is closed. **Four real CI iterations were needed** (detekt `TooGenericExceptionCaught` → ktlint/detekt line-length disagreement, resolved at the `.editorconfig` root cause → the two genuinely-joinable functions `.editorconfig` alone didn't retroactively fix → the real Room/coroutines cancellation bug) — the first two were tooling/style, the last was a genuine logic bug this module's total lack of local verification (same as `:core:database`) made unavoidable to catch any other way. `:domain` remains the one piece of this task actually exercised locally in this sandbox (compilation only, no logic to test) — see the attempted-and-failed local-build note above.
+
+Also noted for the next session: `.claude/agents/stepwise-*.md` (added earlier this session) registered as named subagents after this session's worker restart — `stepwise-architecture-reviewer`/`stepwise-logic-reviewer`/etc. are now directly invocable via the Agent tool, rather than needing the manual general-purpose-agent substitution DEV-006's review used.
+
 ## VERIFICATION DEBT
 
 ```text
@@ -218,16 +222,17 @@ DEV-005 — CLOSED, no debt
   findings above for the manual pre-commit review this module got in place of
   local verification, and the 6 real CI iterations it still took to reach green.
 
-DEV-006 — pending CI confirmation
-- :domain compilation — attempted locally, genuinely failed (see DEV-006
-  findings above for exactly what was tried and why it no longer works once
-  ksp is declared at root) — CI-only, NOT the same as :core:model's DEV-004
-  local-VERIFIED status. No unit tests exist regardless — bare interfaces,
-  nothing with logic yet.
-- :data compilation, Robolectric repository tests, ktlint, detekt — CI-only,
-  same class of debt as :core:database/:core:designsystem; cannot be built in
-  this sandbox at all (com.android.library applied). Will be closed the same
-  way DEV-005 was: by a real CI run, not by local assertion.
+DEV-006 — CLOSED, no debt
+- :domain compilation — CI-only (see DEV-006 findings above for the genuinely-
+  failed local-build attempt and why it no longer works once ksp is declared
+  at root) — NOT the same as :core:model's DEV-004 local-VERIFIED status. No
+  unit tests exist regardless — bare interfaces, nothing with logic yet.
+- :data compilation, Robolectric repository tests, ktlint, detekt — CI
+  VERIFIED (run 43420493546, commit 2c998d2), same class of debt as
+  :core:database/:core:designsystem in that no local run was ever possible,
+  but now closed by a genuine green run rather than left CI-pending. Four
+  real CI iterations — see DEV-006 findings above, including one genuine
+  logic bug (Room/coroutines cancellation handling), not just style issues.
 
 New, permanent, sandbox-only limitation (not itself a defect — see DEV-003 findings
 iteration 9-11 for why):
@@ -256,4 +261,6 @@ DEV-000 through DEV-005 all found no owner-level blocker (see findings above). D
 
 Proceeding into DEV-006 (Repository & Offline Data Layer) under this new operating mode — no further per-task pause unless an escalation condition is actually hit.
 
-**Note on CI run 43415519723** (the docs/agent-definitions-only commit, `2b7bb39`): failed on `:core:database:kspDebugKotlin` with `kotlinx.serialization.json.internal.JsonDecodingException: Expected start of the object '{', but had 'EOF' instead` — an empty/corrupted cached KSP state file, not a source-level failure (no file:line in any project source, nothing in the diff touches build inputs). Read as a build-cache flake, not a regression; not re-run in isolation (no empty-commit kick) — the next real commit (DEV-006) re-exercises the same task and will show whether it recurs.
+**Note on CI run 43415519723** (the docs/agent-definitions-only commit, `2b7bb39`): failed on `:core:database:kspDebugKotlin` with `kotlinx.serialization.json.internal.JsonDecodingException: Expected start of the object '{', but had 'EOF' instead` — an empty/corrupted cached KSP state file, not a source-level failure (no file:line in any project source, nothing in the diff touches build inputs). Read as a build-cache flake, not a regression; not re-run in isolation (no empty-commit kick) — the next real commit (DEV-006) re-exercises the same task and will show whether it recurs. Confirmed it did not recur (DEV-006's own CI runs hit different, real failures instead).
+
+DEV-006 is closed (see findings above) — four real CI iterations, no owner-level blocker. Per the continuous-autonomous-mode decision above, proceeding into DEV-007 (Authentication & Supabase Foundation) without a per-task pause. DEV-007 is S3 (Auth/RLS) — the Internal Review Panel's `stepwise-security-reviewer` and `stepwise-adversarial-reviewer` are mandatory there per `/ROADMAP.md`'s "Internal Review Panel" section, and — stated plainly, not left to be rediscovered — a clean panel result still does not satisfy `/docs/security/AI_CODE_SECURITY.md`'s independent-review requirement for S3 work.
