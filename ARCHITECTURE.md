@@ -151,7 +151,10 @@ Multi-module, organized by dependency direction rather than mirroring the featur
 :core:common              dispatchers, Result/AppError types, date/time utilities, DomainEventBus (§19.5) — pure Kotlin
 :core:model               domain models (Goal, Activity, Session, ...) — pure Kotlin, no Android/Room/network types
 :core:calculation         Calculation Engine: execution rate, pace, forecast, Life Balance math — pure Kotlin, heavily unit-tested
-:domain                   Use Cases + Repository interfaces — depends on :core:model, :core:calculation
+:domain                   Use Cases + Repository interfaces — depends on :core:model, :core:calculation, :core:common
+                          (Result/AppError types, dispatchers, DomainEventBus — a dependency-free leaf every
+                          layer above it reaches the same way, per §27; every Repository interface's signature
+                          uses AppResult/AppError directly, so this edge is load-bearing, not incidental)
 
 :core:database            Room entities/DAOs/migrations + mappers to/from :core:model — implements repository read/write for local data
 :core:network             Supabase/Postgrest client, DTOs + mappers to/from :core:model
@@ -493,7 +496,7 @@ A single structured-logging facade (e.g. Timber) with tagged categories (`sync`,
 
 - UI (Compose) never imports a Room or Supabase type — only `:core:model`/domain types.
 - Feature modules depend on `:domain`, `:core:model`, `:core:designsystem`, `:core:common` — **not** on `:core:database`, `:core:network`, or `:data`. This is enforced at the Gradle level (no dependency edge exists), not just by convention.
-- `:domain` depends only on `:core:model` and `:core:calculation` — repository *interfaces* live here, implementations do not.
+- `:domain` depends only on `:core:model`, `:core:calculation`, and `:core:common` (the same dependency-free leaf every feature module also reaches for `AppResult`/`AppError`/dispatchers — added explicitly at DEV-006 once Repository interfaces actually needed to type their signatures with it; not a new edge, just this section's own one-line summary catching up to the fact every consumer already relies on) — repository *interfaces* live here, implementations do not.
 - `:data` is the only module allowed to depend on both `:core:database` and `:core:network` — it's where the interfaces from `:domain` get implemented and wired.
 - `:core:database` and `:core:network` never depend on each other directly; `:core:sync` mediates.
 - `:domain` and every feature module depend only on the `ReminderScheduler` interface (§18) — never on `AlarmManager`, `WorkManager`, or FCM types directly; only `:core:notifications` may import those.

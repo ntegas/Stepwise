@@ -22,9 +22,11 @@ rootProject.name = "stepwise-android"
 // :data, :core:notifications, :feature:*) — each is added only by the DEV task
 // that actually populates it with real code, per ROADMAP.md's "do not create
 // speculative infrastructure." :core:common (DEV-001), :core:designsystem
-// (DEV-003), :core:model (DEV-004), and :core:database (DEV-005) exist because
-// those tasks build real content into them now.
+// (DEV-003), :core:model (DEV-004), :core:database (DEV-005), :domain and :data
+// (DEV-006) exist because those tasks build real content into them now.
 include(":core:common")
 include(":core:designsystem")
 include(":core:model")
 include(":core:database")
+include(":domain")
+include(":data")
