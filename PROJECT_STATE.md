@@ -192,6 +192,8 @@ Scoped per `/ROADMAP.md`'s DEV-006 description: repository contracts/implementat
 - **LOW, fixed**: no test existed for `runCatchingDatabaseCall`'s `CancellationException` rethrow — added `DataErrorMappingTest.kt`.
 - **IMPROVEMENT, addressed via documentation**: no repository exposes a delete method — clarified in `VisionRepository`'s KDoc (applies to every sibling interface) that a delete is `upsert` with `SyncMetadata.deletedAt` set, the same single write path, not a missing second one.
 
+**First real CI run (43417841747, commit `047f763`) failed** — a single detekt `TooGenericExceptionCaught` finding on `DataErrorMapping.kt:21`'s `catch (e: Exception)`. This confirms the earlier docs-only-commit flake (run 43415519723, `kspDebugKotlin`/`JsonDecodingException`) genuinely did not recur — this run reached a different, real failure instead of repeating the same cache error, so that earlier call not to re-run in isolation was correct. The catch itself is deliberately broad (Room/SQLite throws several distinct exception types for the same "this operation failed" fact, and `runCatchingDatabaseCall`'s whole purpose is mapping every one of them to `AppError.Database` uniformly — narrowing to one type would silently miss the others) — fixed with a justified `@Suppress("TooGenericExceptionCaught")`, matching DEV-005's established pattern for legitimately-shaped code detekt's defaults don't anticipate, rather than narrowing the catch and losing real failure coverage.
+
 ## VERIFICATION DEBT
 
 ```text

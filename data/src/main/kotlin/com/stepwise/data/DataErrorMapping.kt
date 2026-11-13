@@ -13,6 +13,12 @@ import kotlinx.coroutines.CancellationException
  * [CancellationException] is rethrown, never wrapped: swallowing it into a [AppResult.Failure]
  * would break structured-concurrency cancellation propagation for the caller.
  */
+// Deliberately broad: Room/SQLite can throw several distinct exception types for the same
+// "this write/read failed" fact (SQLiteException, IllegalStateException on a closed
+// database, IllegalArgumentException on a malformed query, ...) and this function's entire
+// purpose is to map every one of them to the same AppError.Database uniformly — narrowing
+// the catch to one exception type would silently let the others fall through unmapped.
+@Suppress("TooGenericExceptionCaught")
 internal suspend fun <T> runCatchingDatabaseCall(block: suspend () -> T): AppResult<T> =
     try {
         AppResult.Success(block())
