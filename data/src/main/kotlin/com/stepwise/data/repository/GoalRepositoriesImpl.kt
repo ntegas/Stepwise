@@ -27,8 +27,7 @@ class GoalRepositoryImpl(
     override suspend fun getById(id: GoalId): AppResult<Goal?> =
         runCatchingDatabaseCall { dao.getById(id.value)?.toDomain() }
 
-    override suspend fun upsert(goal: Goal): AppResult<Unit> =
-        runCatchingDatabaseCall { dao.upsert(goal.toEntity()) }
+    override suspend fun upsert(goal: Goal): AppResult<Unit> = runCatchingDatabaseCall { dao.upsert(goal.toEntity()) }
 }
 
 class MilestoneRepositoryImpl(

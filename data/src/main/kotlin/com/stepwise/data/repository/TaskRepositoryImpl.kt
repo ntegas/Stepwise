@@ -24,6 +24,5 @@ class TaskRepositoryImpl(
     override suspend fun getById(id: TaskId): AppResult<Task?> =
         runCatchingDatabaseCall { dao.getById(id.value)?.toDomain() }
 
-    override suspend fun upsert(task: Task): AppResult<Unit> =
-        runCatchingDatabaseCall { dao.upsert(task.toEntity()) }
+    override suspend fun upsert(task: Task): AppResult<Unit> = runCatchingDatabaseCall { dao.upsert(task.toEntity()) }
 }
