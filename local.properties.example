@@ -1,0 +1,20 @@
+# Copy this file to local.properties (already .gitignored — never commit the real file) and
+# fill in a real Supabase project's anon-public values for local development.
+#
+# The anon key is Supabase's intentionally public, client-embeddable project identifier — never
+# the service role key, which must never appear here, in any client code, or in any committed
+# file (/docs/security/SECURITY_ARCHITECTURE.md — service role protection). Row Level Security
+# is the real authorization boundary regardless of which anon key a build embeds.
+#
+# CI supplies the same values via environment variables instead (STEPWISE_DEV_SUPABASE_URL,
+# STEPWISE_DEV_SUPABASE_ANON_KEY, and the staging/prod equivalents) — see
+# core/network/build.gradle.kts for the exact lookup order.
+
+dev.SUPABASE_URL=
+dev.SUPABASE_ANON_KEY=
+
+staging.SUPABASE_URL=
+staging.SUPABASE_ANON_KEY=
+
+prod.SUPABASE_URL=
+prod.SUPABASE_ANON_KEY=

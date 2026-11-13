@@ -15,6 +15,15 @@ android {
 
     defaultConfig {
         minSdk = 26
+
+        // Real bug found and fixed during DEV-007 review (architecture reviewer, HIGH): this
+        // module now depends on :core:network, which declares an "environment" flavor dimension
+        // (dev/staging/prod — core/network/build.gradle.kts). AGP's variant-aware dependency
+        // resolution requires a consuming module to either declare the same dimension or supply
+        // a fallback, or variant matching against :core:network fails outright. :data itself has
+        // no reason to care which environment is active, so it always falls back to "dev" rather
+        // than declaring three flavors of its own for a distinction it doesn't use.
+        missingDimensionStrategy("environment", "dev")
     }
 
     compileOptions {
@@ -36,9 +45,16 @@ kotlin {
 dependencies {
     implementation(project(":domain"))
     implementation(project(":core:database"))
+    implementation(project(":core:network"))
     implementation(project(":core:model"))
     implementation(project(":core:common"))
     implementation(libs.kotlinx.coroutines.core)
+
+    // Only for io.github.jan.supabase.exceptions.RestException (NetworkErrorMapping.kt) — this
+    // module otherwise reaches supabase-kt exclusively through :core:network's own wrapper types,
+    // per ARCHITECTURE.md §5's ":core:network owns DTOs + mappers to/from :core:model."
+    implementation(platform(libs.supabase.kt.bom))
+    implementation(libs.supabase.kt)
 
     testImplementation(libs.junit4)
     testImplementation(libs.robolectric)
