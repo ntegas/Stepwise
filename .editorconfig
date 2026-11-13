@@ -8,3 +8,13 @@ root = true
 # (DEV-003, discovered via a real CI ktlint failure once actual Compose code
 # existed to check).
 ktlint_function_naming_ignore_when_annotated_with = Composable
+
+# Without this, ktlint has no line-length ceiling of its own (unset
+# max_line_length defaults to "off"), while detekt's style:MaxLineLength is
+# active by default at 120 — the two tools then disagree about whether a
+# single-expression function body "fits on the same line as the signature"
+# (DEV-006, a real CI failure: ktlint demanded joining a body onto its
+# signature line, and the joined result would then have failed detekt's own
+# 120-char limit). Setting the same 120 here is what makes ktlint's
+# function-signature wrapping rule agree with detekt instead of fighting it.
+max_line_length = 120
