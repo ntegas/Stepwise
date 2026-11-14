@@ -49,6 +49,20 @@ jobs:
       - name: Build
         run: ./gradlew build
 
+      # DEV-008: Room's exportSchema writes core/database/schemas/<version>.json as a build-time
+      # side effect (never committed automatically by CI) — this sandbox can't run KSP locally
+      # (dl.google.com blocked) to generate it either, so a real MigrationTestHelper test has had
+      # no prior-version schema to test against since the very first migration. Uploading it here
+      # is how that schema actually reaches a place this session can download and commit it from,
+      # closing the gap once rather than leaving every future migration to rediscover it.
+      - name: Upload Room schema exports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: room-schemas
+          path: core/database/schemas/
+          if-no-files-found: warn
+
   dependency-review:
     name: Dependency review
     runs-on: ubuntu-latest

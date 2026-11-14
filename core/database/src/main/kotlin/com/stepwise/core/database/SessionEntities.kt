@@ -132,4 +132,29 @@ interface SessionDao {
 
     @Query("SELECT * FROM session_metric_values WHERE sessionId = :sessionId AND deletedAt IS NULL")
     suspend fun getMetricValuesForSession(sessionId: String): List<SessionMetricValueEntity>
+
+    // The four queries below exist for DEV-008's sync write path, not DEV-006's original scope:
+    // the repository needs the row's own prior local state (to decide a blind upsert vs. a real
+    // compare-and-swap) and a way to record the version the server actually confirmed after a
+    // successful push — see SessionRepositoryImpl/OutboxDrainer's own KDoc for the full reasoning
+    // (DEV-008 review, architecture + security reviewers, HIGH: a hardcoded null expectedVersion
+    // made the CAS path unreachable and let a stale device's blind upsert resurrect a tombstone).
+
+    @Query("SELECT * FROM sessions WHERE id = :id")
+    suspend fun getById(id: String): SessionEntity?
+
+    @Query("UPDATE sessions SET version = :version WHERE id = :id")
+    suspend fun updateConfirmedVersion(
+        id: String,
+        version: Int,
+    )
+
+    @Query("SELECT * FROM session_metric_values WHERE id = :id")
+    suspend fun getMetricValueById(id: String): SessionMetricValueEntity?
+
+    @Query("UPDATE session_metric_values SET version = :version WHERE id = :id")
+    suspend fun updateMetricValueConfirmedVersion(
+        id: String,
+        version: Int,
+    )
 }

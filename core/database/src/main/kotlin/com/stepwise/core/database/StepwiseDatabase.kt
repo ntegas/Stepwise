@@ -16,7 +16,7 @@ import androidx.room.TypeConverters
  * this ever needs one.
  */
 @Database(
-    version = 1,
+    version = 2,
     entities = [
         VisionEntity::class,
         LifeAreaEntity::class,
@@ -32,6 +32,7 @@ import androidx.room.TypeConverters
         GoalActivityLinkEntity::class,
         SessionEntity::class,
         SessionMetricValueEntity::class,
+        OutboxEntryEntity::class,
     ],
     exportSchema = true,
 )
@@ -63,6 +64,8 @@ abstract class StepwiseDatabase : RoomDatabase() {
     abstract fun goalActivityLinkDao(): GoalActivityLinkDao
 
     abstract fun sessionDao(): SessionDao
+
+    abstract fun outboxDao(): OutboxDao
 
     companion object {
         const val DATABASE_NAME = "stepwise.db"
