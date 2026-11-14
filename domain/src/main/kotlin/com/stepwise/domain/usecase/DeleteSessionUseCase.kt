@@ -25,11 +25,10 @@ class DeleteSessionUseCase(
         userId: UserId,
         sessionId: SessionId,
     ): AppResult<Unit> =
-        sessionRepository.getById(sessionId).andThen { existing ->
-            verifyDeletable(existing, userId)
-        }.andThen { session ->
-            tombstone(session)
-        }
+        sessionRepository
+            .getById(sessionId)
+            .andThen { existing -> verifyDeletable(existing, userId) }
+            .andThen { session -> tombstone(session) }
 
     private fun verifyDeletable(
         session: Session?,

@@ -26,13 +26,11 @@ class EditSessionUseCase(
     private val clock: Clock,
 ) {
     suspend fun execute(command: EditSessionCommand): AppResult<Session> =
-        sessionRepository.getById(command.sessionId).andThen { existing ->
-            verifyEditable(existing, command.userId)
-        }.andThen { session ->
-            resolveMetricValues(session, command.metricValues)
-        }.andThen { (session, metricValues) ->
-            writeEdit(session, command, metricValues)
-        }
+        sessionRepository
+            .getById(command.sessionId)
+            .andThen { existing -> verifyEditable(existing, command.userId) }
+            .andThen { session -> resolveMetricValues(session, command.metricValues) }
+            .andThen { (session, metricValues) -> writeEdit(session, command, metricValues) }
 
     private fun verifyEditable(
         session: Session?,
