@@ -132,14 +132,25 @@ interface SessionDao {
 
     @Query("SELECT * FROM session_metric_values WHERE sessionId = :sessionId AND deletedAt IS NULL")
     suspend fun getMetricValuesForSession(sessionId: String): List<SessionMetricValueEntity>
+}
 
-    // The four queries below exist for DEV-008's sync write path, not DEV-006's original scope:
-    // the repository needs the row's own prior local state (to decide a blind upsert vs. a real
-    // compare-and-swap) and a way to record the version the server actually confirmed after a
-    // successful push — see SessionRepositoryImpl/OutboxDrainer's own KDoc for the full reasoning
-    // (DEV-008 review, architecture + security reviewers, HIGH: a hardcoded null expectedVersion
-    // made the CAS path unreachable and let a stale device's blind upsert resurrect a tombstone).
-
+/**
+ * The sync write path's own queries (DEV-008), split out of [SessionDao] rather than added to it
+ * directly — detekt's `TooManyFunctions` flagged [SessionDao] at exactly its 11-function
+ * threshold once these 4 were added, and every other DAO in this module sits well under that
+ * bar (`ActivityHabitEntities.kt`'s is 5, `GoalEntities.kt`'s is 7), so [SessionDao] was the one
+ * genuinely overgrown interface, not a threshold worth loosening project-wide for one file.
+ * `SessionRepositoryImpl` is the only caller of both DAOs together, same as any repository
+ * spanning more than one DAO.
+ *
+ * The repository needs the row's own prior local state (to decide a blind upsert vs. a real
+ * compare-and-swap) and a way to record the version the server actually confirmed after a
+ * successful push — see `SessionRepositoryImpl`/`OutboxDrainer`'s own KDoc for the full reasoning
+ * (DEV-008 review, architecture + security reviewers, HIGH: a hardcoded null expectedVersion made
+ * the CAS path unreachable and let a stale device's blind upsert resurrect a tombstone).
+ */
+@Dao
+interface SessionSyncDao {
     @Query("SELECT * FROM sessions WHERE id = :id")
     suspend fun getById(id: String): SessionEntity?
 

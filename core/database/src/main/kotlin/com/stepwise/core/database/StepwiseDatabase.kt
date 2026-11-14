@@ -65,6 +65,8 @@ abstract class StepwiseDatabase : RoomDatabase() {
 
     abstract fun sessionDao(): SessionDao
 
+    abstract fun sessionSyncDao(): SessionSyncDao
+
     abstract fun outboxDao(): OutboxDao
 
     companion object {

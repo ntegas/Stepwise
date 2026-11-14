@@ -5,6 +5,7 @@ import com.stepwise.core.common.AppResult
 import com.stepwise.core.common.Clock
 import com.stepwise.core.database.OutboxEntryEntity
 import com.stepwise.core.database.SessionDao
+import com.stepwise.core.database.SessionSyncDao
 import com.stepwise.core.database.StepwiseDatabase
 import com.stepwise.core.database.toDomain
 import com.stepwise.core.database.toEntity
@@ -51,6 +52,7 @@ class SessionRepositoryImpl(
     private val clock: Clock,
 ) : SessionRepository {
     private val dao: SessionDao get() = database.sessionDao()
+    private val syncDao: SessionSyncDao get() = database.sessionSyncDao()
 
     override fun observeAll(userId: UserId): Flow<List<Session>> =
         dao.observeAll(userId.value).map { entities -> entities.map { it.toDomain() } }
@@ -75,9 +77,9 @@ class SessionRepositoryImpl(
             database.withTransaction {
                 // Read existing local state BEFORE the upsert overwrites it — this is the only
                 // chance to know "was this already synced at some version" vs. "this is new."
-                val existingSessionVersion = dao.getById(session.id.value)?.sync?.version
+                val existingSessionVersion = syncDao.getById(session.id.value)?.sync?.version
                 val existingMetricValueVersions =
-                    metricValues.associate { it.id.value to dao.getMetricValueById(it.id.value)?.sync?.version }
+                    metricValues.associate { it.id.value to syncDao.getMetricValueById(it.id.value)?.sync?.version }
 
                 dao.upsertSessionWithMetricValues(session.toEntity(), metricValues.map { it.toEntity() })
 
