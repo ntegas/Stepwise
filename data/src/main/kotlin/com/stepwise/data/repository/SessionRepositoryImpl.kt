@@ -66,6 +66,9 @@ class SessionRepositoryImpl(
     override suspend fun getByClientEventId(clientEventId: String): AppResult<Session?> =
         runCatchingDatabaseCall { dao.getByClientEventId(clientEventId)?.toDomain() }
 
+    override suspend fun getById(id: SessionId): AppResult<Session?> =
+        runCatchingDatabaseCall { syncDao.getById(id.value)?.toDomain() }
+
     override suspend fun getMetricValuesForSession(sessionId: SessionId): AppResult<List<SessionMetricValue>> =
         runCatchingDatabaseCall { dao.getMetricValuesForSession(sessionId.value).map { it.toDomain() } }
 
@@ -75,13 +78,31 @@ class SessionRepositoryImpl(
     ): AppResult<Unit> =
         runCatchingDatabaseCall {
             database.withTransaction {
-                // Read existing local state BEFORE the upsert overwrites it — this is the only
-                // chance to know "was this already synced at some version" vs. "this is new."
+                // Read existing local state INSIDE this transaction, not before calling it - a
+                // real HIGH found during DEV-009 review (adversarial reviewer): an earlier draft
+                // let every caller (Use Cases) do their own getById BEFORE this transaction, then
+                // bake that version into the Session/SessionMetricValue object passed in here.
+                // That pre-read can go stale between the caller's read and this transaction
+                // actually running (a concurrent write to the same row, or an outbox drain's
+                // updateConfirmedVersion landing in between) - and since the OLD code wrote
+                // whatever version the caller's object carried straight to the local row, a
+                // genuinely newer version could get silently stomped back down, corrupting this
+                // device's own future CAS checks for that row. Fixed by never trusting the
+                // caller's own sync.version for the actual write - only this fresh, in-transaction
+                // read ever decides the version column, the same single source of truth already
+                // used for the outbox's expectedVersion.
                 val existingSessionVersion = syncDao.getById(session.id.value)?.sync?.version
                 val existingMetricValueVersions =
                     metricValues.associate { it.id.value to syncDao.getMetricValueById(it.id.value)?.sync?.version }
 
-                dao.upsertSessionWithMetricValues(session.toEntity(), metricValues.map { it.toEntity() })
+                val sessionToWrite = session.copy(sync = session.sync.copy(version = existingSessionVersion ?: 1))
+                val metricValuesToWrite =
+                    metricValues.map { metricValue ->
+                        val version = existingMetricValueVersions[metricValue.id.value] ?: 1
+                        metricValue.copy(sync = metricValue.sync.copy(version = version))
+                    }
+
+                dao.upsertSessionWithMetricValues(sessionToWrite.toEntity(), metricValuesToWrite.map { it.toEntity() })
 
                 val outbox = database.outboxDao()
                 outbox.enqueue(

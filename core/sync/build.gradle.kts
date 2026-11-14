@@ -16,14 +16,14 @@ dependencies {
     api(project(":core:model"))
     api(project(":core:common"))
     implementation(libs.kotlinx.coroutines.core)
+    // DEV-009: SyncEngine.payloadsEquivalent needs real JSON comparison (not just test fixtures
+    // reading an id back out of a payload, the only reason this was test-only before) to tell a
+    // harmless retry apart from a genuine cross-device conflict at the same deterministic id.
+    implementation(libs.kotlinx.serialization.json)
 
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.kotlin.test.junit5)
     testImplementation(libs.kotlinx.coroutines.test)
-    // FakeSyncTransport needs to read the `id` field a real payload carries, to keep its
-    // bookkeeping consistent across upsert/compareAndSwapUpdate (real PostgrestSyncClient.upsert
-    // has no separate `id` parameter either — the id lives inside the payload).
-    testImplementation(libs.kotlinx.serialization.json)
 }
 
 tasks.test {

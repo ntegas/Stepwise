@@ -1,6 +1,7 @@
 package com.stepwise.data.sync
 
 import com.stepwise.core.network.PostgrestSyncClient
+import com.stepwise.core.sync.RemoteRow
 import com.stepwise.core.sync.SyncTransport
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -30,9 +31,25 @@ class SyncTransportImpl(
     override suspend fun fetchVersion(
         table: String,
         id: String,
-    ): Int? =
-        client
-            .fetchById(table, id)
+    ): Int? = versionFrom(client.fetchById(table, id))
+
+    /**
+     * Added at DEV-009 so [com.stepwise.core.sync.SyncEngine] can tell a harmless retry apart
+     * from a genuine cross-device conflict at a shared deterministic id before blindly upserting
+     * — see `SyncEngine`'s own KDoc. One [PostgrestSyncClient.fetchById] call does for both the
+     * version and the full payload, rather than this and [fetchVersion] each fetching separately.
+     */
+    override suspend fun fetchRow(
+        table: String,
+        id: String,
+    ): RemoteRow? {
+        val row = client.fetchById(table, id)
+        val version = versionFrom(row)
+        return if (row == null || version == null) null else RemoteRow(version = version, payloadJson = row.toString())
+    }
+
+    private fun versionFrom(row: JsonObject?): Int? =
+        row
             ?.get("version")
             ?.jsonPrimitive
             ?.content
