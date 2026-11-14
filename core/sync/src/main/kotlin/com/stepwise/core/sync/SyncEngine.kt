@@ -164,8 +164,18 @@ class SyncEngine(
         // ahead of one actually enqueueing rows for it.
         val SYNCABLE_TABLES =
             setOf(
-                "life_areas", "visions", "goals", "projects", "milestones", "activities", "habits",
-                "tasks", "goal_activity_links", "schedules", "sessions", "session_metric_values",
+                "life_areas",
+                "visions",
+                "goals",
+                "projects",
+                "milestones",
+                "activities",
+                "habits",
+                "tasks",
+                "goal_activity_links",
+                "schedules",
+                "sessions",
+                "session_metric_values",
                 "recurrence_occurrences",
             )
     }
