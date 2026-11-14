@@ -65,10 +65,25 @@ object SessionIdentity {
         high: ULong,
         low: ULong,
     ): String {
-        val hex = high.toString(radix = 16).padStart(16, '0') + low.toString(radix = 16).padStart(16, '0')
-        return "${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-" +
-            "${hex.substring(16, 20)}-${hex.substring(20, 32)}"
+        val hex =
+            high.toString(radix = 16).padStart(HEX_CHARS_PER_LONG, '0') +
+                low.toString(radix = 16).padStart(HEX_CHARS_PER_LONG, '0')
+        return "${hex.substring(0, UUID_GROUP_1_END)}-" +
+            "${hex.substring(UUID_GROUP_1_END, UUID_GROUP_2_END)}-" +
+            "${hex.substring(UUID_GROUP_2_END, UUID_GROUP_3_END)}-" +
+            "${hex.substring(UUID_GROUP_3_END, UUID_GROUP_4_END)}-" +
+            "${hex.substring(UUID_GROUP_4_END, UUID_GROUP_5_END)}"
     }
+
+    // Standard UUID string format (8-4-4-4-12 hex digits) - these are the group-boundary
+    // indices into the 32-char concatenated hex string, not arbitrary values (detekt MagicNumber,
+    // found at DEV-009 review).
+    private const val HEX_CHARS_PER_LONG = 16
+    private const val UUID_GROUP_1_END = 8
+    private const val UUID_GROUP_2_END = 12
+    private const val UUID_GROUP_3_END = 16
+    private const val UUID_GROUP_4_END = 20
+    private const val UUID_GROUP_5_END = 32
 
     // Standard FNV-1a 64-bit prime/offset basis — a well-known, fixed, dependency-free
     // algorithm, applied twice to two distinct derived inputs ("seed" and "seed:low") to get
