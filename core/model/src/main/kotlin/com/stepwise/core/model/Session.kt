@@ -10,10 +10,13 @@ import kotlinx.datetime.LocalDate
  * @param sourceId intentionally a raw `String`, not [TaskId]/[ActivityId]/[HabitId] directly —
  *   same polymorphic-owner reasoning as [RecurrenceRule.ownerId]; [sourceType] is the
  *   discriminant.
- * @param clientEventId the idempotency key (concept §60, decision B4) — unique per user; a
- *   duplicate submission from a flaky connection with the same [clientEventId] upserts instead
- *   of double-counting. Distinct from [id]/[SyncMetadata.version]: this is a domain-level
- *   dedup key the *client* controls, not sync bookkeeping.
+ * @param clientEventId a defense-in-depth submission marker, unique per user (concept §60) —
+ *   **not** the idempotency key. Decision B4/`/ARCHITECTURE.md` §19.4 (corrected here at DEV-009,
+ *   after `/DATA_MODEL.md`'s own `sessions` section overstated this the same way) are explicit
+ *   that [id] itself is the real idempotency key: every sync upsert/compare-and-swap is keyed on
+ *   it, including the deterministic derivation [SessionIdentity] gives a completion. This field
+ *   only guards against a genuinely duplicated submission reaching the server under a different
+ *   [id] (e.g. a client bug), which nothing else would catch.
  * @param status **CANONICAL here** — this is the one place [ExecutionStatus] is genuinely
  *   stored, not derived (see [ExecutionStatus]'s own KDoc, and [Task]'s explicit note that its
  *   own `status` is instead a read projection off this field).

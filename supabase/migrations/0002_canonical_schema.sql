@@ -297,7 +297,11 @@ create table schedules (
 );
 
 -- The domain event source of truth (/ARCHITECTURE.md §7) — a Session + its metric values is the
--- canonical execution fact, identified by client_event_id (the idempotency key, concept §60).
+-- canonical execution fact, identified by its own (deterministic, per /ARCHITECTURE.md
+-- §19.4/DEV-009) primary key id. client_event_id is a defense-in-depth submission marker, not
+-- the idempotency mechanism itself (ARCHITECTURE.md B4/§19.4 — corrected here and in
+-- /DATA_MODEL.md at DEV-009 review; a prior draft of this comment called it "the idempotency
+-- key," which /DATA_MODEL.md's own text had also claimed before that fix).
 create table sessions (
   id uuid primary key,
   user_id uuid not null references auth.users(id) on delete cascade,

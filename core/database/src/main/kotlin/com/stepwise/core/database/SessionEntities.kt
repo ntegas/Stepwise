@@ -30,8 +30,9 @@ data class SessionEntity(
     val sourceId: String,
     val date: LocalDate,
     val status: ExecutionStatus,
-    // Unique per user (concept §60, decision B4) — the idempotency key a duplicate
-    // submission upserts against instead of double-counting.
+    // A defense-in-depth submission marker, unique per user (concept §60) - NOT the idempotency
+    // key (that's `id`, decision B4/ARCHITECTURE.md §19.4 - corrected here at DEV-009, see
+    // Session.kt's own KDoc for the full reasoning).
     val clientEventId: String,
     val notes: String?,
     @Embedded val sync: SyncColumns,

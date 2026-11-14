@@ -82,7 +82,7 @@ Language (Russian + English minimum, fully i18n-ready, no hardcoded strings), Un
 ## 13. Technical requirements that aren't a screen (§59–63)
 
 - **Offline-first** (§59): ✓ works with no connectivity; syncs on reconnect. Part of the architecture from the start, not retrofitted.
-- **Idempotency** (§60): a duplicated submission (double-tap on bad connectivity) must never double-count — enforced via a client-generated idempotency key on `sessions` (`/DATA_MODEL.md`).
+- **Idempotency** (§60): a duplicated submission (double-tap on bad connectivity) must never double-count — enforced via the Session's own deterministic id (derived from the occurrence/one-off being completed, `/ARCHITECTURE.md` §19.4/DEV-009), not a separate idempotency key; `client_event_id` on `sessions` is a defense-in-depth submission marker, not the mechanism itself (`/DATA_MODEL.md`).
 - **Edit/delete recomputation** (§61): changing or deleting a Session correctly recomputes every dependent number (Goal, Month/Year/Lifetime, Pace, Forecast, Life Balance) — guaranteed by computing all of those as views over Sessions/Progress Events rather than cached fields.
 - **Single source of truth** (§62): Sessions/Progress Events only — no independently-stored, manually-maintained totals anywhere, since those are exactly what desyncs over time.
 - **Life Area calculations kept separate** (§63): Attention / Execution / Goal Progress / Trend reported as distinct figures, never combined into one artificial score.
