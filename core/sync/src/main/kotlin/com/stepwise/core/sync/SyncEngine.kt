@@ -170,28 +170,30 @@ class SyncEngine(
             )
     }
 
+    // Single return point (detekt ReturnCount) - an if/else expression, not three early returns,
+    // covers the same three outcomes (no-known-version upsert / CAS success / CAS conflict).
     private suspend fun pushProgressAffecting(entry: OutboxEntry): PushOutcome {
         val expectedVersion = entry.expectedVersion
-        if (expectedVersion == null) {
-            return PushOutcome.Success(transport.upsert(entry.tableName, entry.payloadJson))
+        return if (expectedVersion == null) {
+            PushOutcome.Success(transport.upsert(entry.tableName, entry.payloadJson))
+        } else {
+            val confirmedVersion =
+                transport.compareAndSwapUpdate(entry.tableName, entry.entityId, expectedVersion, entry.payloadJson)
+            if (confirmedVersion != null) {
+                PushOutcome.Success(confirmedVersion)
+            } else {
+                val serverVersion = transport.fetchVersion(entry.tableName, entry.entityId) ?: expectedVersion
+                PushOutcome.Conflict(
+                    ConflictCopyRecord(
+                        id = idGenerator.newId(),
+                        tableName = entry.tableName,
+                        entityId = entry.entityId,
+                        payloadJson = entry.payloadJson,
+                        serverVersionAtConflict = serverVersion,
+                        ownerUserId = entry.ownerUserId,
+                    ),
+                )
+            }
         }
-
-        val confirmedVersion =
-            transport.compareAndSwapUpdate(entry.tableName, entry.entityId, expectedVersion, entry.payloadJson)
-        if (confirmedVersion != null) {
-            return PushOutcome.Success(confirmedVersion)
-        }
-
-        val serverVersion = transport.fetchVersion(entry.tableName, entry.entityId) ?: expectedVersion
-        return PushOutcome.Conflict(
-            ConflictCopyRecord(
-                id = idGenerator.newId(),
-                tableName = entry.tableName,
-                entityId = entry.entityId,
-                payloadJson = entry.payloadJson,
-                serverVersionAtConflict = serverVersion,
-                ownerUserId = entry.ownerUserId,
-            ),
-        )
     }
 }
