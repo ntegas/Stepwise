@@ -4,6 +4,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.stepwise.core.common.AppError
 import com.stepwise.core.common.AppResult
+import com.stepwise.core.common.FakeClock
 import com.stepwise.core.database.StepwiseDatabase
 import com.stepwise.core.model.ExecutableKind
 import com.stepwise.core.model.ExecutionStatus
@@ -97,7 +98,7 @@ class RepositoryTest {
     @Test
     fun `transaction coordination - upsertSessionWithMetricValues commits session and metric values together`() =
         runTest {
-            val repository = SessionRepositoryImpl(database.sessionDao())
+            val repository = SessionRepositoryImpl(database, FakeClock(now))
             val session =
                 Session(
                     id = SessionId("session-1"),
@@ -123,10 +124,22 @@ class RepositoryTest {
             val result = repository.upsertSessionWithMetricValues(session, listOf(metricValue))
             val loadedSession = repository.getByClientEventId("client-event-1")
             val loadedValues = repository.getMetricValuesForSession(SessionId("session-1"))
+            val outboxEntries = database.outboxDao().getAll()
 
             assertEquals(AppResult.Success(Unit), result)
             assertEquals(AppResult.Success(session), loadedSession)
             assertEquals(AppResult.Success(listOf(metricValue)), loadedValues)
+            // DEV-008: the same transaction must also enqueue an outbox row for the Session AND
+            // one per SessionMetricValue — a CRITICAL review finding (logic + architecture
+            // reviewers): an earlier version of this repository enqueued the Session header only,
+            // so the actual logged numbers (duration/distance/reps/etc.) never left the device.
+            assertEquals(2, outboxEntries.size)
+            val sessionEntry = outboxEntries.single { it.tableName == "sessions" }
+            assertEquals("session-1", sessionEntry.entityId)
+            assertTrue(sessionEntry.isProgressAffecting)
+            val metricValueEntry = outboxEntries.single { it.tableName == "session_metric_values" }
+            assertEquals("smv-duration", metricValueEntry.entityId)
+            assertTrue(metricValueEntry.isProgressAffecting)
         }
 
     @Test

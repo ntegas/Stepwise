@@ -46,9 +46,15 @@ dependencies {
     implementation(project(":domain"))
     implementation(project(":core:database"))
     implementation(project(":core:network"))
+    implementation(project(":core:sync"))
     implementation(project(":core:model"))
     implementation(project(":core:common"))
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.serialization.json)
+    // withTransaction — needed to enqueue an outbox row in the same Room transaction as the
+    // entity write it describes (ARCHITECTURE.md §9.1), spanning two different DAOs
+    // (SessionDao + OutboxDao), which a single @Transaction-annotated DAO method can't do.
+    implementation(libs.room.ktx)
 
     // Only for io.github.jan.supabase.exceptions.RestException (NetworkErrorMapping.kt) — this
     // module otherwise reaches supabase-kt exclusively through :core:network's own wrapper types,
@@ -61,6 +67,8 @@ dependencies {
     testImplementation(libs.androidx.test.junit)
     testImplementation(libs.room.testing)
     testImplementation(libs.kotlinx.coroutines.test)
+    // FakeClock (DEVELOPMENT_PROTOCOL.md rule 41 — one shared fake, not reinvented per module).
+    testImplementation(testFixtures(project(":core:common")))
 }
 
 tasks.withType<Test>().configureEach {

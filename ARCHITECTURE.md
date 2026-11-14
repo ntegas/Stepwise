@@ -158,7 +158,14 @@ Multi-module, organized by dependency direction rather than mirroring the featur
 
 :core:database            Room entities/DAOs/migrations + mappers to/from :core:model — implements repository read/write for local data
 :core:network             Supabase/Postgrest client, DTOs + mappers to/from :core:model
-:core:sync                outbox, conflict resolution, WorkManager workers — depends on :core:database + :core:network
+:core:sync                conflict-resolution DECISION logic only (SyncEngine) — pure Kotlin/JVM, depends
+                          on :core:model/:core:common alone, same reasoning as :domain (DEV-008 correction:
+                          the line below's "the ONLY module allowed to depend on both :core:database and
+                          :core:network at once" is the deliberate rule; this module's own concrete wiring
+                          to the Outbox DAO and the Postgrest client happens in :data, which already has
+                          access to both — a real inconsistency this file previously had with itself,
+                          found and fixed at DEV-008, not two independently-true statements — recorded as
+                          a new decision, not an already-settled one, in ADR-016)
 :data                     Repository implementations — depends on :domain (interfaces), :core:database, :core:network, :core:sync;
                            this is the ONLY module allowed to depend on both :core:database and :core:network at once
 
@@ -498,7 +505,7 @@ A single structured-logging facade (e.g. Timber) with tagged categories (`sync`,
 - Feature modules depend on `:domain`, `:core:model`, `:core:designsystem`, `:core:common` — **not** on `:core:database`, `:core:network`, or `:data`. This is enforced at the Gradle level (no dependency edge exists), not just by convention.
 - `:domain` depends only on `:core:model`, `:core:calculation`, and `:core:common` (the same dependency-free leaf every feature module also reaches for `AppResult`/`AppError`/dispatchers — added explicitly at DEV-006 once Repository interfaces actually needed to type their signatures with it; not a new edge, just this section's own one-line summary catching up to the fact every consumer already relies on) — repository *interfaces* live here, implementations do not.
 - `:data` is the only module allowed to depend on both `:core:database` and `:core:network` — it's where the interfaces from `:domain` get implemented and wired.
-- `:core:database` and `:core:network` never depend on each other directly; `:core:sync` mediates.
+- `:core:database` and `:core:network` never depend on each other directly; `:data` mediates (not `:core:sync`, corrected at DEV-008 — this line and §5's module-graph entry contradicted each other until then; see §5's own note on the correction, `ADR-016`, and `/PROJECT_STATE.md`'s DEV-008 findings for the full account, including why this wasn't simply assumed resolvable without being surfaced).
 - `:domain` and every feature module depend only on the `ReminderScheduler` interface (§18) — never on `AlarmManager`, `WorkManager`, or FCM types directly; only `:core:notifications` may import those.
 - `:feature:widget` follows the same rule as every other feature module — `:domain`, `:core:model`, `:core:designsystem`, `:core:common` only, no exception for it. This single rule is the entire enforcement mechanism behind §19's "no second execution path, no second source of truth."
 - `DomainEventBus` (§19.5) lives in `:core:common` specifically so `:domain` (which publishes) and `:core:sync` (which also publishes) never need to depend on each other to share it; `:feature:widget` (which subscribes) reaches it through the same `:core:common` dependency every feature module already has.
