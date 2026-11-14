@@ -64,11 +64,16 @@ class MetricResolver(
         taskId: String,
     ): AppResult<List<MetricEntry>> =
         taskRepository.getById(TaskId(taskId)).andThen { task ->
+            // task?.metricId captured as a local val, not re-read off `task` in the `else` branch -
+            // a property declared in a different module (:core:model's Task) can't be smart-cast
+            // from nullable to non-null based on a when-branch check the way a local val can
+            // (a real compile error found by CI, not a style nit).
+            val metricId = task?.metricId
             when {
                 task == null -> AppResult.Failure(AppError.Validation("Task not found", field = "sourceId"))
                 task.userId != userId -> AppResult.Failure(AppError.Auth("Not authorized for this Task"))
-                task.metricId == null -> AppResult.Success(emptyList())
-                else -> AppResult.Success(listOf(MetricEntry(task.metricId, task.plannedResult, actualValue = null)))
+                metricId == null -> AppResult.Success(emptyList())
+                else -> AppResult.Success(listOf(MetricEntry(metricId, task.plannedResult, actualValue = null)))
             }
         }
 
