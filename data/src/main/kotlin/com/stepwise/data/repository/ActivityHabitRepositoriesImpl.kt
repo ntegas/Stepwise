@@ -8,6 +8,7 @@ import com.stepwise.core.database.toEntity
 import com.stepwise.core.model.Activity
 import com.stepwise.core.model.ActivityId
 import com.stepwise.core.model.Habit
+import com.stepwise.core.model.HabitId
 import com.stepwise.core.model.UserId
 import com.stepwise.data.runCatchingDatabaseCall
 import com.stepwise.domain.repository.ActivityRepository
@@ -33,6 +34,9 @@ class HabitRepositoryImpl(
 ) : HabitRepository {
     override fun observeAll(userId: UserId): Flow<List<Habit>> =
         dao.observeAll(userId.value).map { entities -> entities.map { it.toDomain() } }
+
+    override suspend fun getById(id: HabitId): AppResult<Habit?> =
+        runCatchingDatabaseCall { dao.getById(id.value)?.toDomain() }
 
     override suspend fun upsert(habit: Habit): AppResult<Unit> =
         runCatchingDatabaseCall { dao.upsert(habit.toEntity()) }

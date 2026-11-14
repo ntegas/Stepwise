@@ -82,6 +82,19 @@ sealed class AppResult<out T> {
             is Failure -> this
         }
 
+    /**
+     * Chains a second fallible step on success, short-circuiting on the first failure — standard
+     * monadic bind, added at DEV-009 so a multi-step Use Case (validate → verify ownership →
+     * resolve → write) reads as one expression with no `return` keyword at all, rather than a
+     * block body full of early-return error checks (detekt's `ReturnCount` already caught a case
+     * of exactly this shape once, DEV-008's `SyncEngine.pushProgressAffecting`).
+     */
+    inline fun <R> andThen(transform: (T) -> AppResult<R>): AppResult<R> =
+        when (this) {
+            is Success -> transform(value)
+            is Failure -> this
+        }
+
     inline fun onSuccess(action: (T) -> Unit): AppResult<T> {
         if (this is Success) action(value)
         return this

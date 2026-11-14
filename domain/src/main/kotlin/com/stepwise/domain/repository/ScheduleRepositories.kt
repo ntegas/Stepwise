@@ -17,6 +17,9 @@ interface RecurrenceRuleRepository {
         ownerId: String,
     ): Flow<List<RecurrenceRule>>
 
+    // Added at DEV-009 - see RecurrenceRuleDao.getById's own comment.
+    suspend fun getById(id: RecurrenceRuleId): AppResult<RecurrenceRule?>
+
     suspend fun upsert(rule: RecurrenceRule): AppResult<Unit>
 }
 

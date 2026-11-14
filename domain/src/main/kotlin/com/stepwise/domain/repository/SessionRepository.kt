@@ -18,6 +18,15 @@ interface SessionRepository {
 
     suspend fun getByClientEventId(clientEventId: String): AppResult<Session?>
 
+    /**
+     * Added at DEV-009 — the Canonical Execution Engine needs to look up a Session by its own
+     * (possibly deterministically-derived, `/core/model/.../SessionIdentity.kt`) id before
+     * upserting, to tell "first-ever completion" apart from "idempotent re-completion/edit of an
+     * existing row" and to carry its current `sync.version` forward unchanged rather than ever
+     * fabricating one locally (`enforce_sync_metadata()`'s job, not this layer's).
+     */
+    suspend fun getById(id: SessionId): AppResult<Session?>
+
     suspend fun getMetricValuesForSession(sessionId: SessionId): AppResult<List<SessionMetricValue>>
 
     /**

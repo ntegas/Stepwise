@@ -104,4 +104,7 @@ interface HabitDao {
 
     @Query("SELECT * FROM habits WHERE userId = :userId AND deletedAt IS NULL")
     fun observeAll(userId: String): Flow<List<HabitEntity>>
+
+    @Query("SELECT * FROM habits WHERE id = :id")
+    suspend fun getById(id: String): HabitEntity?
 }

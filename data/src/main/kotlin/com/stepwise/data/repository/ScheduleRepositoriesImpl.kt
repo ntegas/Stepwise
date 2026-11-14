@@ -29,6 +29,9 @@ class RecurrenceRuleRepositoryImpl(
     ): Flow<List<RecurrenceRule>> =
         dao.observeForOwner(ownerType, ownerId).map { entities -> entities.map { it.toDomain() } }
 
+    override suspend fun getById(id: RecurrenceRuleId): AppResult<RecurrenceRule?> =
+        runCatchingDatabaseCall { dao.getById(id.value)?.toDomain() }
+
     override suspend fun upsert(rule: RecurrenceRule): AppResult<Unit> =
         runCatchingDatabaseCall { dao.upsert(rule.toEntity()) }
 }

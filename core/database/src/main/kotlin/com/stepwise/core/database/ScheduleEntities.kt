@@ -71,6 +71,12 @@ interface RecurrenceRuleDao {
 
     @Query("SELECT * FROM schedules WHERE userId = :userId AND deletedAt IS NULL")
     fun observeAll(userId: String): Flow<List<RecurrenceRuleEntity>>
+
+    // Added at DEV-009 - CompleteOccurrenceUseCase needs to load a rule by id to verify
+    // ownership before linking a RecurrenceOccurrence to it (security review finding: the
+    // Recurring completion path checked the source entity's ownership but never the rule's own).
+    @Query("SELECT * FROM schedules WHERE id = :id")
+    suspend fun getById(id: String): RecurrenceRuleEntity?
 }
 
 // Only materialized occurrences get a row (`/ARCHITECTURE.md` §13) — the common case

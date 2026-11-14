@@ -17,10 +17,16 @@ dependencies {
     api(project(":core:model"))
     api(project(":core:common"))
     api(libs.kotlinx.coroutines.core)
+
+    // DEV-009: the first Use Cases exist now, and with them the first real need for
+    // Fake*Repository test doubles (ARCHITECTURE.md §24, "Repository tests against fakes") —
+    // not built ahead of that need, per this file's own previous comment.
+    testImplementation(libs.junit.jupiter)
+    testImplementation(libs.kotlin.test.junit5)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(testFixtures(project(":core:common")))
 }
 
-// No test dependencies yet: every type here is a bare Repository interface with no
-// default-method logic to unit-test (ROADMAP.md's "no speculative infrastructure").
-// Fake*Repository test doubles (ARCHITECTURE.md §24, "Repository tests against fakes")
-// are deferred to whichever DEV task first needs one to test a Use Case against — most
-// likely DEV-009's Canonical Execution Engine — not built ahead of that real need.
+tasks.test {
+    useJUnitPlatform()
+}
