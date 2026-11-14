@@ -1,6 +1,6 @@
 # THREAT_MODEL.md
 
-Lightweight threat modeling is required before implementing each security-critical subsystem listed below (`SECURITY_ARCHITECTURE.md`), per rule: define assets, actors, trust boundaries, entry points, abuse cases, and mitigations, at minimum. Each subsystem's threat model is written when that subsystem is actually designed, not invented ahead of it. **Auth** and **Supabase/RLS** are written now, at DEV-007 (`ROADMAP.md`), since that task designs both together — Supabase's RLS boundary only means anything in terms of who `auth.uid()` resolves to, so the two can't be threat-modeled independently of each other. The rest remain scaffolded below until their own phase.
+Lightweight threat modeling is required before implementing each security-critical subsystem listed below (`SECURITY_ARCHITECTURE.md`), per rule: define assets, actors, trust boundaries, entry points, abuse cases, and mitigations, at minimum. Each subsystem's threat model is written when that subsystem is actually designed, not invented ahead of it. **Auth** and **Supabase/RLS** were written at DEV-007 (`ROADMAP.md`), since that task designs both together — Supabase's RLS boundary only means anything in terms of who `auth.uid()` resolves to, so the two can't be threat-modeled independently of each other. **Sync** is written at DEV-008, the task that actually designs the outbox/conflict-resolution pipeline. The rest remain scaffolded below until their own phase.
 
 ## Auth
 
@@ -33,9 +33,93 @@ Lightweight threat modeling is required before implementing each security-critic
   - *Service-role key reaches a client build, log, or repository* → covered structurally, not just by policy: the key is never referenced from any Android/Kotlin source, `BuildConfig` field, or committed file (`SECURITY_ARCHITECTURE.md` — service role protection; `AI_CODE_SECURITY.md` — AI context secret protection); it exists only in Edge Function runtime configuration.
   - *`Metric` (the one table with no `user_id`, per `DATA_MODEL.md`) is written to by an ordinary user* → it is a shared global reference catalog by design; RLS policy is read-only for the `authenticated` role and write-only via migration/service role, not "every user's own copy" — stated explicitly here so it isn't mistaken for a missed owner-column case during review.
 
+## Sync
+
+Written at DEV-008 (`ROADMAP.md`), closing the HIGH dependency DEV-007's adversarial reviewer
+flagged against this section before it existed (see the superseded note previously here, now
+resolved below). Covers the outbox/push pipeline added this task
+(`:core:sync`/`:data/sync`/`0003_sync_engine.sql`); pull/multi-device merge does not exist yet
+(see the scope note under Abuse cases) and will need this section revisited when it's added.
+
+- **Assets**: the same per-row data the **Supabase/RLS** section protects, now in flight between
+  devices — an in-transit outbox entry, a `conflict_copies` record (itself a second, append-only
+  copy of a progress-affecting row's contested payload); each row's `version`/`updated_at`
+  columns, whose integrity every compare-and-swap conflict decision in `ARCHITECTURE.md`
+  §9.1/ADR-006 depends on.
+- **Actors**: the legitimate owner syncing from one or more of their own devices (the realistic
+  multi-device case ADR-006 designs for — not another user, since RLS already excludes User B
+  from these rows entirely, same actor model as **Supabase/RLS**); a stale/offline device of the
+  owner's own, replaying a push whose earlier success acknowledgement never arrived; a
+  modified/rooted client (`SECURITY_ARCHITECTURE.md` — untrusted-client assumption) crafting a
+  Postgrest call directly rather than through `:core:sync`'s own logic.
+- **Trust boundaries**: the same client ⇄ Postgrest boundary as **Supabase/RLS** — sync adds no
+  new network boundary, only a new write *pattern* (version-checked upsert vs. compare-and-swap)
+  across that existing one. A second, purely-local boundary sits inside the outbox itself: between
+  "a write queued but not yet confirmed by the server" and "a write this device knows landed at a
+  specific server version" — `PushOutcome.Success.confirmedVersion` is what moves a row from the
+  first state to the second, and nothing downstream (a second local edit, a later CAS) can be
+  trusted until that round-trip actually happens.
+- **Entry points**: every `upsert`/`compareAndSwapUpdate` call `PostgrestSyncClient` makes
+  (same Postgrest REST surface as **Supabase/RLS**, just two specific write shapes instead of the
+  general case); the `conflict_copies` INSERT path specifically, since it is this task's one new
+  table; the free-form `tableName: String` carried on every `OutboxEntry` from
+  `OutboxEntryEntity` through to the transport call.
+- **Abuse cases**:
+  - *A stale device's retry blindly resurrects an already-tombstoned row, or overwrites a newer
+    edit from another device, via the no-conflict-detection `upsert` path* → **confirmed
+    exploitable, demonstrated live against Postgres during this task's own review (adversarial
+    reviewer) — fixed, not merely documented**: an earlier draft hardcoded `expectedVersion = null`
+    at the one production call site, so every write for an entity took the blind-upsert path
+    forever, defeating the entire compare-and-swap design. Fixed by having
+    `PushOutcome.Success` carry the server-confirmed `confirmedVersion`, and having
+    `SessionRepositoryImpl` look up each row's existing local version before enqueueing, so only a
+    genuinely-never-seen-before row gets `expectedVersion = null`. See `SyncEngine.kt`'s own KDoc
+    and the `SyncEngineTest` scenario named for this exact exploit.
+  - *A forged `version`/`updated_at` in the write body beats the compare-and-swap `version` filter*
+    → `enforce_sync_metadata()` (`0003_sync_engine.sql`) overwrites both server-side on every
+    INSERT/UPDATE regardless of what the client sent, so a client can neither claim a version
+    higher than the truth nor set its own `updated_at`; proven against real Postgres in
+    `sync_engine_adversarial_test.sql` (forged-value-discarded assertions on both a metadata-tier
+    and a progress-affecting table).
+  - *A `conflict_copies` row's embedded payload JSON claims a different `user_id` than the row's
+    own `user_id` column* → RLS only checks the column, never the JSON blob's nested content, so a
+    modified client/direct Postgrest call could otherwise insert a self-owned row whose embedded
+    payload names a different user entirely. **Confirmed, live-reproduced (adversarial reviewer,
+    MEDIUM) — fixed structurally**: `ownerUserId` is threaded as its own trusted field end-to-end
+    (`OutboxEntry` → `ConflictCopyRecord` → the row actually written), never parsed back out of
+    the payload, closing the mismatch possibility at the design level rather than needing a new
+    enforcement trigger to catch it after the fact.
+  - *A plain `INSERT` retry of an already-landed write errors on a duplicate key, or a replayed
+    push is otherwise not idempotent* → `upsert` (not `insert`) is used for every write that has no
+    confirmed prior version, specifically so repeating an already-successful push is a no-op, not
+    an error (`SyncEngine.kt`'s own KDoc); proven in `SyncEngineTest`.
+  - *A future repository enqueues an arbitrary/wrong table name, reaching Postgrest with no
+    compiler-enforced set of valid tables* → `SyncEngine.push` now rejects any `tableName` outside
+    a fixed allowlist mirroring `0003_sync_engine.sql`'s own trigger-application list before
+    calling the transport at all (added this task, architecture reviewer, LOW/IMPROVEMENT — not an
+    exploit demonstrated against today's two wired-up tables, a closed door before a second one is
+    wired in).
+  - *`conflict_copies` is read, modified, or deleted by anyone other than its own owner, including
+    the owner trying to alter their own conflict history* → cross-user SELECT denied by RLS;
+    **no UPDATE/DELETE policy exists at all**, so even the owner cannot change or remove a written
+    conflict copy (Postgres's RLS default-deny with no matching policy, deliberate — an immutable
+    historical record, same reasoning `0003_sync_engine.sql`'s own header gives); proven in
+    `sync_engine_adversarial_test.sql`.
+  - *Known gap, disclosed rather than silently narrowed — no pull/multi-device-merge path exists
+    yet* → this task implements push only (`:core:sync`'s `push`/the outbox/`OutboxDrainer`); there
+    is no inbox/pull mechanism, so "two devices converge on the same state" and "a deleted row
+    doesn't come back via a stale device's own local cache" are correct only for the push-side
+    half of the story tested here (one device's write reaching the server correctly), not yet
+    verified end-to-end through an actual pull on a second device. Tracked explicitly in
+    `/PROJECT_STATE.md`'s DEV-008 findings, not assumed solved by this section.
+- **Mitigations**: see each abuse case above; the general pattern is the same as
+  **Supabase/RLS** — the server (Postgres trigger, RLS, CHECK constraint) is the actual boundary
+  for every property these abuse cases describe, never client-side logic alone, with `:core:sync`'s
+  own correctness (the version round-trip, the allowlist) as defense in depth on top of that
+  server-side enforcement rather than a replacement for it.
+
 ## Remaining threat models (one section each, to be filled in its own phase)
 
-2. **Sync** — the outbox/conflict-resolution pipeline (`ARCHITECTURE.md` §9), cross-device data exposure. **Hard dependency confirmed at DEV-007 (adversarial reviewer, HIGH), to resolve when this section is actually written**: `0002_canonical_schema.sql`'s `version`/`updated_at` columns are plain client-settable values today with no server-side trigger enforcing either property — verified exploitable (a stale/forged `UPDATE` can resurrect a tombstone and set an arbitrary `version`/`updated_at`, unconditionally). This is explicitly out of DEV-007's scope (`ROADMAP.md` assigns "versions/revisions... conflict detection... no universal last-write-wins" to DEV-008), and RLS was never designed to catch it — only `auth.uid() = user_id`, nothing about these two columns' integrity. DEV-008 must add a `BEFORE UPDATE` trigger that force-sets `updated_at = now()` and increments `version` server-side regardless of what the client sent, plus a compare-and-swap check, before any conflict-resolution logic can actually rely on either column.
 4. **Billing** — entitlement verification, purchase-token spoofing, RTDN webhook trust.
 5. **Widget external actions** — forged/stale/replayed intents, privacy exposure on the home screen (`ARCHITECTURE.md` §19.11, §19.16 in `SECURITY_ARCHITECTURE.md`).
 6. **Notifications** — action spoofing, deep-link entity ownership.
