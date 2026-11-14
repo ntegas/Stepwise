@@ -12,9 +12,9 @@ import com.stepwise.core.model.Habit
 import com.stepwise.core.model.HabitId
 import com.stepwise.core.model.MetricId
 import com.stepwise.core.model.OccurrenceIdentity
+import com.stepwise.core.model.RecurrencePattern
 import com.stepwise.core.model.RecurrenceRule
 import com.stepwise.core.model.RecurrenceRuleId
-import com.stepwise.core.model.RecurrencePattern
 import com.stepwise.core.model.Session
 import com.stepwise.core.model.SessionIdentity
 import com.stepwise.core.model.SyncMetadata
@@ -320,7 +320,8 @@ class CompleteOccurrenceUseCaseTest {
             check(missed is AppResult.Success)
             val metricValues = sessionRepository.getMetricValuesForSession(missed.value.id)
             check(metricValues is AppResult.Success)
-            assertTrue(metricValues.value.single().sync.isDeleted)
+            val tombstoned = metricValues.value.single()
+            assertTrue(tombstoned.sync.isDeleted)
         }
 
     @Test
