@@ -114,6 +114,5 @@ class PostgrestSyncClient(
             .from(table)
             .select {
                 filter { eq("id", id) }
-            }
-            .decodeSingleOrNull<JsonObject>()
+            }.decodeSingleOrNull<JsonObject>()
 }
