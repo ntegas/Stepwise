@@ -59,7 +59,12 @@ class PostgrestSyncClient(
                 select(Columns.list("version"))
             }
         val row = result.decodeList<JsonObject>().singleOrNull()
-        val version = row?.get("version")?.jsonPrimitive?.content?.toIntOrNull()
+        val version =
+            row
+                ?.get("version")
+                ?.jsonPrimitive
+                ?.content
+                ?.toIntOrNull()
         return requireNotNull(version) { "upsert into $table returned no confirmed version" }
     }
 
@@ -92,7 +97,13 @@ class PostgrestSyncClient(
                 }
                 select(Columns.list("version"))
             }
-        return result.decodeList<JsonObject>().singleOrNull()?.get("version")?.jsonPrimitive?.content?.toIntOrNull()
+        return result
+            .decodeList<JsonObject>()
+            .singleOrNull()
+            ?.get("version")
+            ?.jsonPrimitive
+            ?.content
+            ?.toIntOrNull()
     }
 
     suspend fun fetchById(

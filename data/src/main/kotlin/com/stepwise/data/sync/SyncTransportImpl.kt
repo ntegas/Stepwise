@@ -30,7 +30,13 @@ class SyncTransportImpl(
     override suspend fun fetchVersion(
         table: String,
         id: String,
-    ): Int? = client.fetchById(table, id)?.get("version")?.jsonPrimitive?.content?.toIntOrNull()
+    ): Int? =
+        client
+            .fetchById(table, id)
+            ?.get("version")
+            ?.jsonPrimitive
+            ?.content
+            ?.toIntOrNull()
 
     private fun String.toJsonObject(): JsonObject = Json.parseToJsonElement(this) as JsonObject
 }
