@@ -87,11 +87,31 @@ class ResolveOccurrencesUseCase(
         val relevant = materialized.filterNot { it.sync.isDeleted }.filter { it.isRelevantTo(range) }
         val byOccurrenceDate = relevant.associateBy { it.occurrenceDate }
         val allDates = (virtualDates.toSet() + byOccurrenceDate.keys).sorted()
-        return allDates.map { date -> byOccurrenceDate[date]?.toResolved() ?: date.toVirtualResolved(ruleId) }
+        val resolved = allDates.map { date -> byOccurrenceDate[date]?.toResolved() ?: date.toVirtualResolved(ruleId) }
+        return dropVirtualDuplicatesOfRescheduledDays(resolved)
     }
 
     private fun RecurrenceOccurrence.isRelevantTo(range: ClosedRange<LocalDate>): Boolean =
         occurrenceDate in range || (rescheduledToDate ?: occurrenceDate) in range
+
+    /**
+     * A materialized occurrence rescheduled onto a day the rule *also* generates on its own
+     * (e.g. a Daily habit's Monday occurrence rescheduled to Tuesday, where Tuesday is itself a
+     * normal Daily date) would otherwise appear twice at that [ResolvedOccurrence.displayDate] —
+     * once as the rescheduled row, once as that day's own ordinary virtual occurrence — a real
+     * duplicate-row bug found at DEV-014 review (logic reviewer), latent in this function since
+     * DEV-010 and only now exposed by DEV-014's own Today Aggregator actually rendering the
+     * result as visible rows. [merge]'s own union is keyed on [RecurrenceOccurrence.occurrenceDate]
+     * (correctly — that's identity, per B9/this class's own KDoc), so the collision only shows up
+     * at the *display* layer; resolved here by dropping a purely virtual entry whenever some
+     * materialized entry already claims the same [ResolvedOccurrence.displayDate] — never dropping
+     * a materialized entry, including when two distinct materialized occurrences genuinely land on
+     * the same day (that's two real completions, not a duplicate).
+     */
+    private fun dropVirtualDuplicatesOfRescheduledDays(resolved: List<ResolvedOccurrence>): List<ResolvedOccurrence> {
+        val materializedDisplayDates = resolved.filter { it.isMaterialized }.map { it.displayDate }.toSet()
+        return resolved.filterNot { !it.isMaterialized && it.displayDate in materializedDisplayDates }
+    }
 
     private fun RecurrenceOccurrence.toResolved(): ResolvedOccurrence =
         ResolvedOccurrence(

@@ -193,6 +193,14 @@ class ResolveOccurrencesUseCaseTest {
             val found = result.value.singleOrNull { it.occurrenceDate == original }
             assertTrue(found != null)
             assertEquals(rescheduledTo, found?.displayDate)
+            // rescheduledTo (June 2) is itself a day this Daily rule would generate on its own -
+            // a real duplicate-row bug found at DEV-014 review (logic reviewer): the rescheduled
+            // row and June 2's own ordinary virtual occurrence both displayed at June 2 before the
+            // fix. Exactly 3 rows (June 1, the rescheduled one at June 2, June 3), not 4, and no
+            // two rows share a displayDate.
+            assertEquals(3, result.value.size)
+            val displayDates = result.value.map { it.displayDate }
+            assertEquals(displayDates.toSet().size, displayDates.size)
         }
 
     @Test
