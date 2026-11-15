@@ -395,7 +395,11 @@ Scoped via a research fork reading `Activity.kt`/`Metric.kt`'s own KDoc, `ARCHIT
 - **LOW, disclosed, not fixed** (logic reviewer): `EditActivityCommand`'s KDoc didn't carry forward the explicit "`lifeAreaId`/`icon` can be set but never cleared back to null" disclosure `EditGoalCommand`'s own KDoc states for the identical limitation. Fixed — copied the disclosure forward.
 - **MEDIUM, tracked, not independently resolvable** (same standing item as every DEV task since DEV-007): the S3 independent-review gate remains open, now also covering `ActivityAccess`/`HabitAccess`.
 
-**Verification status**: all four reviewer findings fixed before the first push (same discipline as DEV-010/011). CI run not yet confirmed — to be updated with the actual run/commit and an honest iteration count once CI completes.
+**Verification status — CI-confirmed green** (run [43710330622](https://github.com/ntegas/Stepwise/actions/runs/43710330622), commit `f5dc9f2`), after **2 real CI iterations**:
+1. Run [43709888818](https://github.com/ntegas/Stepwise/actions/runs/43709888818): two reported failures, one real, one a known flake. Real: `:domain:detekt` — `LinkActivityToGoalUseCase`'s 7-parameter constructor exceeded `LongParameterList`'s threshold; fixed with a `@Suppress("LongParameterList")` (same two-line justification convention `Goal.kt`/`Task.kt` already use for their own genuine field counts — this constructor genuinely needs all 5 repositories plus `idGenerator`/`clock` to cross-verify ownership across 2 possible source types + the Goal + the Metric before one atomic write). Flake: `:core:database:kspDebugKotlin`'s `JsonDecodingException` — the same empty/corrupted KSP cache-state issue already documented here (first seen at run 43415519723); not re-run in isolation, just re-exercised by the next push, and it did not recur.
+2. Run 43710330622: green.
+
+All four reviewer findings were fixed before the first push (same discipline as DEV-010/011); the only CI-surfaced issue was a style-level threshold, not a logic defect.
 
 ## VERIFICATION DEBT
 
@@ -575,18 +579,12 @@ two items specific to this task:
   GoalAccess/CrossEntityOwnership (authorization-adjacent code, same pattern
   as RecurrenceRuleAccess).
 
-DEV-012 — OPEN, not yet CI-confirmed:
-- :domain (ActivityAccess/HabitAccess/ActivityModels/CreateActivityUseCase/
-  EditActivityUseCase/LinkActivityToGoalUseCase/UnlinkActivityFromGoalUseCase,
-  the CrossEntityOwnership/MetricResolver refactors), core/database (the new
-  unique index + MIGRATION_2_3, schema version 2->3), data (
-  GoalActivityLinkRepositoryImpl's StepwiseDatabase/withTransaction rewrite)
-  have NOT yet been confirmed by a real CI run - every file was checked
-  proactively against the established ktlint/detekt pitfall patterns and all
-  4 internal reviewer findings were fixed pre-push (including a real HIGH
-  TOCTOU race), but that is a manual sandbox review, not the genuine green
-  run DEV-004/008/009/010/011 required before being marked CI VERIFIED. To
-  be updated with the actual run/commit once CI completes.
+DEV-012 — CLOSED for CI purposes (run
+[43710330622](https://github.com/ntegas/Stepwise/actions/runs/43710330622),
+commit f5dc9f2, 2 real CI iterations - a detekt LongParameterList finding
+plus the known KSP-cache flake, neither a logic defect, see DEV-012
+findings' "Verification status" above), OPEN on the same independent-review
+item plus two items specific to this task:
 - MIGRATION_2_3 (the new unique index) is, like MIGRATION_1_2 before it, not
   yet independently verified against Room's real generated schema JSON - same
   pre-existing gap DatabaseMigrations.kt's own KDoc already discloses for
@@ -632,7 +630,7 @@ Proceeding into DEV-006 (Repository & Offline Data Layer) under this new operati
 
 **DEV-011 (Goals Domain, S2) closed under the same continuous mode — CI-confirmed green** (run [43683301765](https://github.com/ntegas/Stepwise/actions/runs/43683301765), commit `f55d0e1`, after 2 real CI iterations — see DEV-011 findings' "Verification status" above). All four reviewers (logic, architecture, security, adversarial) converged on several real MEDIUM findings from different angles — the binary/gradable Milestone field-pairing gap (architecture + logic), the missing tombstone check on Goal/Milestone ownership (logic), no sanity check on `targetValue`/`weight`/`progressPercent` (adversarial), and no ownership check on an attached `lifeAreaId`/`projectId` (adversarial) — all fixed before the first push, following the same discipline DEV-010 established. The one CI failure that did occur was a self-inflicted test-fixture bug (`EditGoalUseCaseTest` misunderstood its own command's "null means unchanged" convention), not a production defect — the shortest and least substantive CI tail of any DEV task since DEV-006. Items carried forward explicitly: (1) the same S3 independent-review gate, now also covering `GoalAccess`/`CrossEntityOwnership`; (2) no idempotency protection on Goal/Milestone creation (adversarial, LOW, disclosed — no canon requires it here, unlike `CompleteOccurrenceUseCase`'s deterministic-id case); (3) `userId` remains trusted input at this layer, consistent with the already-accepted DEV-009/010 pattern, now with an explicit KDoc disclosure. None of the three is treated as a reason to halt. Proceeding into DEV-012 (Activities & Sessions).
 
-**DEV-012 (Activities & Sessions, S2) under the same continuous mode — review panel complete, CI not yet run.** Scoping confirmed Session CRUD was already fully built at DEV-009, narrowing this task's actual net-new work to Activity lifecycle and Activity/Habit-to-Goal linking. All four reviewers found real issues, most notably a HIGH TOCTOU race in `LinkActivityToGoalUseCase`'s original duplicate-link check (adversarial) — the same bug class DEV-009/DEV-010 already found once each for Session/RecurrenceOccurrence, now closed with the same two-layer fix (an atomic transaction + a DB-level unique index, requiring a schema migration). Also fixed: a Habit-ownership check that had already drifted from a DEV-009 sibling before being extracted (architecture), and a tombstone-check gap in DEV-011's own `CrossEntityOwnership` that this task's Activity consumer newly exposed (logic). One suggested fix (re-checking a link's source ownership on unlink) was implemented and then deliberately reverted after inspection showed it would make unlinking a link to an already-deleted source permanently impossible — the KDoc now documents why the simpler Goal-side-only check is correct, not just assumed. Items carried forward: (1) the same S3 gate, now also covering `ActivityAccess`/`HabitAccess`; (2) `GoalActivityLink.metricId` for a Habit source isn't constrained to that Habit's own metricId (disclosed, not fixed — DEV-019's call). None treated as a reason to halt. Proceeding to push and verify CI.
+**DEV-012 (Activities & Sessions, S2) closed under the same continuous mode — CI-confirmed green** (run [43710330622](https://github.com/ntegas/Stepwise/actions/runs/43710330622), commit `f5dc9f2`, after 2 real CI iterations — a detekt `LongParameterList` finding and a known KSP-cache flake, neither a logic defect). Scoping confirmed Session CRUD was already fully built at DEV-009, narrowing this task's actual net-new work to Activity lifecycle and Activity/Habit-to-Goal linking. All four reviewers found real issues, most notably a HIGH TOCTOU race in `LinkActivityToGoalUseCase`'s original duplicate-link check (adversarial) — the same bug class DEV-009/DEV-010 already found once each for Session/RecurrenceOccurrence, now closed with the same two-layer fix (an atomic transaction + a DB-level unique index, requiring a schema migration). Also fixed: a Habit-ownership check that had already drifted from a DEV-009 sibling before being extracted (architecture), and a tombstone-check gap in DEV-011's own `CrossEntityOwnership` that this task's Activity consumer newly exposed (logic). One suggested fix (re-checking a link's source ownership on unlink) was implemented and then deliberately reverted after inspection showed it would make unlinking a link to an already-deleted source permanently impossible — the KDoc now documents why the simpler Goal-side-only check is correct, not just assumed. Items carried forward: (1) the same S3 gate, now also covering `ActivityAccess`/`HabitAccess`; (2) `GoalActivityLink.metricId` for a Habit source isn't constrained to that Habit's own metricId (disclosed, not fixed — DEV-019's call). None treated as a reason to halt. Proceeding into DEV-013 (Tasks & Habits).
 
 **Note on CI run 43415519723** (the docs/agent-definitions-only commit, `2b7bb39`): failed on `:core:database:kspDebugKotlin` with `kotlinx.serialization.json.internal.JsonDecodingException: Expected start of the object '{', but had 'EOF' instead` — an empty/corrupted cached KSP state file, not a source-level failure (no file:line in any project source, nothing in the diff touches build inputs). Read as a build-cache flake, not a regression; not re-run in isolation (no empty-commit kick) — the next real commit (DEV-006) re-exercises the same task and will show whether it recurs. Confirmed it did not recur (DEV-006's own CI runs hit different, real failures instead).
 
