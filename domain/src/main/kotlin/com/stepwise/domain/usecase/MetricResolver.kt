@@ -63,18 +63,9 @@ class MetricResolver(
         userId: UserId,
         taskId: String,
     ): AppResult<List<MetricEntry>> =
-        taskRepository.getById(TaskId(taskId)).andThen { task ->
-            // task?.metricId captured as a local val, not re-read off `task` in the `else` branch -
-            // a property declared in a different module (:core:model's Task) can't be smart-cast
-            // from nullable to non-null based on a when-branch check the way a local val can
-            // (a real compile error found by CI, not a style nit).
-            val metricId = task?.metricId
-            when {
-                task == null -> AppResult.Failure(AppError.Validation("Task not found", field = "sourceId"))
-                task.userId != userId -> AppResult.Failure(AppError.Auth("Not authorized for this Task"))
-                metricId == null -> AppResult.Success(emptyList())
-                else -> AppResult.Success(listOf(MetricEntry(metricId, task.plannedResult, actualValue = null)))
-            }
+        TaskAccess.verifyOwnedTask(taskRepository, userId, TaskId(taskId)).map { task ->
+            val metricId = task.metricId
+            if (metricId == null) emptyList() else listOf(MetricEntry(metricId, task.plannedResult, actualValue = null))
         }
 
     // An Activity has no entity-level metric of its own (concept §19-20) - the caller's own

@@ -65,6 +65,14 @@ class RecurrenceDateGeneratorPatternTest {
     }
 
     @Test
+    fun `Weekly with an empty daysOfWeek throws, rather than silently never occurring`() {
+        val r = rule(RecurrencePattern.Weekly(emptySet()), startsOn = LocalDate(2026, 1, 1))
+        val range = LocalDate(2026, 1, 1)..LocalDate(2026, 1, 31)
+
+        assertFailsWith<IllegalArgumentException> { r.occurrenceDatesIn(range) }
+    }
+
+    @Test
     fun `EveryNDays starting Feb 25 in a leap year correctly lands on Feb 29`() {
         val r = rule(RecurrencePattern.EveryNDays(4), startsOn = LocalDate(2028, 2, 25))
         val dates = r.occurrenceDatesIn(LocalDate(2028, 2, 25)..LocalDate(2028, 3, 1))

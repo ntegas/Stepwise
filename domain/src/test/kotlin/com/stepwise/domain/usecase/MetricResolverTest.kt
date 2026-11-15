@@ -59,6 +59,31 @@ class MetricResolverTest {
         }
 
     @Test
+    fun `completing a Task owned by a different user is rejected`() =
+        runTest {
+            taskRepository.seed(task(metricId = null, plannedResult = null, userId = OTHER_USER))
+            val target = CompletionTarget.OneOff(ExecutableKind.TASK, "task-1", DATE)
+
+            val result = resolver.resolve(USER, target, ExecutionStatus.DONE, overrides = emptyList())
+
+            check(result is AppResult.Failure)
+            assertTrue(result.error is AppError.Auth)
+        }
+
+    @Test
+    fun `completing a tombstoned Task is rejected`() =
+        runTest {
+            val deletedSync = SyncMetadata(updatedAt = NOW, version = 1, deletedAt = NOW)
+            taskRepository.seed(task(metricId = null, plannedResult = null, sync = deletedSync))
+            val target = CompletionTarget.OneOff(ExecutableKind.TASK, "task-1", DATE)
+
+            val result = resolver.resolve(USER, target, ExecutionStatus.DONE, overrides = emptyList())
+
+            check(result is AppResult.Failure)
+            assertTrue(result.error is AppError.Domain)
+        }
+
+    @Test
     fun `completing an Activity owned by a different user is rejected`() =
         runTest {
             activityRepository.seed(
@@ -126,10 +151,12 @@ class MetricResolverTest {
     private fun task(
         metricId: MetricId?,
         plannedResult: Double?,
+        userId: UserId = USER,
+        sync: SyncMetadata = SYNC,
     ): Task =
         Task(
             id = TaskId("task-1"),
-            userId = USER,
+            userId = userId,
             goalId = null,
             projectId = null,
             lifeAreaId = null,
@@ -145,6 +172,6 @@ class MetricResolverTest {
             goalImpactScore = null,
             archived = false,
             createdAt = NOW,
-            sync = SYNC,
+            sync = sync,
         )
 }

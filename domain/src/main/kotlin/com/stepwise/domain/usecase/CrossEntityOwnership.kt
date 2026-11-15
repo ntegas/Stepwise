@@ -2,9 +2,11 @@ package com.stepwise.domain.usecase
 
 import com.stepwise.core.common.AppError
 import com.stepwise.core.common.AppResult
+import com.stepwise.core.model.ActivityId
 import com.stepwise.core.model.LifeAreaId
 import com.stepwise.core.model.ProjectId
 import com.stepwise.core.model.UserId
+import com.stepwise.domain.repository.ActivityRepository
 import com.stepwise.domain.repository.LifeAreaRepository
 import com.stepwise.domain.repository.ProjectRepository
 
@@ -59,5 +61,21 @@ object CrossEntityOwnership {
                     else -> AppResult.Success(Unit)
                 }
             }
+        }
+
+    // Delegates to ActivityAccess rather than re-implementing the same not-found/wrong-owner/
+    // tombstoned check a third way - DEV-013, for Habit.activityId ("the what this Habit is a
+    // regularity rule for"). Unlike lifeAreaId/projectId, Activity already has its own dedicated
+    // *Access object (needed elsewhere too), so this wrapper just adds the null-means-optional
+    // convention every CrossEntityOwnership consumer already expects.
+    suspend fun verifyActivity(
+        repository: ActivityRepository,
+        userId: UserId,
+        activityId: ActivityId?,
+    ): AppResult<Unit> =
+        if (activityId == null) {
+            AppResult.Success(Unit)
+        } else {
+            ActivityAccess.verifyOwnedActivity(repository, userId, activityId).map { }
         }
 }

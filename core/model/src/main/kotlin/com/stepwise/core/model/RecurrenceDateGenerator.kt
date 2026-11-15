@@ -49,7 +49,13 @@ private fun dailyDates(range: ClosedRange<LocalDate>): List<LocalDate> {
 private fun weeklyDates(
     range: ClosedRange<LocalDate>,
     daysOfWeek: Set<DayOfWeek>,
-): List<LocalDate> = dailyDates(range).filter { it.dayOfWeek in daysOfWeek }
+): List<LocalDate> {
+    // An empty set would otherwise silently produce zero occurrences forever rather than
+    // erroring - a rule that can never fire, found at DEV-013 review (same "validate the
+    // pattern's own shape, not just the range" discipline EveryNDays/Custom already follow).
+    require(daysOfWeek.isNotEmpty()) { "Weekly.daysOfWeek must not be empty" }
+    return dailyDates(range).filter { it.dayOfWeek in daysOfWeek }
+}
 
 private fun everyNDaysDates(
     range: ClosedRange<LocalDate>,
