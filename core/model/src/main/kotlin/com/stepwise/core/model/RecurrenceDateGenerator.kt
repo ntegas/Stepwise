@@ -1,5 +1,6 @@
 package com.stepwise.core.model
 
+import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 
 /**
