@@ -1,4 +1,5 @@
 import io.gitlab.arturbosch.detekt.extensions.DetektExtension
+import org.gradle.api.artifacts.VersionCatalogsExtension
 
 // Root build script. Static analysis (detekt) and formatting (ktlint) are wired
 // here, once, for every subproject (DEVELOPMENT_PROTOCOL.md rule 42: "one
@@ -65,12 +66,21 @@ plugins {
     alias(libs.plugins.hilt.android.gradle.plugin) apply false
 }
 
-// DEV-015: captured here, at this script's own top level, where the generated type-safe `libs`
-// accessor is proven to resolve (the plugins { } block above already relies on it) - neither
-// referencing it directly nor via VersionCatalogsExtension worked from inside subprojects { }
-// below (see that block's own comment for why), so the value itself is captured once here and
-// only a plain String is passed into that lambda.
-val kotlinVersionForMetadataJvm = libs.versions.kotlin.get()
+// DEV-015: the generated type-safe `libs` accessor turns out to never be a plain Project
+// property at all - Gradle only generates it as an extension specifically scoped to
+// PluginDependenciesSpec (inside plugins { }) and DependencyHandlerScope (inside
+// dependencies { }), which is why `alias(libs.plugins....)` above works but a bare
+// `libs.versions.kotlin.get()` at this exact same script scope does not. Looked up instead via
+// the real VersionCatalogsExtension API - registered on THIS (the root) project, unlike on each
+// subproject (confirmed by a real CI run: a subproject's own extension container only lists
+// [ExtraPropertiesExtension, ReportingExtension, DetektExtension, KtlintExtension]) - captured
+// into a plain String here so subprojects { } below only ever does an ordinary closure capture.
+val kotlinVersionForMetadataJvm =
+    extensions.getByType(VersionCatalogsExtension::class.java)
+        .named("libs")
+        .findVersion("kotlin")
+        .get()
+        .requiredVersion
 
 subprojects {
     apply(plugin = "io.gitlab.arturbosch.detekt")
