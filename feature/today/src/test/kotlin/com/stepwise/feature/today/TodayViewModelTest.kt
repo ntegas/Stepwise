@@ -141,7 +141,8 @@ class TodayViewModelTest {
 
             val after = vm.state.value
             check(after is TodayUiState.Content)
-            assertTrue(after.agenda.items.single().isCompleted)
+            val completedItem = after.agenda.items.single()
+            assertTrue(completedItem.isCompleted)
         }
 
     @Test
@@ -181,7 +182,8 @@ class TodayViewModelTest {
 
             val after = vm.state.value
             check(after is TodayUiState.Content)
-            assertTrue(after.agenda.items.single().isCompleted)
+            val completedItem = after.agenda.items.single()
+            assertTrue(completedItem.isCompleted)
         }
 
     @Test
@@ -194,7 +196,8 @@ class TodayViewModelTest {
             // A TodayItem pointing at a Task that doesn't exist - MetricResolver's own
             // ownership check rejects it, exercising the failure path onQuickDone used to discard
             // entirely (DEV-015 review, user-flow reviewer, HIGH).
-            val missingTaskItem = before.agenda.items.single().copy(sourceId = "no-such-task")
+            val existingItem = before.agenda.items.single()
+            val missingTaskItem = existingItem.copy(sourceId = "no-such-task")
 
             var receivedEvent: TodayEvent? = null
             val job = launch { receivedEvent = vm.events.first() }
