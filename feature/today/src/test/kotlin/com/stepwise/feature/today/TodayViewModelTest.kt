@@ -29,7 +29,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.datetime.LocalDate
@@ -198,7 +197,14 @@ class TodayViewModelTest {
 
     @Test
     fun `a completion that fails ownership verification emits a CompletionFailed event`() =
-        runTest {
+        // Not the bare runTest { } every other test here uses: runTest's own default dispatcher
+        // (StandardTestDispatcher) only QUEUES a bare launch { } rather than running it, unlike
+        // viewModelScope's (Dispatchers.Main, overridden to UnconfinedTestDispatcher in setUp) -
+        // runCurrent() right after starting the collector job below did not fix this (confirmed
+        // by a real CI run still losing the emission identically), so the test body itself now
+        // runs on an UnconfinedTestDispatcher too, matching viewModelScope's eager semantics
+        // exactly rather than trying to interleave two different dispatchers' scheduling models.
+        runTest(UnconfinedTestDispatcher()) {
             taskRepository.seed(task())
             val vm = viewModel()
             val before = vm.state.value
@@ -211,13 +217,6 @@ class TodayViewModelTest {
 
             var receivedEvent: TodayEvent? = null
             val job = launch { receivedEvent = vm.events.first() }
-            // runTest's own test-body coroutine runs on its default StandardTestDispatcher, a
-            // different dispatcher than viewModelScope's (Dispatchers.Main, overridden to
-            // UnconfinedTestDispatcher above) - the bare launch { } just above is only queued,
-            // not yet run, until this runCurrent() lets it actually reach vm.events.first()'s own
-            // suspension point (i.e. actually subscribe) before onQuickDone's eagerly-run
-            // viewModelScope coroutine emits, so the emission isn't lost to a late subscriber.
-            runCurrent()
             vm.onQuickDone(missingTaskItem)
 
             assertEquals(TodayEvent.CompletionFailed, receivedEvent)
