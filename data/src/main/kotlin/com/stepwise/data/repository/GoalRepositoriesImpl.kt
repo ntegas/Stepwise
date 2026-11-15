@@ -9,7 +9,9 @@ import com.stepwise.core.database.toEntity
 import com.stepwise.core.model.Goal
 import com.stepwise.core.model.GoalId
 import com.stepwise.core.model.Milestone
+import com.stepwise.core.model.MilestoneId
 import com.stepwise.core.model.Project
+import com.stepwise.core.model.ProjectId
 import com.stepwise.core.model.UserId
 import com.stepwise.data.runCatchingDatabaseCall
 import com.stepwise.domain.repository.GoalRepository
@@ -36,6 +38,9 @@ class MilestoneRepositoryImpl(
     override fun observeForGoal(goalId: GoalId): Flow<List<Milestone>> =
         dao.observeForGoal(goalId.value).map { entities -> entities.map { it.toDomain() } }
 
+    override suspend fun getById(id: MilestoneId): AppResult<Milestone?> =
+        runCatchingDatabaseCall { dao.getById(id.value)?.toDomain() }
+
     override suspend fun upsert(milestone: Milestone): AppResult<Unit> =
         runCatchingDatabaseCall { dao.upsert(milestone.toEntity()) }
 }
@@ -45,6 +50,9 @@ class ProjectRepositoryImpl(
 ) : ProjectRepository {
     override fun observeAll(userId: UserId): Flow<List<Project>> =
         dao.observeAll(userId.value).map { entities -> entities.map { it.toDomain() } }
+
+    override suspend fun getById(id: ProjectId): AppResult<Project?> =
+        runCatchingDatabaseCall { dao.getById(id.value)?.toDomain() }
 
     override suspend fun upsert(project: Project): AppResult<Unit> =
         runCatchingDatabaseCall { dao.upsert(project.toEntity()) }

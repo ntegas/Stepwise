@@ -144,6 +144,10 @@ interface MilestoneDao {
 
     @Query("SELECT * FROM milestones WHERE goalId = :goalId AND deletedAt IS NULL ORDER BY sortOrder")
     fun observeForGoal(goalId: String): Flow<List<MilestoneEntity>>
+
+    // Added at DEV-011 - see MilestoneRepository.getById's own comment.
+    @Query("SELECT * FROM milestones WHERE id = :id")
+    suspend fun getById(id: String): MilestoneEntity?
 }
 
 @Entity(tableName = "projects", indices = [Index("userId"), Index("goalId")])
@@ -186,4 +190,8 @@ interface ProjectDao {
 
     @Query("SELECT * FROM projects WHERE userId = :userId AND deletedAt IS NULL")
     fun observeAll(userId: String): Flow<List<ProjectEntity>>
+
+    // Added at DEV-011 - see ProjectRepository.getById's own comment.
+    @Query("SELECT * FROM projects WHERE id = :id")
+    suspend fun getById(id: String): ProjectEntity?
 }
