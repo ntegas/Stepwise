@@ -173,7 +173,7 @@ class RecurrenceDateGeneratorBoundsTest {
     }
 
     @Test
-    fun `Custom supports FREQ=YEARLY;BYMONTH;BYMONTHDAY for an annual date`() {
+    fun `Custom supports FREQ=YEARLY with BYMONTH and BYMONTHDAY for an annual date`() {
         val r = rule(RecurrencePattern.Custom("FREQ=YEARLY;BYMONTH=7;BYMONTHDAY=4"), startsOn = LocalDate(2020, 1, 1))
         val dates = r.occurrenceDatesIn(LocalDate(2026, 1, 1)..LocalDate(2028, 12, 31))
 
