@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.datetime.LocalDate
@@ -210,6 +211,13 @@ class TodayViewModelTest {
 
             var receivedEvent: TodayEvent? = null
             val job = launch { receivedEvent = vm.events.first() }
+            // runTest's own test-body coroutine runs on its default StandardTestDispatcher, a
+            // different dispatcher than viewModelScope's (Dispatchers.Main, overridden to
+            // UnconfinedTestDispatcher above) - the bare launch { } just above is only queued,
+            // not yet run, until this runCurrent() lets it actually reach vm.events.first()'s own
+            // suspension point (i.e. actually subscribe) before onQuickDone's eagerly-run
+            // viewModelScope coroutine emits, so the emission isn't lost to a late subscriber.
+            runCurrent()
             vm.onQuickDone(missingTaskItem)
 
             assertEquals(TodayEvent.CompletionFailed, receivedEvent)
