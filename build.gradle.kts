@@ -1,5 +1,4 @@
 import io.gitlab.arturbosch.detekt.extensions.DetektExtension
-import org.gradle.api.artifacts.VersionCatalogsExtension
 
 // Root build script. Static analysis (detekt) and formatting (ktlint) are wired
 // here, once, for every subproject (DEVELOPMENT_PROTOCOL.md rule 42: "one
@@ -66,6 +65,13 @@ plugins {
     alias(libs.plugins.hilt.android.gradle.plugin) apply false
 }
 
+// DEV-015: captured here, at this script's own top level, where the generated type-safe `libs`
+// accessor is proven to resolve (the plugins { } block above already relies on it) - neither
+// referencing it directly nor via VersionCatalogsExtension worked from inside subprojects { }
+// below (see that block's own comment for why), so the value itself is captured once here and
+// only a plain String is passed into that lambda.
+val kotlinVersionForMetadataJvm = libs.versions.kotlin.get()
+
 subprojects {
     apply(plugin = "io.gitlab.arturbosch.detekt")
     apply(plugin = "org.jlleitschuh.gradle.ktlint")
@@ -87,18 +93,12 @@ subprojects {
     // default is too old to parse metadata written by this project's own kotlin = "2.4.20"
     // compiler. Forcing the same version everywhere - this library is co-versioned with the
     // Kotlin compiler itself - is the documented fix, not a Hilt/KSP/AGP version bump (nothing
-    // else here is actually incompatible).
-    // The generated type-safe `libs` accessor (used fine in this file's own top-level plugins {}
-    // block) is a member of THIS script's own generated class, not a genuine Project extension -
-    // it isn't visible inside a subprojects { } lambda, which configures a different Project
-    // object entirely. Looking the catalog up via the real VersionCatalogsExtension API works
-    // anywhere, since that's an ordinary registered project extension.
-    val kotlinVersionForMetadataJvm =
-        extensions.getByType(VersionCatalogsExtension::class.java)
-            .named("libs")
-            .findVersion("kotlin")
-            .get()
-            .requiredVersion
+    // else here is actually incompatible). kotlinVersionForMetadataJvm is captured above, not
+    // looked up here: neither the generated `libs` accessor nor VersionCatalogsExtension
+    // resolves inside this lambda (each subproject's own extension container doesn't carry it -
+    // confirmed by a real CI run listing only [ExtraPropertiesExtension, ReportingExtension,
+    // DetektExtension, KtlintExtension] as registered), so the plain String value is all this
+    // scope ever touches.
     configurations.all {
         resolutionStrategy {
             force("org.jetbrains.kotlin:kotlin-metadata-jvm:$kotlinVersionForMetadataJvm")
