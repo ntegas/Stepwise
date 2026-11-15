@@ -121,9 +121,16 @@ class EditGoalUseCaseTest {
     @Test
     fun `setting a targetValue with no unit is rejected via edit`() =
         runTest {
-            goalRepository.seed(targetValueGoal())
+            // unit=null on the command means "leave unchanged" (EditGoalCommand's own
+            // convention), so this must start from a Goal whose existing unit is already null -
+            // otherwise the existing unit survives the edit and validation sees a paired value.
+            // METRIC (not in TARGET_FREE_MODES/TARGET_REQUIRED_MODES) isolates the unit-pairing
+            // rule from the mode-vs-targetValue rules checked earlier in GoalValidation.validate.
+            val metricGoal =
+                targetValueGoal().copy(progressMode = GoalProgressMode.METRIC, targetValue = null, unit = null)
+            goalRepository.seed(metricGoal)
             val command =
-                EditGoalCommand(userId = OWNER, goalId = GoalId("goal-1"), targetValue = 500.0, unit = null)
+                EditGoalCommand(userId = OWNER, goalId = GoalId("goal-1"), targetValue = 500.0)
 
             val result = useCase.execute(command)
 
