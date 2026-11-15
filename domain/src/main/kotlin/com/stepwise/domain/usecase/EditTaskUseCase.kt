@@ -11,6 +11,7 @@ import com.stepwise.domain.repository.GoalRepository
 import com.stepwise.domain.repository.LifeAreaRepository
 import com.stepwise.domain.repository.ProjectRepository
 import com.stepwise.domain.repository.TaskRepository
+import kotlinx.datetime.LocalDate
 
 /**
  * Edits an existing [Task]'s own fields (`/ROADMAP.md` DEV-013) — never a Session/execution
@@ -73,7 +74,7 @@ class EditTaskUseCase(
             goalId = command.goalId ?: existing.goalId,
             projectId = command.projectId ?: existing.projectId,
             lifeAreaId = command.lifeAreaId ?: existing.lifeAreaId,
-            date = if (command.clearDate) null else (command.date ?: existing.date),
+            date = resolveDate(existing, command),
             time = command.time ?: existing.time,
             deadline = command.deadline ?: existing.deadline,
             durationMinutes = command.durationMinutes ?: existing.durationMinutes,
@@ -85,4 +86,9 @@ class EditTaskUseCase(
             archived = command.archived ?: existing.archived,
             sync = existing.sync.copy(updatedAt = clock.now()),
         )
+
+    private fun resolveDate(
+        existing: Task,
+        command: EditTaskCommand,
+    ): LocalDate? = if (command.clearDate) null else (command.date ?: existing.date)
 }
