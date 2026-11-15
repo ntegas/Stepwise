@@ -7,12 +7,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -166,7 +166,7 @@ private fun TodayItemRow(
             if (isPending) {
                 CircularProgressIndicator(modifier = Modifier.size(PendingIndicatorSize))
             } else {
-                val icon = if (item.isCompleted) Icons.Filled.CheckCircle else Icons.Filled.RadioButtonUnchecked
+                val icon = if (item.isCompleted) Icons.Filled.CheckCircle else Icons.Outlined.CheckCircle
                 val descriptionRes =
                     if (item.isCompleted) R.string.today_item_completed else R.string.today_item_mark_done
                 IconButton(onClick = { onQuickDone(item) }, enabled = !item.isCompleted) {
