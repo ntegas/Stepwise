@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Stepwise</string>
+    <string name="nav_tab_today">Сегодня</string>
+    <string name="nav_tab_goals">Цели</string>
+    <string name="nav_tab_today_content_description">Сегодня</string>
+    <string name="nav_tab_goals_content_description">Цели</string>
 </resources>

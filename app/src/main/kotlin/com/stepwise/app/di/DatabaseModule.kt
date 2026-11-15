@@ -3,7 +3,11 @@ package com.stepwise.app.di
 import android.content.Context
 import androidx.room.Room
 import com.stepwise.core.database.ActivityDao
+import com.stepwise.core.database.GoalDao
 import com.stepwise.core.database.HabitDao
+import com.stepwise.core.database.LifeAreaDao
+import com.stepwise.core.database.MilestoneDao
+import com.stepwise.core.database.ProjectDao
 import com.stepwise.core.database.RecurrenceRuleDao
 import com.stepwise.core.database.STEPWISE_DATABASE_MIGRATIONS
 import com.stepwise.core.database.StepwiseDatabase
@@ -50,4 +54,16 @@ object DatabaseModule {
 
     @Provides
     fun provideRecurrenceRuleDao(database: StepwiseDatabase): RecurrenceRuleDao = database.recurrenceRuleDao()
+
+    @Provides
+    fun provideLifeAreaDao(database: StepwiseDatabase): LifeAreaDao = database.lifeAreaDao()
+
+    @Provides
+    fun provideGoalDao(database: StepwiseDatabase): GoalDao = database.goalDao()
+
+    @Provides
+    fun provideMilestoneDao(database: StepwiseDatabase): MilestoneDao = database.milestoneDao()
+
+    @Provides
+    fun provideProjectDao(database: StepwiseDatabase): ProjectDao = database.projectDao()
 }

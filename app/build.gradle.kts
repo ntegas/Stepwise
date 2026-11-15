@@ -57,6 +57,7 @@ dependencies {
     implementation(project(":core:designsystem"))
     implementation(project(":feature:today"))
     implementation(project(":feature:onboarding-auth"))
+    implementation(project(":feature:goals"))
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)

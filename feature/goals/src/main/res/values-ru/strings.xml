@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="goals_title">Цели</string>
+    <string name="goals_loading">Загрузка целей…</string>
+    <string name="goals_empty">Пока нет целей — нажмите +, чтобы создать первую.</string>
+    <string name="goals_section_active">Активные</string>
+    <string name="goals_section_completed">Завершённые</string>
+    <string name="goals_section_archived">В архиве</string>
+    <string name="goals_status_paused">На паузе</string>
+    <string name="goals_milestones_progress">%1$d/%2$d этапов</string>
+    <string name="goals_add_content_description">Новая цель</string>
+
+    <string name="goal_form_title_create">Новая цель</string>
+    <string name="goal_form_title_edit">Редактировать цель</string>
+    <string name="goal_form_name_label">Название цели</string>
+    <string name="goal_form_target_label">Цель (значение)</string>
+    <string name="goal_form_unit_label">Единица измерения</string>
+    <string name="goal_form_deadline_label">Срок (ГГГГ-ММ-ДД)</string>
+    <string name="goal_form_more_options">Дополнительные параметры</string>
+    <string name="goal_form_life_area_label">Сфера жизни</string>
+    <string name="goal_form_life_area_none">Не выбрано</string>
+    <string name="goal_form_project_label">Проект</string>
+    <string name="goal_form_project_none">Не выбрано</string>
+    <string name="goal_form_category_label">Категория</string>
+    <string name="goal_form_description_label">Описание</string>
+    <string name="goal_form_priority_label">Приоритет</string>
+    <string name="goal_form_save">Сохранить</string>
+    <string name="goal_form_name_required">Укажите название цели</string>
+    <string name="goal_form_deadline_invalid">Введите корректную дату (ГГГГ-ММ-ДД)</string>
+    <string name="goal_form_target_invalid">Целевое значение должно быть положительным числом</string>
+    <string name="goal_form_priority_invalid">Приоритет должен быть целым числом</string>
+    <string name="goal_form_error_generic">Не удалось сохранить цель — попробуйте снова.</string>
+    <string name="goal_form_back_content_description">Назад</string>
+
+    <string name="goal_detail_milestones_header">Этапы</string>
+    <string name="goal_detail_no_milestones">Пока нет этапов.</string>
+    <string name="goal_detail_add_milestone">Добавить этап</string>
+    <string name="goal_detail_pause">Приостановить</string>
+    <string name="goal_detail_resume">Продолжить</string>
+    <string name="goal_detail_complete">Завершить</string>
+    <string name="goal_detail_archive">В архив</string>
+    <string name="goal_detail_reopen">Вернуть в активные</string>
+    <string name="goal_detail_edit">Изменить</string>
+    <string name="goal_detail_error">Не удалось загрузить цель.</string>
+
+    <string name="milestone_dialog_title">Новый этап</string>
+    <string name="milestone_name_label">Название этапа</string>
+    <string name="milestone_weight_label">Вес</string>
+    <string name="milestone_binary_label">Выполнено/не выполнено (без частичного прогресса)</string>
+    <string name="milestone_progress_label">Прогресс, %%</string>
+    <string name="milestone_name_required">Укажите название этапа</string>
+    <string name="milestone_weight_invalid">Вес должен быть положительным числом</string>
+    <string name="milestone_save">Сохранить</string>
+    <string name="milestone_cancel">Отмена</string>
+    <string name="milestone_error_generic">Не удалось сохранить этап — попробуйте снова.</string>
+</resources>

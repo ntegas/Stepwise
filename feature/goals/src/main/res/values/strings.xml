@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="goals_title">Goals</string>
+    <string name="goals_loading">Loading goals…</string>
+    <string name="goals_empty">No goals yet — tap + to create your first one.</string>
+    <string name="goals_section_active">Active</string>
+    <string name="goals_section_completed">Completed</string>
+    <string name="goals_section_archived">Archived</string>
+    <string name="goals_status_paused">Paused</string>
+    <string name="goals_milestones_progress">%1$d/%2$d milestones</string>
+    <string name="goals_add_content_description">New goal</string>
+
+    <string name="goal_form_title_create">New Goal</string>
+    <string name="goal_form_title_edit">Edit Goal</string>
+    <string name="goal_form_name_label">Goal name</string>
+    <string name="goal_form_target_label">Target</string>
+    <string name="goal_form_unit_label">Unit</string>
+    <string name="goal_form_deadline_label">Deadline (YYYY-MM-DD)</string>
+    <string name="goal_form_more_options">More Options</string>
+    <string name="goal_form_life_area_label">Life Area</string>
+    <string name="goal_form_life_area_none">None</string>
+    <string name="goal_form_project_label">Project</string>
+    <string name="goal_form_project_none">None</string>
+    <string name="goal_form_category_label">Category</string>
+    <string name="goal_form_description_label">Description</string>
+    <string name="goal_form_priority_label">Priority</string>
+    <string name="goal_form_save">Save</string>
+    <string name="goal_form_name_required">Goal name is required</string>
+    <string name="goal_form_deadline_invalid">Enter a valid date (YYYY-MM-DD)</string>
+    <string name="goal_form_target_invalid">Target must be a positive number</string>
+    <string name="goal_form_priority_invalid">Priority must be a whole number</string>
+    <string name="goal_form_error_generic">Couldn\'t save this goal — please try again.</string>
+    <string name="goal_form_back_content_description">Back</string>
+
+    <string name="goal_detail_milestones_header">Milestones</string>
+    <string name="goal_detail_no_milestones">No milestones yet.</string>
+    <string name="goal_detail_add_milestone">Add milestone</string>
+    <string name="goal_detail_pause">Pause</string>
+    <string name="goal_detail_resume">Resume</string>
+    <string name="goal_detail_complete">Complete</string>
+    <string name="goal_detail_archive">Archive</string>
+    <string name="goal_detail_reopen">Reopen</string>
+    <string name="goal_detail_edit">Edit</string>
+    <string name="goal_detail_error">Couldn\'t load this goal.</string>
+
+    <string name="milestone_dialog_title">New Milestone</string>
+    <string name="milestone_name_label">Milestone name</string>
+    <string name="milestone_weight_label">Weight</string>
+    <string name="milestone_binary_label">Done/not-done (not partial progress)</string>
+    <string name="milestone_progress_label">Progress %%</string>
+    <string name="milestone_name_required">Milestone name is required</string>
+    <string name="milestone_weight_invalid">Weight must be a positive number</string>
+    <string name="milestone_save">Save</string>
+    <string name="milestone_cancel">Cancel</string>
+    <string name="milestone_error_generic">Couldn\'t save this milestone — please try again.</string>
+</resources>
