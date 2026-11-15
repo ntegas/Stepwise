@@ -15,7 +15,6 @@ import com.stepwise.core.model.RecurrencePattern
 import com.stepwise.core.model.RecurrenceRule
 import com.stepwise.core.model.RecurrenceRuleId
 import com.stepwise.core.model.Session
-import com.stepwise.core.model.SessionId
 import com.stepwise.core.model.SessionIdentity
 import com.stepwise.core.model.SyncMetadata
 import com.stepwise.core.model.Task
@@ -162,8 +161,7 @@ class GetTodayAgendaUseCaseTest {
             FakeClock(NOW),
         )
 
-    private suspend fun agenda() =
-        (useCase.execute(OWNER, TimeZone.UTC).first() as AppResult.Success).value
+    private suspend fun agenda() = (useCase.execute(OWNER, TimeZone.UTC).first() as AppResult.Success).value
 
     @Test
     fun `a one-off Task scheduled today appears as a TASK item, not completed`() =
