@@ -26,10 +26,11 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
+    // Room.addMigrations is vararg; this builder runs once per app process, not a hot path, so
+    // the array-copy cost a spread causes is negligible - hence the suppression right below.
     @Provides
     @Singleton
-    @Suppress("SpreadOperator") // Room.addMigrations is vararg; this builder runs once per
-    // app process, not a hot path, so the array-copy cost a spread causes is negligible.
+    @Suppress("SpreadOperator")
     fun provideDatabase(
         @ApplicationContext context: Context,
     ): StepwiseDatabase =
