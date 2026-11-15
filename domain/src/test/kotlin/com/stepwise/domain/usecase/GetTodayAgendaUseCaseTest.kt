@@ -34,17 +34,25 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import kotlin.time.Instant
 
-private val NOW = Instant.fromEpochMilliseconds(1_000_000)
 private val TODAY = LocalDate(2026, 11, 15)
 private val YESTERDAY = LocalDate(2026, 11, 14)
+
+// NOW must land on TODAY's own calendar date in UTC - the Use Case computes "today" via
+// clock.todayIn(timeZone), so a NOW/TODAY mismatch here (the actual DEV-014 CI failure: every
+// fixture below assumed NOW's calendar date was TODAY, but an arbitrary low epoch-millis NOW
+// landed on 1970-01-01 instead) silently makes every "today"-dated fixture look like a future
+// date to the Use Case, not a test-writing mistake any assertion alone would reveal.
+private val NOW = LocalDateTime(2026, 11, 15, 12, 0).toInstant(TimeZone.UTC)
 private val OWNER = UserId("owner-1")
 private val OTHER_USER = UserId("other-1")
 private val SYNC = SyncMetadata(updatedAt = NOW, version = 1, deletedAt = null)
