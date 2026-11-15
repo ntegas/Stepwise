@@ -28,6 +28,8 @@ import javax.inject.Singleton
 object DatabaseModule {
     @Provides
     @Singleton
+    @Suppress("SpreadOperator") // Room.addMigrations is vararg; this builder runs once per
+    // app process, not a hot path, so the array-copy cost a spread causes is negligible.
     fun provideDatabase(
         @ApplicationContext context: Context,
     ): StepwiseDatabase =
