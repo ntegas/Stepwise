@@ -32,6 +32,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -39,8 +40,14 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import kotlin.time.Instant
 
-private val NOW = Instant.fromEpochMilliseconds(1_000_000)
 private val TODAY = LocalDate(2026, 11, 15)
+
+// Derived from TODAY, not an independently-chosen literal - DEV-014's own test-fixture pitfall
+// (two unrelated NOW/TODAY constants that are supposed to represent the same calendar day, with
+// nothing enforcing that relationship) recurred verbatim in this sibling file, confirmed by a
+// real CI run that discovered these tests for the first time (DEV-015, missing useJUnitPlatform()
+// wiring) and failed 5 of 6 of them with NoSuchElementException/AssertionFailedError.
+private val NOW = TODAY.atTime(12, 0).toInstant(TimeZone.UTC)
 private val OWNER = UserId("owner-1")
 
 private fun task(): Task =
