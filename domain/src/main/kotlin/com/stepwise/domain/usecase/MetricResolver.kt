@@ -77,30 +77,20 @@ class MetricResolver(
             }
         }
 
+    // An Activity has no entity-level metric of its own (concept §19-20) - the caller's own
+    // overrides fully determine what this session logs; only ownership needs checking.
     private suspend fun activityDefaultMetrics(
         userId: UserId,
         activityId: String,
     ): AppResult<List<MetricEntry>> =
-        activityRepository.getById(ActivityId(activityId)).andThen { activity ->
-            when {
-                activity == null -> AppResult.Failure(AppError.Validation("Activity not found", field = "sourceId"))
-                activity.userId != userId -> AppResult.Failure(AppError.Auth("Not authorized for this Activity"))
-                // An Activity has no entity-level metric of its own (concept §19-20) - the
-                // caller's own overrides fully determine what this session logs.
-                else -> AppResult.Success(emptyList())
-            }
-        }
+        ActivityAccess.verifyOwnedActivity(activityRepository, userId, ActivityId(activityId)).map { emptyList() }
 
     private suspend fun habitDefaultMetrics(
         userId: UserId,
         habitId: String,
     ): AppResult<List<MetricEntry>> =
-        habitRepository.getById(HabitId(habitId)).andThen { habit ->
-            when {
-                habit == null -> AppResult.Failure(AppError.Validation("Habit not found", field = "sourceId"))
-                habit.userId != userId -> AppResult.Failure(AppError.Auth("Not authorized for this Habit"))
-                else -> AppResult.Success(listOf(MetricEntry(habit.metricId, habit.targetValue, actualValue = null)))
-            }
+        HabitAccess.verifyOwnedHabit(habitRepository, userId, HabitId(habitId)).map { habit ->
+            listOf(MetricEntry(habit.metricId, habit.targetValue, actualValue = null))
         }
 
     private fun mergeMetricEntries(

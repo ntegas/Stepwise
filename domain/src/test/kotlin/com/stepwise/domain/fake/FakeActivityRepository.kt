@@ -16,6 +16,8 @@ class FakeActivityRepository : ActivityRepository {
         activities.value = activities.value + (activity.id.value to activity)
     }
 
+    fun get(id: ActivityId): Activity? = activities.value[id.value]
+
     override fun observeAll(userId: UserId): Flow<List<Activity>> =
         activities.map { all -> all.values.filter { it.userId == userId } }
 

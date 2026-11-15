@@ -43,7 +43,15 @@ interface MetricDao {
 
 @Entity(
     tableName = "goal_activity_links",
-    indices = [Index("goalId"), Index(value = ["sourceType", "sourceId"])],
+    indices = [
+        Index("goalId"),
+        Index(value = ["sourceType", "sourceId"]),
+        // Mirrors Postgres's own goal_activity_links_unique constraint (migration
+        // 0002_canonical_schema.sql) as a local backstop against the same duplicate link ever
+        // persisting twice - DEV-012 adversarial review, same two-layer defense sessions already
+        // has via SessionEntity's own unique clientEventId index.
+        Index(value = ["sourceType", "sourceId", "goalId", "metricId"], unique = true),
+    ],
 )
 data class GoalActivityLinkEntity(
     @PrimaryKey val id: String,
@@ -90,4 +98,22 @@ interface GoalActivityLinkDao {
 
     @Query("SELECT * FROM goal_activity_links WHERE goalId = :goalId AND deletedAt IS NULL")
     fun observeForGoal(goalId: String): Flow<List<GoalActivityLinkEntity>>
+
+    // Added at DEV-012 - see GoalActivityLinkRepository.getById's own comment.
+    @Query("SELECT * FROM goal_activity_links WHERE id = :id")
+    suspend fun getById(id: String): GoalActivityLinkEntity?
+
+    // Added at DEV-012 - used only inside GoalActivityLinkRepositoryImpl.insertIfNotDuplicate's
+    // own transaction (see its comment); never exposed as a standalone repository method, since
+    // a standalone check-then-write pair is exactly the TOCTOU race that method exists to close.
+    @Query(
+        "SELECT * FROM goal_activity_links WHERE sourceType = :sourceType AND sourceId = :sourceId " +
+            "AND goalId = :goalId AND metricId = :metricId AND deletedAt IS NULL LIMIT 1",
+    )
+    suspend fun getForSourceGoalMetric(
+        sourceType: ProgressSourceKind,
+        sourceId: String,
+        goalId: String,
+        metricId: String,
+    ): GoalActivityLinkEntity?
 }

@@ -16,7 +16,7 @@ import androidx.room.TypeConverters
  * this ever needs one.
  */
 @Database(
-    version = 2,
+    version = 3,
     entities = [
         VisionEntity::class,
         LifeAreaEntity::class,

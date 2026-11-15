@@ -17,7 +17,10 @@ import com.stepwise.domain.repository.ProjectRepository
  * sync section already closes this exact shape of gap for `sessions.source_id`/
  * `schedules.owner_id` with dedicated ownership-consistency triggers — Life Area/Project weren't
  * in that list). Checked here, client-side, as defense in depth; not itself the security
- * boundary (RLS is — `/docs/security/SECURITY_ARCHITECTURE.md`).
+ * boundary (RLS is — `/docs/security/SECURITY_ARCHITECTURE.md`). Also rejects attaching to an
+ * already-tombstoned Life Area/Project (DEV-012 review, logic reviewer — this object itself was
+ * missing the tombstone check [GoalAccess]/[ActivityAccess]/[HabitAccess] all have, a gap DEV-011's
+ * own Goal/Project consumers inherited silently until DEV-012's Activity consumer surfaced it).
  */
 object CrossEntityOwnership {
     suspend fun verifyLifeArea(
@@ -33,6 +36,8 @@ object CrossEntityOwnership {
                     lifeArea == null ->
                         AppResult.Failure(AppError.Validation("Life Area not found", field = "lifeAreaId"))
                     lifeArea.userId != userId -> AppResult.Failure(AppError.Auth("Not authorized for this Life Area"))
+                    lifeArea.sync.isDeleted ->
+                        AppResult.Failure(AppError.Domain("Cannot attach to a deleted Life Area"))
                     else -> AppResult.Success(Unit)
                 }
             }
@@ -50,6 +55,7 @@ object CrossEntityOwnership {
                 when {
                     project == null -> AppResult.Failure(AppError.Validation("Project not found", field = "projectId"))
                     project.userId != userId -> AppResult.Failure(AppError.Auth("Not authorized for this Project"))
+                    project.sync.isDeleted -> AppResult.Failure(AppError.Domain("Cannot attach to a deleted Project"))
                     else -> AppResult.Success(Unit)
                 }
             }
