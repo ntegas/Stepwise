@@ -61,7 +61,8 @@ class CreateRecurrenceRuleUseCase(
         }
 
     private fun validatePattern(rule: RecurrenceRule): AppResult<Unit> {
-        if (rule.endsOn != null && rule.endsOn < rule.startsOn) {
+        val endsOn = rule.endsOn
+        if (endsOn != null && endsOn < rule.startsOn) {
             return AppResult.Failure(AppError.Validation("endsOn must not be before startsOn", field = "endsOn"))
         }
         return try {
