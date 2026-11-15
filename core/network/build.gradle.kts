@@ -98,8 +98,12 @@ kotlin {
 dependencies {
     implementation(project(":core:model"))
 
-    implementation(platform(libs.supabase.kt.bom))
-    implementation(libs.supabase.auth.kt)
+    // api, not implementation: SupabaseClientFactory.create() and SupabaseAuthClient's own
+    // constructor already return/take io.github.jan.supabase.SupabaseClient as public API, so a
+    // consumer outside this module (:app's DI graph, DEV-015 - the first to construct one)
+    // genuinely needs that type resolvable on its own compile classpath, not just this module's.
+    api(platform(libs.supabase.kt.bom))
+    api(libs.supabase.auth.kt)
     implementation(libs.supabase.postgrest.kt)
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.okhttp)
