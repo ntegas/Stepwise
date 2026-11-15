@@ -1,4 +1,5 @@
 import io.gitlab.arturbosch.detekt.extensions.DetektExtension
+import org.gradle.api.artifacts.VersionCatalogsExtension
 
 // Root build script. Static analysis (detekt) and formatting (ktlint) are wired
 // here, once, for every subproject (DEVELOPMENT_PROTOCOL.md rule 42: "one
@@ -87,11 +88,17 @@ subprojects {
     // compiler. Forcing the same version everywhere - this library is co-versioned with the
     // Kotlin compiler itself - is the documented fix, not a Hilt/KSP/AGP version bump (nothing
     // else here is actually incompatible).
-    // The version is captured into a local val here, at the Project-receiver level, rather than
-    // called as libs.versions.kotlin.get() directly inside resolutionStrategy { } below - that
-    // nested lambda's receiver (ResolutionStrategy) doesn't see the generated type-safe `libs`
-    // accessor, which only resolves against Project itself.
-    val kotlinVersionForMetadataJvm = libs.versions.kotlin.get()
+    // The generated type-safe `libs` accessor (used fine in this file's own top-level plugins {}
+    // block) is a member of THIS script's own generated class, not a genuine Project extension -
+    // it isn't visible inside a subprojects { } lambda, which configures a different Project
+    // object entirely. Looking the catalog up via the real VersionCatalogsExtension API works
+    // anywhere, since that's an ordinary registered project extension.
+    val kotlinVersionForMetadataJvm =
+        extensions.getByType(VersionCatalogsExtension::class.java)
+            .named("libs")
+            .findVersion("kotlin")
+            .get()
+            .requiredVersion
     configurations.all {
         resolutionStrategy {
             force("org.jetbrains.kotlin:kotlin-metadata-jvm:$kotlinVersionForMetadataJvm")
