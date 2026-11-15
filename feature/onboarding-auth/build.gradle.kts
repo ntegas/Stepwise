@@ -37,6 +37,11 @@ kotlin {
     jvmToolchain(21)
 }
 
+// See :feature:today's own build.gradle.kts comment - the same reasoning applies here.
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
+}
+
 dependencies {
     implementation(project(":domain"))
     implementation(project(":core:model"))

@@ -37,6 +37,14 @@ kotlin {
     jvmToolchain(21)
 }
 
+// The first Android library module in this codebase using JUnit 5 (core/database's own build
+// script already notes it stayed on JUnit 4 for lack of this) - an Android module has no single
+// "test" task (AGP registers one per variant, e.g. testDebugUnitTest), so withType<Test> is the
+// configuration point, not domain/core:common's own plain tasks.test { }.
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
+}
+
 dependencies {
     implementation(project(":domain"))
     implementation(project(":core:model"))
