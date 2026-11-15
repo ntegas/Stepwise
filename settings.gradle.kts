@@ -33,3 +33,14 @@ include(":domain")
 include(":data")
 include(":core:network")
 include(":core:sync")
+// DEV-015 populates both of these with real code (the first UI task) - :app is the
+// composition root (Hilt DI graph, Navigation, MainActivity); :feature:today is the
+// first :feature:* module, depending only on :domain/:core:model/:core:designsystem/
+// :core:common per ARCHITECTURE.md §5, never :core:database/:core:network/:data directly.
+include(":app")
+include(":feature:today")
+// `/ARCHITECTURE.md` §5 already names `:feature:onboarding-auth` in the canonical module graph
+// (DEV-015 review, architecture reviewer, MEDIUM: an earlier draft built Sign In directly inside
+// `:app` instead, routing around an already-decided module placement rather than surfacing a
+// genuine conflict - there wasn't one, the doc already answered this, so fixed to match it).
+include(":feature:onboarding-auth")

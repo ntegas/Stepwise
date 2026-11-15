@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sign_in_app_name">Stepwise</string>
+    <string name="sign_in_email_label">Email</string>
+    <string name="sign_in_password_label">Password</string>
+    <string name="sign_in_button">Sign In</string>
+    <string name="sign_up_button">Sign Up</string>
+    <string name="sign_in_error_auth">Couldn\'t sign in — check your email and password and try again.</string>
+    <string name="sign_in_error_network">Couldn\'t reach Stepwise — check your connection and try again.</string>
+    <string name="sign_in_error_generic">Something went wrong — please try again.</string>
+    <string name="sign_up_confirm_email">Check your email to confirm your account.</string>
+</resources>

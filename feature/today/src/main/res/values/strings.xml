@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="today_loading">Loading Today…</string>
+    <string name="today_empty">Nothing on today\'s agenda yet — anything you schedule will show up here.</string>
+    <string name="today_focus">Focus: %1$s</string>
+    <string name="today_progress">Progress: %1$d/%2$d</string>
+    <string name="today_overdue_header">Overdue</string>
+    <string name="today_item_completed">Completed</string>
+    <string name="today_item_mark_done">Mark done</string>
+    <string name="today_completion_failed">Couldn\'t mark that done — try again.</string>
+</resources>

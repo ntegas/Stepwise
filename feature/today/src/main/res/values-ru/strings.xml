@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="today_loading">Загрузка…</string>
+    <string name="today_empty">На сегодня пока ничего не запланировано — всё, что вы запланируете, появится здесь.</string>
+    <string name="today_focus">Главное: %1$s</string>
+    <string name="today_progress">Прогресс: %1$d/%2$d</string>
+    <string name="today_overdue_header">Просрочено</string>
+    <string name="today_item_completed">Выполнено</string>
+    <string name="today_item_mark_done">Отметить выполненным</string>
+    <string name="today_completion_failed">Не удалось отметить выполненным — попробуйте снова.</string>
+</resources>

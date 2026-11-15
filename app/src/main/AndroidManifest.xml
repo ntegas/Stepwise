@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Supabase Auth/Postgrest traffic (DEV-007) and future sync (DEV-008) both need this -
+         no other permission is requested yet; nothing else in this checkpoint's flow needs one. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- No android:icon yet - a real app icon is a design-system/branding asset this
+         checkpoint deliberately doesn't invent; AAPT/the build don't require one. -->
+    <!-- allowBackup=false is an explicit decision, not a default left unmade (DEV-015 review,
+         security reviewer, HIGH): SECURITY_ARCHITECTURE.md's own Backup security section
+         requires deciding explicitly what Android Backup may copy, and THREAT_MODEL.md already
+         states the refresh-token store is "excluded from Android Backup unless proven safe -
+         default is exclude." This is the first build where a real on-device Room DB and the
+         real EncryptedSharedPreferences-backed session store exist, i.e. the point this decision
+         actually needed making. Revisit if a future, genuinely non-sensitive data type (e.g. a
+         UI preference) creates a real reason to opt specific files back in via
+         dataExtractionRules/fullBackupContent, rather than reopening allowBackup wholesale. -->
+    <application
+        android:name=".StepwiseApplication"
+        android:allowBackup="false"
+        android:label="@string/app_name"
+        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.Material.Light.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

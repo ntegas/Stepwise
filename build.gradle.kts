@@ -48,12 +48,21 @@ import io.gitlab.arturbosch.detekt.extensions.DetektExtension
 // dl.google.com risk android.library does.
 plugins {
     alias(libs.plugins.android.library) apply false
+    // DEV-015: :app is the first module needing com.android.application rather than
+    // com.android.library - same apply-false-every-plugin-at-root rule as every plugin
+    // above it, learned the hard way at DEV-003 (see this file's own history above).
+    alias(libs.plugins.android.application) apply false
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.kotlin.android) apply false
     alias(libs.plugins.kotlin.compose) apply false
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.detekt) apply false
     alias(libs.plugins.ktlint) apply false
+    // DEV-015: Hilt's Gradle plugin also resolves com.android.* classes at configuration
+    // time (the same reason kotlin-android/kotlin-compose needed a root apply-false at
+    // DEV-003) - declared here from the start per ANTI_ERROR_STANDARD.md §11, not
+    // discovered the hard way a third time.
+    alias(libs.plugins.hilt.android.gradle.plugin) apply false
 }
 
 subprojects {

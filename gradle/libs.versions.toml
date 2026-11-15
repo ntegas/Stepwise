@@ -69,6 +69,30 @@ ktor = "3.6.1"
 # ARCHITECTURE.md §11 requires (never supabase-kt's own default SharedPreferences-
 # based SessionManager) — official AndroidX, 1.1.x is the current stable line.
 androidx-security-crypto = "1.1.0"
+# DEV-015 (:app, :feature:today) — first task needing DI/navigation/activity
+# entry-point libraries. Checked live (WebSearch, this sandbox has no direct
+# dl.google.com/Maven Central access to verify further): Dagger/Hilt's latest
+# confirmed stable is 2.59 (a January 2026 dependency-bot bump from 2.58,
+# adding AGP 9 support — consistent with this project's AGP 9.4.0 pin).
+hilt = "2.59"
+# 2.10.2, the latest stable `androidx.navigation` line confirmed live (a
+# September 2026 release-table snapshot). lifecycle-viewmodel-compose is
+# pinned to the same 2.10.x line below on the assumption Jetpack's lifecycle/
+# navigation release trains move together, since this sandbox could not
+# independently confirm lifecycle's own latest stable past 2.10.0 (a search
+# surfaced an unconfirmed 2.11.0 listing with no verifiable stable-release
+# date) — same class of "can't verify live from this sandbox" disclosure as
+# DEV-007's Google ID token nonce item; worth re-checking once CI resolves
+# real dependency metadata.
+androidx-navigation = "2.10.2"
+androidx-lifecycle-viewmodel-compose = "2.10.2"
+# androidx.hilt (a separate artifact family from com.google.dagger:hilt-android itself) -
+# confirmed live as 1.4.0, stable since July 2026.
+androidx-hilt-navigation-compose = "1.4.0"
+# 1.13.0, confirmed live as the current stable `androidx.activity` line
+# (a September 2026 release-table snapshot; 1.14.0-alpha03 was the newest
+# pre-release at the same snapshot).
+androidx-activity-compose = "1.13.0"
 
 [libraries]
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
@@ -98,6 +122,13 @@ ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
 androidx-security-crypto = { module = "androidx.security:security-crypto", version.ref = "androidx-security-crypto" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
+hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt" }
+hilt-android-compiler = { module = "com.google.dagger:hilt-android-compiler", version.ref = "hilt" }
+androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "androidx-navigation" }
+androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity-compose" }
+androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidx-lifecycle-viewmodel-compose" }
+androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidx-lifecycle-viewmodel-compose" }
+androidx-hilt-navigation-compose = { module = "androidx.hilt:hilt-navigation-compose", version.ref = "androidx-hilt-navigation-compose" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
@@ -107,6 +138,8 @@ kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 android-library = { id = "com.android.library", version.ref = "android-gradle-plugin" }
+android-application = { id = "com.android.application", version.ref = "android-gradle-plugin" }
+hilt-android-gradle-plugin = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint-gradle" }
 # Declared apply-false at root from the start (DEV-003 retrospective, ANTI_ERROR_STANDARD.md
