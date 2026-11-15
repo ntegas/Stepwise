@@ -12,6 +12,7 @@ import com.stepwise.core.model.Habit
 import com.stepwise.core.model.HabitId
 import com.stepwise.core.model.MetricId
 import com.stepwise.core.model.OccurrenceIdentity
+import com.stepwise.core.model.RecurrenceOccurrence
 import com.stepwise.core.model.RecurrencePattern
 import com.stepwise.core.model.RecurrenceRule
 import com.stepwise.core.model.RecurrenceRuleId
@@ -452,6 +453,43 @@ class CompleteOccurrenceUseCaseTest {
             check(result is AppResult.Success)
             val occurrenceId = OccurrenceIdentity.deterministicId(ruleId, DATE)
             val occurrence = occurrenceRepository.get(occurrenceId)
+            assertEquals(result.value.id, occurrence?.sessionId)
+        }
+
+    @Test
+    fun `completing a previously-skipped occurrence clears the stale skip flag`() =
+        runTest {
+            // DEV-010 review (adversarial/logic reviewers, HIGH): the prior code carried
+            // `existing.skipped` forward unchanged on completion, leaving a row simultaneously
+            // "never happening" and "already happened." Completing now supersedes an earlier
+            // skip rather than coexisting with it.
+            seedTask()
+            val ruleId = RecurrenceRuleId("rule-1")
+            seedRule(ruleId)
+            val occurrenceId = OccurrenceIdentity.deterministicId(ruleId, DATE)
+            occurrenceRepository.seed(
+                RecurrenceOccurrence(
+                    id = occurrenceId,
+                    recurrenceRuleId = ruleId,
+                    occurrenceDate = DATE,
+                    rescheduledToDate = null,
+                    skipped = true,
+                    sessionId = null,
+                    sync = SYNC,
+                ),
+            )
+            val command =
+                CompleteOccurrenceCommand(
+                    userId = USER,
+                    target = CompletionTarget.Recurring(ExecutableKind.TASK, "task-1", DATE, ruleId),
+                    status = ExecutionStatus.DONE,
+                )
+
+            val result = useCase.execute(command)
+
+            check(result is AppResult.Success)
+            val occurrence = occurrenceRepository.get(occurrenceId)
+            assertTrue(occurrence?.skipped == false)
             assertEquals(result.value.id, occurrence?.sessionId)
         }
 

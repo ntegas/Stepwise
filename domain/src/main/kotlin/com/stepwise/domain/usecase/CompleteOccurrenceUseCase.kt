@@ -7,6 +7,7 @@ import com.stepwise.core.common.IdGenerator
 import com.stepwise.core.model.ExecutionStatus
 import com.stepwise.core.model.OccurrenceIdentity
 import com.stepwise.core.model.RecurrenceOccurrence
+import com.stepwise.core.model.RecurrenceOccurrenceId
 import com.stepwise.core.model.Session
 import com.stepwise.core.model.SessionId
 import com.stepwise.core.model.SessionIdentity
@@ -100,14 +101,7 @@ class CompleteOccurrenceUseCase(
         if (target !is CompletionTarget.Recurring) {
             return AppResult.Success(Unit)
         }
-        return recurrenceRuleRepository.getById(target.recurrenceRuleId).andThen { rule ->
-            when {
-                rule == null ->
-                    AppResult.Failure(AppError.Validation("Recurrence rule not found", field = "recurrenceRuleId"))
-                rule.userId != userId -> AppResult.Failure(AppError.Auth("Not authorized for this recurrence rule"))
-                else -> AppResult.Success(Unit)
-            }
-        }
+        return RecurrenceRuleAccess.verifyOwnedRule(recurrenceRuleRepository, userId, target.recurrenceRuleId).map { }
     }
 
     private suspend fun writeSession(
@@ -230,14 +224,20 @@ class CompleteOccurrenceUseCase(
      * between the two writes, re-running the same idempotent completion fixes the link — no
      * duplicate Session is created either way, so this is a recoverable gap, not a correctness one.
      *
-     * **Known, disclosed gap (DEV-009 review, adversarial reviewer, MEDIUM)**: this read-then-write
-     * pair has no transaction and no version check of its own — `RecurrenceOccurrenceRepository`
-     * has neither (pre-existing since DEV-005/006, not new to this task). Two near-simultaneous
-     * completions racing the same occurrence (e.g. a reschedule racing a completion, both reducing
-     * to this same `sessionId`) can lose one write's `rescheduledToDate` with no error surfaced to
-     * either caller. Narrow blast radius (one metadata field, local-only, user-recoverable by
-     * re-entering it) — tracked in `/PROJECT_STATE.md` rather than fixed here, since a real fix
-     * means adding transaction/CAS support to a repository this task doesn't otherwise touch.
+     * **Reads-then-writes atomically via [RecurrenceOccurrenceRepository.upsertAtomically]** — a
+     * real HIGH found at DEV-010 review (adversarial/security/logic reviewers, independently):
+     * the prior separate `getById`/`upsert` pair could race [SkipOccurrenceUseCase]'s own
+     * read-then-write against the same row, in either direction (a completion's link silently
+     * discarded by a stale skip write, or a skip silently reverted by a stale completion write).
+     * `upsertAtomically` closes that the same way it closes the symmetric race on Skip's side.
+     *
+     * **A completion clears a stale [RecurrenceOccurrence.skipped] flag** — a real HIGH found at
+     * DEV-010 review (adversarial/logic reviewers): the prior code copied `existing.skipped`
+     * forward unchanged, so completing an occurrence a user had previously skipped left a row
+     * simultaneously "never happening" (`skipped = true`) and "already happened" (a real
+     * [Session] attached) — a state neither use case's own documented invariant allows. Completing
+     * is the more recent, more specific action, so it supersedes an earlier skip rather than
+     * coexisting with it.
      */
     private suspend fun linkOccurrenceIfRecurring(
         command: CompleteOccurrenceCommand,
@@ -248,23 +248,33 @@ class CompleteOccurrenceUseCase(
             return AppResult.Success(Unit)
         }
         val occurrenceId = OccurrenceIdentity.deterministicId(target.recurrenceRuleId, target.date)
-        return recurrenceOccurrenceRepository.getById(occurrenceId).andThen { existing ->
-            val occurrence =
-                existing ?: RecurrenceOccurrence(
-                    id = occurrenceId,
-                    recurrenceRuleId = target.recurrenceRuleId,
-                    occurrenceDate = target.date,
-                    rescheduledToDate = null,
-                    skipped = false,
-                    sessionId = null,
-                    sync = SyncMetadata(updatedAt = clock.now(), version = 1, deletedAt = null),
-                )
-            recurrenceOccurrenceRepository.upsert(
-                occurrence.copy(
-                    sessionId = session.id,
-                    rescheduledToDate = command.rescheduledToDate ?: occurrence.rescheduledToDate,
-                ),
+        return recurrenceOccurrenceRepository
+            .upsertAtomically(occurrenceId) { existing ->
+                AppResult.Success(buildLinkedOccurrence(command, target, occurrenceId, session, existing))
+            }.map { }
+    }
+
+    private fun buildLinkedOccurrence(
+        command: CompleteOccurrenceCommand,
+        target: CompletionTarget.Recurring,
+        occurrenceId: RecurrenceOccurrenceId,
+        session: Session,
+        existing: RecurrenceOccurrence?,
+    ): RecurrenceOccurrence {
+        val base =
+            existing ?: RecurrenceOccurrence(
+                id = occurrenceId,
+                recurrenceRuleId = target.recurrenceRuleId,
+                occurrenceDate = target.date,
+                rescheduledToDate = null,
+                skipped = false,
+                sessionId = null,
+                sync = SyncMetadata(updatedAt = clock.now(), version = 1, deletedAt = null),
             )
-        }
+        return base.copy(
+            sessionId = session.id,
+            rescheduledToDate = command.rescheduledToDate ?: base.rescheduledToDate,
+            skipped = false,
+        )
     }
 }

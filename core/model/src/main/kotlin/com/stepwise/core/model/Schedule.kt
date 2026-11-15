@@ -20,6 +20,13 @@ sealed class RecurrencePattern {
         val intervalDays: Int,
     ) : RecurrencePattern()
 
+    /**
+     * [dayOfMonth] greater than a given month's actual length clamps to that month's last day
+     * (DEV-010, [occurrenceDatesIn] — e.g. `dayOfMonth = 31` lands on April 30 in April) rather
+     * than skipping the month or overflowing into the next one. No rule was documented anywhere
+     * for this before DEV-010; clamp-to-last-day was chosen as the more common convention of
+     * the two plausible readings, not left undecided for a later task to discover.
+     */
     data class Monthly(
         val dayOfMonth: Int,
     ) : RecurrencePattern()
@@ -58,7 +65,7 @@ data class RecurrenceRule(
  * state (`/ARCHITECTURE.md` §13: completion, an edit to that one instance, a reschedule, a
  * skip). A **virtual** occurrence (the common case: an unmodified date the [RecurrenceRule]
  * implies) is not a row at all and has no [RecurrenceOccurrence] instance — it's computed
- * on read (`OccurrenceResolution`, DEV-010's job, not this one). All fields **CANONICAL**
+ * on read ([occurrenceDatesIn]/[ResolvedOccurrence], DEV-010). All fields **CANONICAL**
  * except [id]/[sync] — including [id] itself in one sense: it's still domain-meaningful data
  * (not opaque metadata) despite being *derivable* from [recurrenceRuleId]/[occurrenceDate] via
  * [OccurrenceIdentity] rather than freely chosen, which is exactly what makes two independently

@@ -1,8 +1,10 @@
 package com.stepwise.data.repository
 
+import androidx.room.withTransaction
 import com.stepwise.core.common.AppResult
 import com.stepwise.core.database.RecurrenceOccurrenceDao
 import com.stepwise.core.database.RecurrenceRuleDao
+import com.stepwise.core.database.StepwiseDatabase
 import com.stepwise.core.database.toDomain
 import com.stepwise.core.database.toEntity
 import com.stepwise.core.model.ExecutableKind
@@ -37,14 +39,40 @@ class RecurrenceRuleRepositoryImpl(
 }
 
 class RecurrenceOccurrenceRepositoryImpl(
-    private val dao: RecurrenceOccurrenceDao,
+    private val database: StepwiseDatabase,
 ) : RecurrenceOccurrenceRepository {
+    private val dao: RecurrenceOccurrenceDao get() = database.recurrenceOccurrenceDao()
+
     override fun observeForRule(ruleId: RecurrenceRuleId): Flow<List<RecurrenceOccurrence>> =
         dao.observeForRule(ruleId.value).map { entities -> entities.map { it.toDomain() } }
 
     override suspend fun getById(id: RecurrenceOccurrenceId): AppResult<RecurrenceOccurrence?> =
         runCatchingDatabaseCall { dao.getById(id.value)?.toDomain() }
 
+    override suspend fun getAllForRule(ruleId: RecurrenceRuleId): AppResult<List<RecurrenceOccurrence>> =
+        runCatchingDatabaseCall { dao.getAllForRule(ruleId.value).map { it.toDomain() } }
+
     override suspend fun upsert(occurrence: RecurrenceOccurrence): AppResult<Unit> =
         runCatchingDatabaseCall { dao.upsert(occurrence.toEntity()) }
+
+    override suspend fun upsertAtomically(
+        id: RecurrenceOccurrenceId,
+        mutate: (RecurrenceOccurrence?) -> AppResult<RecurrenceOccurrence>,
+    ): AppResult<RecurrenceOccurrence> {
+        val transactionResult =
+            runCatchingDatabaseCall {
+                database.withTransaction {
+                    val existing = dao.getById(id.value)?.toDomain()
+                    val outcome = mutate(existing)
+                    if (outcome is AppResult.Success) {
+                        dao.upsert(outcome.value.toEntity())
+                    }
+                    outcome
+                }
+            }
+        return when (transactionResult) {
+            is AppResult.Success -> transactionResult.value
+            is AppResult.Failure -> transactionResult
+        }
+    }
 }

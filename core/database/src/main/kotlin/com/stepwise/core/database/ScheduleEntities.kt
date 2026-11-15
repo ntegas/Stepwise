@@ -125,4 +125,8 @@ interface RecurrenceOccurrenceDao {
 
     @Query("SELECT * FROM recurrence_occurrences WHERE id = :id")
     suspend fun getById(id: String): RecurrenceOccurrenceEntity?
+
+    // Added at DEV-010 - see RecurrenceOccurrenceRepository.getAllForRule's own comment.
+    @Query("SELECT * FROM recurrence_occurrences WHERE recurrenceRuleId = :ruleId AND deletedAt IS NULL")
+    suspend fun getAllForRule(ruleId: String): List<RecurrenceOccurrenceEntity>
 }

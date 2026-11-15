@@ -24,8 +24,27 @@ class FakeRecurrenceOccurrenceRepository : RecurrenceOccurrenceRepository {
     override suspend fun getById(id: RecurrenceOccurrenceId): AppResult<RecurrenceOccurrence?> =
         AppResult.Success(occurrences.value[id.value])
 
+    override suspend fun getAllForRule(ruleId: RecurrenceRuleId): AppResult<List<RecurrenceOccurrence>> =
+        AppResult.Success(occurrences.value.values.filter { it.recurrenceRuleId == ruleId })
+
     override suspend fun upsert(occurrence: RecurrenceOccurrence): AppResult<Unit> {
         occurrences.value = occurrences.value + (occurrence.id.value to occurrence)
         return AppResult.Success(Unit)
     }
+
+    // A real StateFlow update is as close to "one atomic step" as this in-memory fake can get -
+    // no separate connection/writer to race against, unlike the real Room-backed impl this
+    // mirrors (DEV-010 review). Good enough to exercise the use cases' own logic; the actual
+    // race-closing behavior is only genuinely verified by CI against the real implementation.
+    override suspend fun upsertAtomically(
+        id: RecurrenceOccurrenceId,
+        mutate: (RecurrenceOccurrence?) -> AppResult<RecurrenceOccurrence>,
+    ): AppResult<RecurrenceOccurrence> =
+        when (val outcome = mutate(occurrences.value[id.value])) {
+            is AppResult.Success -> {
+                occurrences.value = occurrences.value + (outcome.value.id.value to outcome.value)
+                outcome
+            }
+            is AppResult.Failure -> outcome
+        }
 }
