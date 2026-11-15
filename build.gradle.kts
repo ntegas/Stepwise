@@ -78,4 +78,18 @@ subprojects {
         parallel = true
         config.setFrom(files("$rootDir/config/detekt/detekt.yml"))
     }
+
+    // DEV-015: :app:hiltJavaCompileDevDebug failed with "[Hilt] Provided Metadata instance
+    // has version 2.4.0, while maximum supported version is 2.3.0" - Dagger's javac-based
+    // component processing reads Kotlin metadata via the real (unshaded) kotlin-metadata-jvm
+    // library, and whatever transitive version lands on the annotation-processor classpath by
+    // default is too old to parse metadata written by this project's own kotlin = "2.4.20"
+    // compiler. Forcing the same version everywhere - this library is co-versioned with the
+    // Kotlin compiler itself - is the documented fix, not a Hilt/KSP/AGP version bump (nothing
+    // else here is actually incompatible).
+    configurations.all {
+        resolutionStrategy {
+            force("org.jetbrains.kotlin:kotlin-metadata-jvm:${libs.versions.kotlin.get()}")
+        }
+    }
 }
