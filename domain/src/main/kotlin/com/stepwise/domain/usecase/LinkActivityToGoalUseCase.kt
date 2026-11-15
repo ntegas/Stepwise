@@ -47,6 +47,7 @@ import com.stepwise.domain.repository.MetricRepository
  * this should be constrained; left open rather than guessed past, for DEV-019 (Calculation Engine)
  * or the product owner to decide once it matters.
  */
+@Suppress("LongParameterList") // Genuinely needs all 5 repositories to cross-verify ownership.
 class LinkActivityToGoalUseCase(
     private val activityRepository: ActivityRepository,
     private val habitRepository: HabitRepository,
