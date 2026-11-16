@@ -63,6 +63,18 @@ jobs:
           path: core/database/schemas/
           if-no-files-found: warn
 
+      # Lets anyone download a sideloadable build straight from a green run without a local
+      # Gradle/Android SDK setup. "dev" flavor (points at the dev Supabase project, not prod) +
+      # "debug" build type (installable without a release signing key) — the one variant that's
+      # actually meant to be handed to someone outside this build.
+      - name: Upload debug APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stepwise-dev-debug-apk
+          path: app/build/outputs/apk/dev/debug/*.apk
+          if-no-files-found: warn
+
   dependency-review:
     name: Dependency review
     runs-on: ubuntu-latest
