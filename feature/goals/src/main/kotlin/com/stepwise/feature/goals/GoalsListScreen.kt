@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.stepwise.feature.goals
 
 import androidx.compose.foundation.clickable
@@ -12,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -97,10 +100,16 @@ private fun GoalsListContent(
         StepwiseEmptyState(modifier = modifier, message = stringResource(R.string.goals_empty))
         return
     }
+    // stringResource() is @Composable; LazyColumn's own content block is a plain
+    // LazyListScope builder (not a @Composable scope itself - only item{}/items{} inside it
+    // are), so these have to resolve out here, not as arguments evaluated inside that block.
+    val activeHeader = stringResource(R.string.goals_section_active)
+    val completedHeader = stringResource(R.string.goals_section_completed)
+    val archivedHeader = stringResource(R.string.goals_section_archived)
     LazyColumn(modifier = modifier.fillMaxSize().padding(StepwiseSpacing.medium)) {
-        goalSection(state.active, stringResource(R.string.goals_section_active), onGoalClick)
-        goalSection(state.completed, stringResource(R.string.goals_section_completed), onGoalClick)
-        goalSection(state.archived, stringResource(R.string.goals_section_archived), onGoalClick)
+        goalSection(state.active, activeHeader, onGoalClick)
+        goalSection(state.completed, completedHeader, onGoalClick)
+        goalSection(state.archived, archivedHeader, onGoalClick)
     }
 }
 
@@ -133,14 +142,13 @@ private fun GoalRow(
         ) {
             Column {
                 Text(text = goal.title, style = MaterialTheme.typography.titleMedium)
-                if (goal.targetValue != null && goal.unit != null) {
+                val targetValue = goal.targetValue
+                val unit = goal.unit
+                // Goal is defined in :core:model, a different module - Kotlin won't smart-cast
+                // its nullable properties across a module boundary, so bind to locals first.
+                if (targetValue != null && unit != null) {
                     Text(
-                        text =
-                            stringResource(
-                                R.string.goals_target_label,
-                                formatTargetValue(goal.targetValue),
-                                goal.unit,
-                            ),
+                        text = stringResource(R.string.goals_target_label, formatTargetValue(targetValue), unit),
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }

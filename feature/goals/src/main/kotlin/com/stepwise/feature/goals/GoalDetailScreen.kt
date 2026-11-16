@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.stepwise.feature.goals
 
 import androidx.compose.foundation.layout.Arrangement
@@ -12,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
@@ -221,9 +224,13 @@ private fun GoalDetailContent(
 
 @Composable
 private fun GoalMetadata(goal: Goal) {
-    if (goal.targetValue != null && goal.unit != null) {
+    val targetValue = goal.targetValue
+    val unit = goal.unit
+    // Goal is defined in :core:model, a different module - Kotlin won't smart-cast its
+    // nullable properties across a module boundary, so bind to locals first.
+    if (targetValue != null && unit != null) {
         Text(
-            text = stringResource(R.string.goals_target_label, formatTargetValue(goal.targetValue), goal.unit),
+            text = stringResource(R.string.goals_target_label, formatTargetValue(targetValue), unit),
             style = MaterialTheme.typography.bodyMedium,
         )
     }

@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.stepwise.feature.goals
 
 import androidx.compose.foundation.layout.Arrangement
@@ -179,7 +181,6 @@ fun GoalFormScreen(
  * user-flow review (HIGH): `/PRODUCT_CANON.md`'s own Goal-creation example types a deadline as
  * "31 December," which the strict ISO-only text field rejected with no feedback until Save.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DeadlineField(
     value: String,
