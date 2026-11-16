@@ -14,6 +14,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -179,48 +180,54 @@ private fun StepwiseNavGraph(
                 onBack = { navController.popBackStack() },
             )
         }
-        composable(ROUTE_ACTIVITIES) {
-            ActivitiesRoute(
-                onActivityClick = { activityId -> navController.navigate("activityDetail/${activityId.value}") },
-                onAddActivityClick = { navController.navigate(ROUTE_ACTIVITY_CREATE) },
-            )
-        }
-        composable(ROUTE_ACTIVITY_CREATE) {
-            ActivityFormRoute(onSaved = { navController.popBackStack() }, onBack = { navController.popBackStack() })
-        }
-        composable(
-            route = ROUTE_ACTIVITY_EDIT,
-            arguments = listOf(navArgument(ARG_ACTIVITY_ID) { type = NavType.StringType }),
-        ) {
-            ActivityFormRoute(onSaved = { navController.popBackStack() }, onBack = { navController.popBackStack() })
-        }
-        composable(
-            route = ROUTE_ACTIVITY_DETAIL,
-            arguments = listOf(navArgument(ARG_ACTIVITY_ID) { type = NavType.StringType }),
-        ) {
-            ActivityDetailRoute(onBack = { navController.popBackStack() })
-        }
-        composable(ROUTE_HABITS) {
-            HabitsRoute(
-                onHabitClick = { habitId -> navController.navigate("habitDetail/${habitId.value}") },
-                onAddHabitClick = { navController.navigate(ROUTE_HABIT_CREATE) },
-            )
-        }
-        composable(ROUTE_HABIT_CREATE) {
-            HabitFormRoute(onSaved = { navController.popBackStack() }, onBack = { navController.popBackStack() })
-        }
-        composable(
-            route = ROUTE_HABIT_EDIT,
-            arguments = listOf(navArgument(ARG_HABIT_ID) { type = NavType.StringType }),
-        ) {
-            HabitFormRoute(onSaved = { navController.popBackStack() }, onBack = { navController.popBackStack() })
-        }
-        composable(
-            route = ROUTE_HABIT_DETAIL,
-            arguments = listOf(navArgument(ARG_HABIT_ID) { type = NavType.StringType }),
-        ) {
-            HabitDetailRoute(onBack = { navController.popBackStack() })
-        }
+        activitiesNavGraph(navController)
+    }
+}
+
+// Split out of StepwiseNavGraph (detekt LongMethod, DEV-018: eight new routes pushed it over
+// the 60-line threshold) - purely a graph-registration extraction, not a behavior change.
+private fun NavGraphBuilder.activitiesNavGraph(navController: NavHostController) {
+    composable(ROUTE_ACTIVITIES) {
+        ActivitiesRoute(
+            onActivityClick = { activityId -> navController.navigate("activityDetail/${activityId.value}") },
+            onAddActivityClick = { navController.navigate(ROUTE_ACTIVITY_CREATE) },
+        )
+    }
+    composable(ROUTE_ACTIVITY_CREATE) {
+        ActivityFormRoute(onSaved = { navController.popBackStack() }, onBack = { navController.popBackStack() })
+    }
+    composable(
+        route = ROUTE_ACTIVITY_EDIT,
+        arguments = listOf(navArgument(ARG_ACTIVITY_ID) { type = NavType.StringType }),
+    ) {
+        ActivityFormRoute(onSaved = { navController.popBackStack() }, onBack = { navController.popBackStack() })
+    }
+    composable(
+        route = ROUTE_ACTIVITY_DETAIL,
+        arguments = listOf(navArgument(ARG_ACTIVITY_ID) { type = NavType.StringType }),
+    ) {
+        ActivityDetailRoute(onBack = { navController.popBackStack() })
+    }
+    composable(ROUTE_HABITS) {
+        HabitsRoute(
+            onHabitClick = { habitId -> navController.navigate("habitDetail/${habitId.value}") },
+            onAddHabitClick = { navController.navigate(ROUTE_HABIT_CREATE) },
+        )
+    }
+    composable(ROUTE_HABIT_CREATE) {
+        HabitFormRoute(onSaved = { navController.popBackStack() }, onBack = { navController.popBackStack() })
+    }
+    composable(
+        route = ROUTE_HABIT_EDIT,
+        arguments = listOf(navArgument(ARG_HABIT_ID) { type = NavType.StringType }),
+    ) {
+        HabitFormRoute(onSaved = { navController.popBackStack() }, onBack = { navController.popBackStack() })
+    }
+    composable(
+        route = ROUTE_HABIT_DETAIL,
+        arguments = listOf(navArgument(ARG_HABIT_ID) { type = NavType.StringType }),
+    ) {
+        HabitDetailRoute(onBack = { navController.popBackStack() })
     }
 }
 

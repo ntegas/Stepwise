@@ -50,7 +50,8 @@ object ActivityWriteUseCaseModule {
         metricRepository: MetricRepository,
         idGenerator: IdGenerator,
         clock: Clock,
-    ): CreateHabitUseCase = CreateHabitUseCase(habitRepository, activityRepository, metricRepository, idGenerator, clock)
+    ): CreateHabitUseCase =
+        CreateHabitUseCase(habitRepository, activityRepository, metricRepository, idGenerator, clock)
 
     @Provides
     fun provideEditHabitUseCase(
