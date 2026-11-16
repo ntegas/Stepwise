@@ -4,6 +4,7 @@ package com.stepwise.feature.goals
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -104,75 +105,124 @@ fun GoalFormScreen(
             )
         },
     ) { padding ->
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(StepwiseSpacing.medium)
-                    .verticalScroll(rememberScrollState()),
-        ) {
-            StepwiseTextField(
-                value = state.title,
-                onValueChange = onTitleChanged,
-                label = stringResource(R.string.goal_form_name_label),
-                isError = state.titleError,
-                supportingText = if (state.titleError) stringResource(R.string.goal_form_name_required) else null,
-            )
-            StepwiseTextField(
-                value = state.targetValue,
-                onValueChange = onTargetValueChanged,
-                label = stringResource(R.string.goal_form_target_label),
-                isError = state.targetValueError,
-                supportingText =
-                    if (state.targetValueError) stringResource(R.string.goal_form_target_invalid) else null,
-                keyboardType = KeyboardType.Number,
-                modifier = Modifier.padding(top = StepwiseSpacing.small),
-            )
-            StepwiseTextField(
-                value = state.unit,
-                onValueChange = onUnitChanged,
-                label = stringResource(R.string.goal_form_unit_label),
-                isError = state.unitError,
-                supportingText = if (state.unitError) stringResource(R.string.goal_form_unit_required) else null,
-                modifier = Modifier.padding(top = StepwiseSpacing.small),
-            )
-            DeadlineField(
-                value = state.deadline,
-                onValueChange = onDeadlineChanged,
-                isError = state.deadlineError,
-                modifier = Modifier.padding(top = StepwiseSpacing.small),
-            )
-            StepwiseTextButton(
-                text = stringResource(R.string.goal_form_more_options),
-                onClick = onMoreOptionsToggled,
-                modifier = Modifier.padding(top = StepwiseSpacing.medium),
-            )
-            if (state.moreOptionsExpanded) {
-                MoreOptions(
-                    state = state,
-                    onCategoryChanged = onCategoryChanged,
-                    onDescriptionChanged = onDescriptionChanged,
-                    onPriorityChanged = onPriorityChanged,
-                    onLifeAreaSelected = onLifeAreaSelected,
-                    onProjectSelected = onProjectSelected,
-                )
-            }
-            if (state.hasError) {
-                Text(
-                    text = stringResource(R.string.goal_form_error_generic),
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(top = StepwiseSpacing.small),
-                )
-            }
-            StepwiseButton(
-                text = stringResource(R.string.goal_form_save),
-                onClick = onSave,
-                enabled = !state.isSubmitting,
-                modifier = Modifier.fillMaxWidth().padding(top = StepwiseSpacing.large),
+        GoalFormContent(
+            state = state,
+            padding = padding,
+            onTitleChanged = onTitleChanged,
+            onTargetValueChanged = onTargetValueChanged,
+            onUnitChanged = onUnitChanged,
+            onDeadlineChanged = onDeadlineChanged,
+            onCategoryChanged = onCategoryChanged,
+            onDescriptionChanged = onDescriptionChanged,
+            onPriorityChanged = onPriorityChanged,
+            onLifeAreaSelected = onLifeAreaSelected,
+            onProjectSelected = onProjectSelected,
+            onMoreOptionsToggled = onMoreOptionsToggled,
+            onSave = onSave,
+        )
+    }
+}
+
+@Composable
+private fun GoalFormContent(
+    state: GoalFormUiState,
+    padding: PaddingValues,
+    onTitleChanged: (String) -> Unit,
+    onTargetValueChanged: (String) -> Unit,
+    onUnitChanged: (String) -> Unit,
+    onDeadlineChanged: (String) -> Unit,
+    onCategoryChanged: (String) -> Unit,
+    onDescriptionChanged: (String) -> Unit,
+    onPriorityChanged: (String) -> Unit,
+    onLifeAreaSelected: (LifeAreaId?) -> Unit,
+    onProjectSelected: (ProjectId?) -> Unit,
+    onMoreOptionsToggled: () -> Unit,
+    onSave: () -> Unit,
+) {
+    Column(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(StepwiseSpacing.medium)
+                .verticalScroll(rememberScrollState()),
+    ) {
+        GoalFormPrimaryFields(
+            state = state,
+            onTitleChanged = onTitleChanged,
+            onTargetValueChanged = onTargetValueChanged,
+            onUnitChanged = onUnitChanged,
+            onDeadlineChanged = onDeadlineChanged,
+        )
+        StepwiseTextButton(
+            text = stringResource(R.string.goal_form_more_options),
+            onClick = onMoreOptionsToggled,
+            modifier = Modifier.padding(top = StepwiseSpacing.medium),
+        )
+        if (state.moreOptionsExpanded) {
+            MoreOptions(
+                state = state,
+                onCategoryChanged = onCategoryChanged,
+                onDescriptionChanged = onDescriptionChanged,
+                onPriorityChanged = onPriorityChanged,
+                onLifeAreaSelected = onLifeAreaSelected,
+                onProjectSelected = onProjectSelected,
             )
         }
+        if (state.hasError) {
+            Text(
+                text = stringResource(R.string.goal_form_error_generic),
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = StepwiseSpacing.small),
+            )
+        }
+        StepwiseButton(
+            text = stringResource(R.string.goal_form_save),
+            onClick = onSave,
+            enabled = !state.isSubmitting,
+            modifier = Modifier.fillMaxWidth().padding(top = StepwiseSpacing.large),
+        )
     }
+}
+
+@Composable
+private fun GoalFormPrimaryFields(
+    state: GoalFormUiState,
+    onTitleChanged: (String) -> Unit,
+    onTargetValueChanged: (String) -> Unit,
+    onUnitChanged: (String) -> Unit,
+    onDeadlineChanged: (String) -> Unit,
+) {
+    StepwiseTextField(
+        value = state.title,
+        onValueChange = onTitleChanged,
+        label = stringResource(R.string.goal_form_name_label),
+        isError = state.titleError,
+        supportingText = if (state.titleError) stringResource(R.string.goal_form_name_required) else null,
+    )
+    StepwiseTextField(
+        value = state.targetValue,
+        onValueChange = onTargetValueChanged,
+        label = stringResource(R.string.goal_form_target_label),
+        isError = state.targetValueError,
+        supportingText = if (state.targetValueError) stringResource(R.string.goal_form_target_invalid) else null,
+        keyboardType = KeyboardType.Number,
+        modifier = Modifier.padding(top = StepwiseSpacing.small),
+    )
+    StepwiseTextField(
+        value = state.unit,
+        onValueChange = onUnitChanged,
+        label = stringResource(R.string.goal_form_unit_label),
+        isError = state.unitError,
+        supportingText = if (state.unitError) stringResource(R.string.goal_form_unit_required) else null,
+        modifier = Modifier.padding(top = StepwiseSpacing.small),
+    )
+    DeadlineField(
+        value = state.deadline,
+        onValueChange = onDeadlineChanged,
+        isError = state.deadlineError,
+        modifier = Modifier.padding(top = StepwiseSpacing.small),
+    )
 }
 
 /**

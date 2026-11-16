@@ -1,5 +1,6 @@
 package com.stepwise.feature.goals
 
+import com.stepwise.core.model.Goal
 import com.stepwise.core.model.GoalId
 import com.stepwise.core.model.GoalProgressMode
 import com.stepwise.core.model.LifeArea
@@ -55,3 +56,21 @@ data class GoalFormUiState(
     val hasError: Boolean = false,
     val saved: Boolean = false,
 )
+
+/**
+ * Populates the form from a loaded [Goal] - extracted out of [GoalFormViewModel] once that class
+ * crossed detekt's TooManyFunctions threshold.
+ */
+internal fun GoalFormUiState.copyFrom(goal: Goal): GoalFormUiState =
+    copy(
+        title = goal.title,
+        targetValue = goal.targetValue?.toString() ?: "",
+        unit = goal.unit ?: "",
+        deadline = goal.deadline?.toString() ?: "",
+        lifeAreaId = goal.lifeAreaId,
+        projectId = goal.projectId,
+        category = goal.category ?: "",
+        description = goal.description ?: "",
+        priority = goal.priority?.toString() ?: "",
+        existingProgressMode = goal.progressMode,
+    )

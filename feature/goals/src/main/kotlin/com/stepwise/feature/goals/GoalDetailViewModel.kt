@@ -37,12 +37,16 @@ private const val KEY_GOAL_ID = "goalId"
  * DEV-016 architecture review (MEDIUM) after the first draft did exactly that - the "one broad
  * query multiple screens over-recompose from" anti-pattern `/ARCHITECTURE.md` §22 names. Both
  * [ObserveGoalUseCase] and [GetMilestonesUseCase] verify ownership centrally (DEV-016 logic
- * review, HIGH), so this ViewModel no longer needs its own ad hoc check.
+ * review, HIGH), so this ViewModel no longer needs its own ad hoc check. (Goal, Milestones) ->
+ * [GoalDetailUiState] mapping lives in [goalDetailStateFrom], extracted out of this class once it
+ * crossed detekt's TooManyFunctions threshold.
  */
+@Suppress("TooManyFunctions") // One handler per lifecycle action/milestone dialog field, plus load/mutation plumbing.
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class GoalDetailViewModel
     @Inject
+    @Suppress("LongParameterList") // One repository/Use Case per thing this screen loads, acts on, or saves to.
     constructor(
         savedStateHandle: SavedStateHandle,
         private val authRepository: AuthRepository,
@@ -79,27 +83,7 @@ class GoalDetailViewModel
             goalResult: AppResult<Goal?>,
             milestonesResult: AppResult<List<Milestone>>,
         ) {
-            if (goalResult is AppResult.Failure) {
-                _state.value = GoalDetailUiState.Error
-                return
-            }
-            if (milestonesResult is AppResult.Failure) {
-                _state.value = GoalDetailUiState.Error
-                return
-            }
-            val goal = (goalResult as AppResult.Success).value
-            if (goal == null) {
-                _state.value = GoalDetailUiState.NotFound
-                return
-            }
-            val milestones = (milestonesResult as AppResult.Success).value.sortedBy { it.sortOrder }
-            val current = _state.value
-            _state.value =
-                if (current is GoalDetailUiState.Content) {
-                    current.copy(goal = goal, milestones = milestones)
-                } else {
-                    GoalDetailUiState.Content(goal = goal, milestones = milestones)
-                }
+            _state.value = goalDetailStateFrom(_state.value, goalResult, milestonesResult)
         }
 
         fun pause() = updateStatus(LifecycleStatus.PAUSED)
@@ -158,8 +142,7 @@ class GoalDetailViewModel
         }
 
         fun saveMilestone() {
-            val content = _state.value as? GoalDetailUiState.Content ?: return
-            if (content.milestoneSaving) return
+            val content = (_state.value as? GoalDetailUiState.Content)?.takeIf { !it.milestoneSaving } ?: return
             val title = content.milestoneTitle.trim()
             val weight = content.milestoneWeight.trim().toDoubleOrNull()
             val titleInvalid = title.isBlank()

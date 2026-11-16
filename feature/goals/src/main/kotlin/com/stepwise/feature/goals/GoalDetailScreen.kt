@@ -184,30 +184,11 @@ private fun GoalDetailContent(
                 modifier = Modifier.padding(top = StepwiseSpacing.small),
             )
         }
-        Text(
-            text = stringResource(R.string.goal_detail_milestones_header),
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(top = StepwiseSpacing.large),
-        )
-        if (state.milestones.isEmpty()) {
-            Text(
-                text = stringResource(R.string.goal_detail_no_milestones),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(top = StepwiseSpacing.small),
-            )
-        } else {
-            state.milestones.forEach { milestone ->
-                MilestoneRow(
-                    milestone = milestone,
-                    onToggle = { onToggleMilestone(milestone) },
-                    onProgressChanged = { progress -> onMilestoneProgressChanged(milestone, progress) },
-                )
-            }
-        }
-        StepwiseTextButton(
-            text = stringResource(R.string.goal_detail_add_milestone),
-            onClick = onAddMilestoneClick,
-            modifier = Modifier.padding(top = StepwiseSpacing.small),
+        MilestonesSection(
+            state = state,
+            onAddMilestoneClick = onAddMilestoneClick,
+            onToggleMilestone = onToggleMilestone,
+            onMilestoneProgressChanged = onMilestoneProgressChanged,
         )
     }
     if (state.milestoneDialogVisible) {
@@ -220,6 +201,40 @@ private fun GoalDetailContent(
             onSave = onSaveMilestone,
         )
     }
+}
+
+@Composable
+private fun MilestonesSection(
+    state: GoalDetailUiState.Content,
+    onAddMilestoneClick: () -> Unit,
+    onToggleMilestone: (Milestone) -> Unit,
+    onMilestoneProgressChanged: (Milestone, Double) -> Unit,
+) {
+    Text(
+        text = stringResource(R.string.goal_detail_milestones_header),
+        style = MaterialTheme.typography.titleMedium,
+        modifier = Modifier.padding(top = StepwiseSpacing.large),
+    )
+    if (state.milestones.isEmpty()) {
+        Text(
+            text = stringResource(R.string.goal_detail_no_milestones),
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(top = StepwiseSpacing.small),
+        )
+    } else {
+        state.milestones.forEach { milestone ->
+            MilestoneRow(
+                milestone = milestone,
+                onToggle = { onToggleMilestone(milestone) },
+                onProgressChanged = { progress -> onMilestoneProgressChanged(milestone, progress) },
+            )
+        }
+    }
+    StepwiseTextButton(
+        text = stringResource(R.string.goal_detail_add_milestone),
+        onClick = onAddMilestoneClick,
+        modifier = Modifier.padding(top = StepwiseSpacing.small),
+    )
 }
 
 @Composable

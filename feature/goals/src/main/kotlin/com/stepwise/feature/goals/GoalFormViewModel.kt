@@ -4,17 +4,12 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.stepwise.core.common.AppResult
-import com.stepwise.core.model.Goal
 import com.stepwise.core.model.GoalId
-import com.stepwise.core.model.GoalProgressMode
-import com.stepwise.core.model.GoalType
 import com.stepwise.core.model.LifeAreaId
 import com.stepwise.core.model.ProjectId
 import com.stepwise.core.model.UserId
 import com.stepwise.domain.repository.AuthRepository
-import com.stepwise.domain.usecase.CreateGoalCommand
 import com.stepwise.domain.usecase.CreateGoalUseCase
-import com.stepwise.domain.usecase.EditGoalCommand
 import com.stepwise.domain.usecase.EditGoalUseCase
 import com.stepwise.domain.usecase.GetGoalByIdUseCase
 import com.stepwise.domain.usecase.GetLifeAreasUseCase
@@ -25,7 +20,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.datetime.LocalDate
 import javax.inject.Inject
 
 private const val KEY_GOAL_ID = "goalId"
@@ -33,38 +27,25 @@ private const val KEY_GOAL_ID = "goalId"
 /**
  * Create/Edit Goal form (`/ROADMAP.md` DEV-016, `/PRODUCT_CANON.md`: "Goal name, Target,
  * Deadline... More Options: Life Area, description, priority, project, category"). Deadline and
- * every "More Options" field stay plain text — no date-picker/numeric-stepper design-system
+ * every "More Options" field stay plain text - no date-picker/numeric-stepper design-system
  * component exists yet (a disclosed gap, the same category as `:feature:onboarding-auth`'s own
- * disclosed `StepwiseTextField` gap at DEV-015) — validated on [save] rather than per keystroke.
+ * disclosed `StepwiseTextField` gap at DEV-015) - validated on [save] rather than per keystroke.
+ * Field validation lives in [validateGoalForm]; Create/Edit command mapping (including the
+ * type/progressMode default and the never-redefine-on-edit rule) lives in [toCreateGoalCommand]/
+ * [toEditGoalCommand] - both extracted out of this class once it crossed detekt's
+ * CyclomaticComplexMethod/TooManyFunctions thresholds.
  *
- * **[GoalType]/[GoalProgressMode] default, disclosed rather than invented**: `/ARCHITECTURE.md`
- * §6/B6 only describes UI-level *suggestions* per [GoalType], not a hard mapping, and no
- * canonical doc says what a type/progressMode-picker-free form should default to. This form uses
- * [GoalProgressMode.TARGET_VALUE]/[GoalType.QUANTITY] when a target value and unit are both
- * given, else [GoalProgressMode.MILESTONES]/[GoalType.CUMULATIVE] (progress tracked entirely via
- * Goal Detail's Milestones list) — a narrow default a later task is free to replace with an
- * actual picker.
- *
- * **Edit mode's "clear" limitation inherited, not re-solved**: [EditGoalCommand]'s own KDoc
- * states a `null` field always means "leave unchanged" — clearing the target value is the one
- * exception, since switching into [GoalProgressMode.MILESTONES] makes [EditGoalUseCase] clear
+ * **Edit mode's "clear" limitation inherited, not re-solved**: `EditGoalCommand`'s own KDoc
+ * states a `null` field always means "leave unchanged" - clearing the target value is the one
+ * exception, since switching into `GoalProgressMode.MILESTONES` makes `EditGoalUseCase` clear
  * `targetValue`/`unit` itself. Clearing Life Area, Project, category, description, or priority
  * once set is not possible through this form, matching that command's own disclosed limitation.
- *
- * **Edit never redefines [GoalProgressMode] (DEV-016 logic review, CRITICAL, fixed)**: the first
- * draft called [inferTypeAndMode] on Edit too, which silently flipped a `METRIC`/`FREQUENCY`/
- * `TASKS`/`MANUAL` Goal's mode to `MILESTONES`/`TARGET_VALUE` on *any* edit, even just a title
- * change — `GoalProgressMode`'s own KDoc states it is "set at creation and changed only by a
- * deliberate user edit, never computed." [toEditCommand] now always passes `progressMode = null`
- * ("leave unchanged") and only forwards the typed Target/Unit at all when
- * [GoalFormUiState.existingProgressMode] already uses them ([GoalValidation.TARGET_REQUIRED_MODES]);
- * for any other existing mode, whatever is typed into those two fields is not sent — a disclosed
- * limitation (no progressMode picker exists to make switching modes a deliberate action) rather
- * than a silent, confusing [GoalValidation] rejection the first draft could hit instead.
  */
+@Suppress("TooManyFunctions") // One on*Changed handler per form field, plus load/save - the form's genuine surface.
 @HiltViewModel
 class GoalFormViewModel
     @Inject
+    @Suppress("LongParameterList") // One repository/Use Case per thing this form loads, picks from, or saves to.
     constructor(
         savedStateHandle: SavedStateHandle,
         private val authRepository: AuthRepository,
@@ -110,20 +91,6 @@ class GoalFormViewModel
             }
         }
 
-        private fun GoalFormUiState.copyFrom(goal: Goal): GoalFormUiState =
-            copy(
-                title = goal.title,
-                targetValue = goal.targetValue?.toString() ?: "",
-                unit = goal.unit ?: "",
-                deadline = goal.deadline?.toString() ?: "",
-                lifeAreaId = goal.lifeAreaId,
-                projectId = goal.projectId,
-                category = goal.category ?: "",
-                description = goal.description ?: "",
-                priority = goal.priority?.toString() ?: "",
-                existingProgressMode = goal.progressMode,
-            )
-
         fun onTitleChanged(value: String) {
             _state.value = _state.value.copy(title = value, titleError = false, hasError = false)
         }
@@ -168,7 +135,19 @@ class GoalFormViewModel
         fun save() {
             val current = _state.value
             if (current.isSubmitting) return
-            val validated = validate(current) ?: return
+            val result = validateGoalForm(current)
+            val validated = result.validated
+            if (validated == null) {
+                _state.value =
+                    current.copy(
+                        titleError = result.titleError,
+                        targetValueError = result.targetValueError,
+                        unitError = result.unitError,
+                        deadlineError = result.deadlineError,
+                        priorityError = result.priorityError,
+                    )
+                return
+            }
             _state.value =
                 current.copy(
                     isSubmitting = true,
@@ -185,119 +164,18 @@ class GoalFormViewModel
                     _state.value = _state.value.copy(isSubmitting = false, hasError = true)
                     return@launch
                 }
-                val result =
+                val saveResult =
                     when (val mode = current.mode) {
-                        is GoalFormMode.Create -> createGoalUseCase.execute(toCreateCommand(validated, current, userId))
+                        is GoalFormMode.Create ->
+                            createGoalUseCase.execute(toCreateGoalCommand(validated, current, userId))
                         is GoalFormMode.Edit ->
-                            editGoalUseCase.execute(toEditCommand(validated, current, mode.goalId, userId))
+                            editGoalUseCase.execute(toEditGoalCommand(validated, current, mode.goalId, userId))
                     }
                 _state.value =
-                    when (result) {
+                    when (saveResult) {
                         is AppResult.Success -> _state.value.copy(isSubmitting = false, saved = true)
                         is AppResult.Failure -> _state.value.copy(isSubmitting = false, hasError = true)
                     }
             }
         }
-
-        // A Target needs a paired Unit for GoalValidation (and vice versa isn't rejected, but a
-        // lone Unit with no Target is meaningless, so both-or-neither is enforced here too,
-        // inline, rather than letting a Target-without-Unit reach CreateGoalUseCase/EditGoalUseCase
-        // only to bounce back as a confusing enum-name-bearing GoalValidation failure (DEV-016
-        // design/user-flow review).
-        private fun validate(current: GoalFormUiState): ValidatedInput? {
-            val title = current.title.trim()
-            val targetValueText = current.targetValue.trim()
-            val targetValue = targetValueText.toDoubleOrNull()
-            val targetValueInvalid =
-                targetValueText.isNotBlank() && (targetValue == null || !targetValue.isFinite() || targetValue <= 0.0)
-            val unitText = current.unit.trim()
-            val unitInvalid = targetValueText.isNotBlank() && !targetValueInvalid && unitText.isBlank()
-            val deadlineText = current.deadline.trim()
-            val parsedDeadline = runCatching { LocalDate.parse(deadlineText) }.getOrNull()
-            val deadline = if (deadlineText.isBlank()) null else parsedDeadline
-            val deadlineInvalid = deadlineText.isNotBlank() && deadline == null
-            val priorityText = current.priority.trim()
-            val priority = priorityText.toIntOrNull()
-            val priorityInvalid = priorityText.isNotBlank() && priority == null
-            if (title.isBlank() || targetValueInvalid || unitInvalid || deadlineInvalid || priorityInvalid) {
-                _state.value =
-                    current.copy(
-                        titleError = title.isBlank(),
-                        targetValueError = targetValueInvalid,
-                        unitError = unitInvalid,
-                        deadlineError = deadlineInvalid,
-                        priorityError = priorityInvalid,
-                    )
-                return null
-            }
-            return ValidatedInput(
-                title = title,
-                targetValue = if (targetValueText.isBlank()) null else targetValue,
-                unit = unitText.ifBlank { null },
-                deadline = deadline,
-                priority = priority,
-            )
-        }
-
-        private fun inferTypeAndMode(validated: ValidatedInput): Pair<GoalType, GoalProgressMode> =
-            if (validated.targetValue != null && validated.unit != null) {
-                GoalType.QUANTITY to GoalProgressMode.TARGET_VALUE
-            } else {
-                GoalType.CUMULATIVE to GoalProgressMode.MILESTONES
-            }
-
-        private fun toCreateCommand(
-            validated: ValidatedInput,
-            formState: GoalFormUiState,
-            userId: UserId,
-        ): CreateGoalCommand {
-            val (type, progressMode) = inferTypeAndMode(validated)
-            return CreateGoalCommand(
-                userId = userId,
-                title = validated.title,
-                type = type,
-                progressMode = progressMode,
-                lifeAreaId = formState.lifeAreaId,
-                projectId = formState.projectId,
-                targetValue = validated.targetValue,
-                unit = validated.unit,
-                deadline = validated.deadline,
-                priority = validated.priority,
-                category = formState.category.trim().ifBlank { null },
-                description = formState.description.trim().ifBlank { null },
-            )
-        }
-
-        private fun toEditCommand(
-            validated: ValidatedInput,
-            formState: GoalFormUiState,
-            goalId: GoalId,
-            userId: UserId,
-        ): EditGoalCommand {
-            val existingMode = formState.existingProgressMode
-            val usesTarget = existingMode == GoalProgressMode.TARGET_VALUE || existingMode == GoalProgressMode.FREQUENCY
-            return EditGoalCommand(
-                userId = userId,
-                goalId = goalId,
-                title = validated.title,
-                // Never redefined here - see this class's own KDoc for why.
-                progressMode = null,
-                lifeAreaId = formState.lifeAreaId,
-                projectId = formState.projectId,
-                targetValue = if (usesTarget) validated.targetValue else null,
-                unit = if (usesTarget) validated.unit else null,
-                deadline = validated.deadline,
-                priority = validated.priority,
-                category = formState.category.trim().ifBlank { null },
-                description = formState.description.trim().ifBlank { null },
-            )
-        }
-
-        private data class ValidatedInput(
-            val title: String,
-            val targetValue: Double?,
-            val unit: String?,
-            val deadline: LocalDate?,
-            val priority: Int?,
-        )
     }
