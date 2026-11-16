@@ -48,9 +48,7 @@ class FakeSessionRepository : SessionRepository {
     override suspend fun getById(id: SessionId): AppResult<Session?> = AppResult.Success(sessions.value[id.value])
 
     override suspend fun getMetricValuesForSession(sessionId: SessionId): AppResult<List<SessionMetricValue>> =
-        AppResult.Success(
-            metricValues.value.values.filter { it.sessionId == sessionId && it.sync.deletedAt == null },
-        )
+        AppResult.Success(metricValues.value.values.filter { it.sessionId == sessionId })
 
     override suspend fun upsertSessionWithMetricValues(
         session: Session,

@@ -133,66 +133,118 @@ private fun HabitDetailContent(
             )
         }
         is HabitDetailUiState.Content -> {
-            val contentModifier =
-                modifier.fillMaxSize().padding(StepwiseSpacing.medium).verticalScroll(rememberScrollState())
-            Column(modifier = contentModifier) {
-                val metric = state.metrics.firstOrNull { it.id == state.habit.metricId }
-                val unit = metric?.canonicalUnit ?: state.habit.metricId.value
-                Text(
-                    text = stringResource(R.string.habit_detail_target_label, state.habit.targetValue.toString(), unit),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                val archiveRes =
-                    if (state.habit.archived) {
-                        R.string.activity_detail_unarchive
-                    } else {
-                        R.string.activity_detail_archive
-                    }
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(StepwiseSpacing.small),
-                    modifier = Modifier.padding(top = StepwiseSpacing.small),
-                ) {
-                    StepwiseOutlinedButton(
-                        text = stringResource(R.string.activity_detail_edit),
-                        onClick = onEditClicked,
-                    )
-                    StepwiseOutlinedButton(text = stringResource(archiveRes), onClick = onToggleArchived)
-                }
-                GoalLinksSection(
-                    links = state.goalLinks,
-                    goals = state.goals,
-                    metrics = state.metrics,
-                    onLinkGoalClicked = onLinkGoalClicked,
-                    onUnlinkClicked = onUnlinkClicked,
-                )
-                SessionHistorySection(
-                    sessions = state.sessions,
-                    onLogSessionClicked = onLogSessionClicked,
-                    onEditSessionClicked = onEditSessionClicked,
-                    onDeleteSessionClicked = onDeleteSessionClicked,
-                )
-            }
-            HabitDetailDialogs(
+            HabitDetailContentBody(
                 state = state,
+                modifier = modifier,
+                onEditClicked = onEditClicked,
+                onToggleArchived = onToggleArchived,
+                onLinkGoalClicked = onLinkGoalClicked,
+                onLinkGoalDialogDismissed = onLinkGoalDialogDismissed,
                 onLinkGoalSelected = onLinkGoalSelected,
                 onLinkMetricSelected = onLinkMetricSelected,
                 onConfirmLinkGoal = onConfirmLinkGoal,
-                onLinkGoalDialogDismissed = onLinkGoalDialogDismissed,
+                onUnlinkClicked = onUnlinkClicked,
+                onUnlinkDialogDismissed = onUnlinkDialogDismissed,
+                onConfirmUnlink = onConfirmUnlink,
+                onLogSessionClicked = onLogSessionClicked,
+                onManualEntryDialogDismissed = onManualEntryDialogDismissed,
                 onManualEntryDateChanged = onManualEntryDateChanged,
                 onManualEntryStatusSelected = onManualEntryStatusSelected,
                 onManualEntryMetricValueChanged = onManualEntryMetricValueChanged,
                 onConfirmManualEntry = onConfirmManualEntry,
-                onManualEntryDialogDismissed = onManualEntryDialogDismissed,
-                onConfirmUnlink = onConfirmUnlink,
-                onUnlinkDialogDismissed = onUnlinkDialogDismissed,
+                onEditSessionClicked = onEditSessionClicked,
+                onEditSessionDialogDismissed = onEditSessionDialogDismissed,
                 onEditSessionMetricValueChanged = onEditSessionMetricValueChanged,
                 onConfirmEditSession = onConfirmEditSession,
-                onEditSessionDialogDismissed = onEditSessionDialogDismissed,
-                onConfirmDeleteSession = onConfirmDeleteSession,
+                onDeleteSessionClicked = onDeleteSessionClicked,
                 onDeleteSessionDialogDismissed = onDeleteSessionDialogDismissed,
+                onConfirmDeleteSession = onConfirmDeleteSession,
             )
         }
     }
+}
+
+// One callback per lifecycle action/dialog field - mirrors HabitDetailContent's own surface.
+@Suppress("LongParameterList")
+@Composable
+private fun HabitDetailContentBody(
+    state: HabitDetailUiState.Content,
+    modifier: Modifier,
+    onEditClicked: () -> Unit,
+    onToggleArchived: () -> Unit,
+    onLinkGoalClicked: () -> Unit,
+    onLinkGoalDialogDismissed: () -> Unit,
+    onLinkGoalSelected: (GoalId) -> Unit,
+    onLinkMetricSelected: (MetricId) -> Unit,
+    onConfirmLinkGoal: () -> Unit,
+    onUnlinkClicked: (GoalActivityLinkId) -> Unit,
+    onUnlinkDialogDismissed: () -> Unit,
+    onConfirmUnlink: () -> Unit,
+    onLogSessionClicked: () -> Unit,
+    onManualEntryDialogDismissed: () -> Unit,
+    onManualEntryDateChanged: (String) -> Unit,
+    onManualEntryStatusSelected: (ExecutionStatus) -> Unit,
+    onManualEntryMetricValueChanged: (MetricId, String) -> Unit,
+    onConfirmManualEntry: () -> Unit,
+    onEditSessionClicked: (SessionId) -> Unit,
+    onEditSessionDialogDismissed: () -> Unit,
+    onEditSessionMetricValueChanged: (MetricId, String) -> Unit,
+    onConfirmEditSession: () -> Unit,
+    onDeleteSessionClicked: (SessionId) -> Unit,
+    onDeleteSessionDialogDismissed: () -> Unit,
+    onConfirmDeleteSession: () -> Unit,
+) {
+    val contentModifier =
+        modifier.fillMaxSize().padding(StepwiseSpacing.medium).verticalScroll(rememberScrollState())
+    Column(modifier = contentModifier) {
+        val metric = state.metrics.firstOrNull { it.id == state.habit.metricId }
+        val unit = metric?.canonicalUnit ?: state.habit.metricId.value
+        Text(
+            text = stringResource(R.string.habit_detail_target_label, state.habit.targetValue.toString(), unit),
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        val archiveRes =
+            if (state.habit.archived) R.string.activity_detail_unarchive else R.string.activity_detail_archive
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(StepwiseSpacing.small),
+            modifier = Modifier.padding(top = StepwiseSpacing.small),
+        ) {
+            StepwiseOutlinedButton(text = stringResource(R.string.activity_detail_edit), onClick = onEditClicked)
+            StepwiseOutlinedButton(text = stringResource(archiveRes), onClick = onToggleArchived)
+        }
+        GoalLinksSection(
+            links = state.goalLinks,
+            goals = state.goals,
+            metrics = state.metrics,
+            onLinkGoalClicked = onLinkGoalClicked,
+            onUnlinkClicked = onUnlinkClicked,
+        )
+        SessionHistorySection(
+            sessions = state.sessions,
+            onLogSessionClicked = onLogSessionClicked,
+            onEditSessionClicked = onEditSessionClicked,
+            onDeleteSessionClicked = onDeleteSessionClicked,
+        )
+    }
+    HabitDetailDialogs(
+        state = state,
+        onLinkGoalSelected = onLinkGoalSelected,
+        onLinkMetricSelected = onLinkMetricSelected,
+        onConfirmLinkGoal = onConfirmLinkGoal,
+        onLinkGoalDialogDismissed = onLinkGoalDialogDismissed,
+        onManualEntryDateChanged = onManualEntryDateChanged,
+        onManualEntryStatusSelected = onManualEntryStatusSelected,
+        onManualEntryMetricValueChanged = onManualEntryMetricValueChanged,
+        onConfirmManualEntry = onConfirmManualEntry,
+        onManualEntryDialogDismissed = onManualEntryDialogDismissed,
+        onConfirmUnlink = onConfirmUnlink,
+        onUnlinkDialogDismissed = onUnlinkDialogDismissed,
+        onEditSessionMetricValueChanged = onEditSessionMetricValueChanged,
+        onConfirmEditSession = onConfirmEditSession,
+        onEditSessionDialogDismissed = onEditSessionDialogDismissed,
+        onConfirmDeleteSession = onConfirmDeleteSession,
+        onDeleteSessionDialogDismissed = onDeleteSessionDialogDismissed,
+    )
 }
 
 @Suppress("LongParameterList") // One callback per dialog field/action - mirrors HabitDetailContent's own surface.

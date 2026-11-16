@@ -132,57 +132,109 @@ private fun ActivityDetailContent(
             )
         }
         is ActivityDetailUiState.Content -> {
-            val contentModifier =
-                modifier.fillMaxSize().padding(StepwiseSpacing.medium).verticalScroll(rememberScrollState())
-            Column(modifier = contentModifier) {
-                val archiveRes =
-                    if (state.activity.archived) {
-                        R.string.activity_detail_unarchive
-                    } else {
-                        R.string.activity_detail_archive
-                    }
-                Row(horizontalArrangement = Arrangement.spacedBy(StepwiseSpacing.small)) {
-                    StepwiseOutlinedButton(
-                        text = stringResource(R.string.activity_detail_edit),
-                        onClick = onEditClicked,
-                    )
-                    StepwiseOutlinedButton(text = stringResource(archiveRes), onClick = onToggleArchived)
-                }
-                GoalLinksSection(
-                    links = state.goalLinks,
-                    goals = state.goals,
-                    metrics = state.metrics,
-                    onLinkGoalClicked = onLinkGoalClicked,
-                    onUnlinkClicked = onUnlinkClicked,
-                )
-                SessionHistorySection(
-                    sessions = state.sessions,
-                    onLogSessionClicked = onLogSessionClicked,
-                    onEditSessionClicked = onEditSessionClicked,
-                    onDeleteSessionClicked = onDeleteSessionClicked,
-                )
-            }
-            ActivityDetailDialogs(
+            ActivityDetailContentBody(
                 state = state,
+                modifier = modifier,
+                onEditClicked = onEditClicked,
+                onToggleArchived = onToggleArchived,
+                onLinkGoalClicked = onLinkGoalClicked,
+                onLinkGoalDialogDismissed = onLinkGoalDialogDismissed,
                 onLinkGoalSelected = onLinkGoalSelected,
                 onLinkMetricSelected = onLinkMetricSelected,
                 onConfirmLinkGoal = onConfirmLinkGoal,
-                onLinkGoalDialogDismissed = onLinkGoalDialogDismissed,
+                onUnlinkClicked = onUnlinkClicked,
+                onUnlinkDialogDismissed = onUnlinkDialogDismissed,
+                onConfirmUnlink = onConfirmUnlink,
+                onLogSessionClicked = onLogSessionClicked,
+                onManualEntryDialogDismissed = onManualEntryDialogDismissed,
                 onManualEntryDateChanged = onManualEntryDateChanged,
                 onManualEntryStatusSelected = onManualEntryStatusSelected,
                 onManualEntryMetricValueChanged = onManualEntryMetricValueChanged,
                 onConfirmManualEntry = onConfirmManualEntry,
-                onManualEntryDialogDismissed = onManualEntryDialogDismissed,
-                onConfirmUnlink = onConfirmUnlink,
-                onUnlinkDialogDismissed = onUnlinkDialogDismissed,
+                onEditSessionClicked = onEditSessionClicked,
+                onEditSessionDialogDismissed = onEditSessionDialogDismissed,
                 onEditSessionMetricValueChanged = onEditSessionMetricValueChanged,
                 onConfirmEditSession = onConfirmEditSession,
-                onEditSessionDialogDismissed = onEditSessionDialogDismissed,
-                onConfirmDeleteSession = onConfirmDeleteSession,
+                onDeleteSessionClicked = onDeleteSessionClicked,
                 onDeleteSessionDialogDismissed = onDeleteSessionDialogDismissed,
+                onConfirmDeleteSession = onConfirmDeleteSession,
             )
         }
     }
+}
+
+// One callback per lifecycle action/dialog field - mirrors ActivityDetailContent's own surface.
+@Suppress("LongParameterList")
+@Composable
+private fun ActivityDetailContentBody(
+    state: ActivityDetailUiState.Content,
+    modifier: Modifier,
+    onEditClicked: () -> Unit,
+    onToggleArchived: () -> Unit,
+    onLinkGoalClicked: () -> Unit,
+    onLinkGoalDialogDismissed: () -> Unit,
+    onLinkGoalSelected: (GoalId) -> Unit,
+    onLinkMetricSelected: (MetricId) -> Unit,
+    onConfirmLinkGoal: () -> Unit,
+    onUnlinkClicked: (GoalActivityLinkId) -> Unit,
+    onUnlinkDialogDismissed: () -> Unit,
+    onConfirmUnlink: () -> Unit,
+    onLogSessionClicked: () -> Unit,
+    onManualEntryDialogDismissed: () -> Unit,
+    onManualEntryDateChanged: (String) -> Unit,
+    onManualEntryStatusSelected: (ExecutionStatus) -> Unit,
+    onManualEntryMetricValueChanged: (MetricId, String) -> Unit,
+    onConfirmManualEntry: () -> Unit,
+    onEditSessionClicked: (SessionId) -> Unit,
+    onEditSessionDialogDismissed: () -> Unit,
+    onEditSessionMetricValueChanged: (MetricId, String) -> Unit,
+    onConfirmEditSession: () -> Unit,
+    onDeleteSessionClicked: (SessionId) -> Unit,
+    onDeleteSessionDialogDismissed: () -> Unit,
+    onConfirmDeleteSession: () -> Unit,
+) {
+    val contentModifier =
+        modifier.fillMaxSize().padding(StepwiseSpacing.medium).verticalScroll(rememberScrollState())
+    Column(modifier = contentModifier) {
+        val archiveRes =
+            if (state.activity.archived) R.string.activity_detail_unarchive else R.string.activity_detail_archive
+        Row(horizontalArrangement = Arrangement.spacedBy(StepwiseSpacing.small)) {
+            StepwiseOutlinedButton(text = stringResource(R.string.activity_detail_edit), onClick = onEditClicked)
+            StepwiseOutlinedButton(text = stringResource(archiveRes), onClick = onToggleArchived)
+        }
+        GoalLinksSection(
+            links = state.goalLinks,
+            goals = state.goals,
+            metrics = state.metrics,
+            onLinkGoalClicked = onLinkGoalClicked,
+            onUnlinkClicked = onUnlinkClicked,
+        )
+        SessionHistorySection(
+            sessions = state.sessions,
+            onLogSessionClicked = onLogSessionClicked,
+            onEditSessionClicked = onEditSessionClicked,
+            onDeleteSessionClicked = onDeleteSessionClicked,
+        )
+    }
+    ActivityDetailDialogs(
+        state = state,
+        onLinkGoalSelected = onLinkGoalSelected,
+        onLinkMetricSelected = onLinkMetricSelected,
+        onConfirmLinkGoal = onConfirmLinkGoal,
+        onLinkGoalDialogDismissed = onLinkGoalDialogDismissed,
+        onManualEntryDateChanged = onManualEntryDateChanged,
+        onManualEntryStatusSelected = onManualEntryStatusSelected,
+        onManualEntryMetricValueChanged = onManualEntryMetricValueChanged,
+        onConfirmManualEntry = onConfirmManualEntry,
+        onManualEntryDialogDismissed = onManualEntryDialogDismissed,
+        onConfirmUnlink = onConfirmUnlink,
+        onUnlinkDialogDismissed = onUnlinkDialogDismissed,
+        onEditSessionMetricValueChanged = onEditSessionMetricValueChanged,
+        onConfirmEditSession = onConfirmEditSession,
+        onEditSessionDialogDismissed = onEditSessionDialogDismissed,
+        onConfirmDeleteSession = onConfirmDeleteSession,
+        onDeleteSessionDialogDismissed = onDeleteSessionDialogDismissed,
+    )
 }
 
 @Suppress("LongParameterList") // One callback per dialog field/action - mirrors ActivityDetailContent's own surface.
