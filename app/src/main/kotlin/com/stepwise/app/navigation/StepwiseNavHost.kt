@@ -13,6 +13,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -66,59 +67,78 @@ fun StepwiseNavHost(sessionViewModel: SessionViewModel = hiltViewModel()) {
     Scaffold(
         bottomBar = {
             if (currentRoute in TAB_ROUTES) {
-                StepwiseBottomNavigation(
-                    items =
-                        listOf(
-                            StepwiseNavigationItem(
-                                label = stringResource(R.string.nav_tab_today),
-                                icon = Icons.Filled.Home,
-                                iconContentDescription = stringResource(R.string.nav_tab_today_content_description),
-                                selected = currentRoute == ROUTE_TODAY,
-                                onClick = { navController.navigateToTab(ROUTE_TODAY) },
-                            ),
-                            StepwiseNavigationItem(
-                                label = stringResource(R.string.nav_tab_goals),
-                                icon = Icons.Filled.List,
-                                iconContentDescription = stringResource(R.string.nav_tab_goals_content_description),
-                                selected = currentRoute == ROUTE_GOALS,
-                                onClick = { navController.navigateToTab(ROUTE_GOALS) },
-                            ),
-                        ),
-                )
+                StepwiseTabBar(navController = navController, currentRoute = currentRoute)
             }
         },
     ) { padding ->
-        NavHost(
+        StepwiseNavGraph(
             navController = navController,
-            startDestination = ROUTE_SIGN_IN,
             modifier = if (currentRoute in TAB_ROUTES) Modifier.padding(padding) else Modifier,
+        )
+    }
+}
+
+@Composable
+private fun StepwiseTabBar(
+    navController: NavController,
+    currentRoute: String?,
+) {
+    StepwiseBottomNavigation(
+        items =
+            listOf(
+                StepwiseNavigationItem(
+                    label = stringResource(R.string.nav_tab_today),
+                    icon = Icons.Filled.Home,
+                    iconContentDescription = stringResource(R.string.nav_tab_today_content_description),
+                    selected = currentRoute == ROUTE_TODAY,
+                    onClick = { navController.navigateToTab(ROUTE_TODAY) },
+                ),
+                StepwiseNavigationItem(
+                    label = stringResource(R.string.nav_tab_goals),
+                    icon = Icons.Filled.List,
+                    iconContentDescription = stringResource(R.string.nav_tab_goals_content_description),
+                    selected = currentRoute == ROUTE_GOALS,
+                    onClick = { navController.navigateToTab(ROUTE_GOALS) },
+                ),
+            ),
+    )
+}
+
+@Composable
+private fun StepwiseNavGraph(
+    navController: NavHostController,
+    modifier: Modifier,
+) {
+    NavHost(
+        navController = navController,
+        startDestination = ROUTE_SIGN_IN,
+        modifier = modifier,
+    ) {
+        composable(ROUTE_SIGN_IN) { SignInRoute() }
+        composable(ROUTE_TODAY) { TodayRoute() }
+        composable(ROUTE_GOALS) {
+            GoalsRoute(
+                onGoalClick = { goalId -> navController.navigate("goalDetail/${goalId.value}") },
+                onAddGoalClick = { navController.navigate(ROUTE_GOAL_CREATE) },
+            )
+        }
+        composable(ROUTE_GOAL_CREATE) {
+            GoalFormRoute(onSaved = { navController.popBackStack() }, onBack = { navController.popBackStack() })
+        }
+        composable(
+            route = ROUTE_GOAL_EDIT,
+            arguments = listOf(navArgument(ARG_GOAL_ID) { type = NavType.StringType }),
         ) {
-            composable(ROUTE_SIGN_IN) { SignInRoute() }
-            composable(ROUTE_TODAY) { TodayRoute() }
-            composable(ROUTE_GOALS) {
-                GoalsRoute(
-                    onGoalClick = { goalId -> navController.navigate("goalDetail/${goalId.value}") },
-                    onAddGoalClick = { navController.navigate(ROUTE_GOAL_CREATE) },
-                )
-            }
-            composable(ROUTE_GOAL_CREATE) {
-                GoalFormRoute(onSaved = { navController.popBackStack() }, onBack = { navController.popBackStack() })
-            }
-            composable(
-                route = ROUTE_GOAL_EDIT,
-                arguments = listOf(navArgument(ARG_GOAL_ID) { type = NavType.StringType }),
-            ) {
-                GoalFormRoute(onSaved = { navController.popBackStack() }, onBack = { navController.popBackStack() })
-            }
-            composable(
-                route = ROUTE_GOAL_DETAIL,
-                arguments = listOf(navArgument(ARG_GOAL_ID) { type = NavType.StringType }),
-            ) {
-                GoalDetailRoute(
-                    onEditClick = { goalId: GoalId -> navController.navigate("goalEdit/${goalId.value}") },
-                    onBack = { navController.popBackStack() },
-                )
-            }
+            GoalFormRoute(onSaved = { navController.popBackStack() }, onBack = { navController.popBackStack() })
+        }
+        composable(
+            route = ROUTE_GOAL_DETAIL,
+            arguments = listOf(navArgument(ARG_GOAL_ID) { type = NavType.StringType }),
+        ) {
+            GoalDetailRoute(
+                onEditClick = { goalId: GoalId -> navController.navigate("goalEdit/${goalId.value}") },
+                onBack = { navController.popBackStack() },
+            )
         }
     }
 }
