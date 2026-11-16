@@ -3,6 +3,7 @@ package com.stepwise.feature.activities
 import com.stepwise.core.model.ExecutionStatus
 import com.stepwise.core.model.GoalId
 import com.stepwise.core.model.MetricId
+import com.stepwise.core.model.SessionId
 
 /**
  * The [ExecutionStatus] values a manual Session-log entry (`/ROADMAP.md` DEV-018) offers -
@@ -14,10 +15,18 @@ import com.stepwise.core.model.MetricId
 val MANUAL_ENTRY_STATUSES =
     listOf(ExecutionStatus.DONE, ExecutionStatus.PARTIAL, ExecutionStatus.MISSED, ExecutionStatus.CANCELLED)
 
-/** One metric's input row inside [ManualEntryDialogState] - [label] is pre-resolved (Metric.key + unit). */
+/**
+ * One metric's input row, shared by a brand-new manual entry and correcting an existing Session's
+ * logged values - [label] is pre-resolved (`Metric.key` + unit, via [displayLabel]).
+ * [plannedValue] carries the metric's own known planned amount (a Habit's `targetValue`; an
+ * existing Session's own stored `plannedValue`; `null` for an Activity metric, which has none) so
+ * [validateMetricInputs] can build a [com.stepwise.domain.usecase.MetricEntry] that preserves it
+ * rather than silently zeroing a canonical column - see [validateMetricInputs]'s own KDoc.
+ */
 data class MetricInputState(
     val metricId: MetricId,
     val label: String,
+    val plannedValue: Double? = null,
     val value: String = "",
     val error: Boolean = false,
 )
@@ -44,3 +53,25 @@ data class LinkGoalDialogState(
     val isSubmitting: Boolean = false,
     val hasError: Boolean = false,
 )
+
+/**
+ * Correcting an already-logged Session's metric values (`/docs/dev-plan-detailed.md` DEV-018's
+ * own "edit/delete recompute" completion check, DEV-018 review, HIGH - the first draft had no way
+ * to reach [EditSessionUseCase]/[DeleteSessionUseCase] at all, both already built since DEV-009).
+ * [metricInputs] starts empty and [isLoading] while the existing [com.stepwise.core.model.SessionMetricValue]
+ * rows are fetched ([GetSessionMetricValuesUseCase]) - editing is a correction of what's already
+ * there, never a fresh "Done defaults to planned" guess, so nothing is pre-filled until the real
+ * stored values are in hand.
+ */
+data class EditSessionDialogState(
+    val sessionId: SessionId,
+    val metricInputs: List<MetricInputState> = emptyList(),
+    val isLoading: Boolean = true,
+    val isSubmitting: Boolean = false,
+    val hasError: Boolean = false,
+)
+
+/** A one-off, non-persisted signal for Activity/Habit Detail to show (a Snackbar) and then forget. */
+sealed interface DetailActionEvent {
+    data object ActionFailed : DetailActionEvent
+}

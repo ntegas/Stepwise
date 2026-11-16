@@ -8,10 +8,13 @@ import com.stepwise.domain.repository.GoalRepository
 import com.stepwise.domain.repository.HabitRepository
 import com.stepwise.domain.repository.LifeAreaRepository
 import com.stepwise.domain.repository.MetricRepository
+import com.stepwise.domain.repository.SessionRepository
 import com.stepwise.domain.usecase.CreateActivityUseCase
 import com.stepwise.domain.usecase.CreateHabitUseCase
+import com.stepwise.domain.usecase.DeleteSessionUseCase
 import com.stepwise.domain.usecase.EditActivityUseCase
 import com.stepwise.domain.usecase.EditHabitUseCase
+import com.stepwise.domain.usecase.EditSessionUseCase
 import com.stepwise.domain.usecase.LinkActivityToGoalUseCase
 import com.stepwise.domain.usecase.UnlinkActivityFromGoalUseCase
 import dagger.Module
@@ -88,4 +91,18 @@ object ActivityWriteUseCaseModule {
         goalActivityLinkRepository: GoalActivityLinkRepository,
         clock: Clock,
     ): UnlinkActivityFromGoalUseCase = UnlinkActivityFromGoalUseCase(goalRepository, goalActivityLinkRepository, clock)
+
+    // EditSessionUseCase/DeleteSessionUseCase (DEV-009) are wired here for the first time - no UI
+    // called them before this task's "edit/delete recompute" Session-history actions.
+    @Provides
+    fun provideEditSessionUseCase(
+        sessionRepository: SessionRepository,
+        clock: Clock,
+    ): EditSessionUseCase = EditSessionUseCase(sessionRepository, clock)
+
+    @Provides
+    fun provideDeleteSessionUseCase(
+        sessionRepository: SessionRepository,
+        clock: Clock,
+    ): DeleteSessionUseCase = DeleteSessionUseCase(sessionRepository, clock)
 }

@@ -205,8 +205,12 @@ private fun NavGraphBuilder.activitiesNavGraph(navController: NavHostController)
     composable(
         route = ROUTE_ACTIVITY_DETAIL,
         arguments = listOf(navArgument(ARG_ACTIVITY_ID) { type = NavType.StringType }),
-    ) {
-        ActivityDetailRoute(onBack = { navController.popBackStack() })
+    ) { backStackEntry ->
+        val activityId = backStackEntry.arguments?.getString(ARG_ACTIVITY_ID)
+        ActivityDetailRoute(
+            onBack = { navController.popBackStack() },
+            onEditClicked = { navController.navigate("activityEdit/$activityId") },
+        )
     }
     composable(ROUTE_HABITS) {
         HabitsRoute(
@@ -226,8 +230,12 @@ private fun NavGraphBuilder.activitiesNavGraph(navController: NavHostController)
     composable(
         route = ROUTE_HABIT_DETAIL,
         arguments = listOf(navArgument(ARG_HABIT_ID) { type = NavType.StringType }),
-    ) {
-        HabitDetailRoute(onBack = { navController.popBackStack() })
+    ) { backStackEntry ->
+        val habitId = backStackEntry.arguments?.getString(ARG_HABIT_ID)
+        HabitDetailRoute(
+            onBack = { navController.popBackStack() },
+            onEditClicked = { navController.navigate("habitEdit/$habitId") },
+        )
     }
 }
 

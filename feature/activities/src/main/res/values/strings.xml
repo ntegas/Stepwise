@@ -20,6 +20,7 @@
 
     <string name="activity_detail_error">Couldn\'t load this activity.</string>
     <string name="activity_detail_action_error">Something went wrong — please try again.</string>
+    <string name="activity_detail_edit">Edit</string>
     <string name="activity_detail_archive">Archive</string>
     <string name="activity_detail_unarchive">Unarchive</string>
 
@@ -54,6 +55,8 @@
     <string name="detail_session_history_header">Session history</string>
     <string name="detail_session_history_empty">No sessions logged yet.</string>
     <string name="detail_log_session_action">Log a session</string>
+    <string name="session_edit_action">Edit</string>
+    <string name="session_delete_action">Delete</string>
 
     <string name="execution_status_done">Done</string>
     <string name="execution_status_partial">Partial</string>
@@ -70,6 +73,7 @@
     <string name="manual_entry_error_generic">Couldn\'t log this session — please try again.</string>
     <string name="manual_entry_save">Save</string>
     <string name="manual_entry_cancel">Cancel</string>
+    <string name="manual_entry_metrics_not_applicable">No metrics are logged for this status.</string>
 
     <string name="link_goal_dialog_title">Link to a Goal</string>
     <string name="link_goal_goal_label">Goal</string>
@@ -77,4 +81,16 @@
     <string name="link_goal_error_generic">Couldn\'t link this goal — please try again.</string>
     <string name="link_goal_save">Link</string>
     <string name="link_goal_cancel">Cancel</string>
+
+    <string name="unlink_confirm_title">Unlink this Goal?</string>
+    <string name="unlink_confirm_message">This stops counting new sessions toward that Goal. Sessions already logged aren\'t affected.</string>
+
+    <string name="edit_session_dialog_title">Edit session</string>
+    <string name="edit_session_loading">Loading…</string>
+    <string name="edit_session_no_metrics">No metric values were logged for this session.</string>
+    <string name="edit_session_error_generic">Couldn\'t save this change — please try again.</string>
+    <string name="edit_session_save">Save</string>
+
+    <string name="delete_session_confirm_title">Delete this session?</string>
+    <string name="delete_session_confirm_message">This can\'t be undone.</string>
 </resources>

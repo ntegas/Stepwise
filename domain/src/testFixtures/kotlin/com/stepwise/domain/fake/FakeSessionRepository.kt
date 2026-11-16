@@ -30,13 +30,17 @@ class FakeSessionRepository : SessionRepository {
         private set
 
     override fun observeAll(userId: UserId): Flow<List<Session>> =
-        sessions.map { all -> all.values.filter { it.userId == userId } }
+        sessions.map { all -> all.values.filter { it.userId == userId && it.sync.deletedAt == null } }
 
     override fun observeForSource(
         sourceType: ExecutableKind,
         sourceId: String,
     ): Flow<List<Session>> =
-        sessions.map { all -> all.values.filter { it.sourceType == sourceType && it.sourceId == sourceId } }
+        sessions.map { all ->
+            all.values.filter {
+                it.sourceType == sourceType && it.sourceId == sourceId && it.sync.deletedAt == null
+            }
+        }
 
     override suspend fun getByClientEventId(clientEventId: String): AppResult<Session?> =
         AppResult.Success(sessions.value.values.firstOrNull { it.clientEventId == clientEventId })
@@ -44,7 +48,9 @@ class FakeSessionRepository : SessionRepository {
     override suspend fun getById(id: SessionId): AppResult<Session?> = AppResult.Success(sessions.value[id.value])
 
     override suspend fun getMetricValuesForSession(sessionId: SessionId): AppResult<List<SessionMetricValue>> =
-        AppResult.Success(metricValues.value.values.filter { it.sessionId == sessionId })
+        AppResult.Success(
+            metricValues.value.values.filter { it.sessionId == sessionId && it.sync.deletedAt == null },
+        )
 
     override suspend fun upsertSessionWithMetricValues(
         session: Session,

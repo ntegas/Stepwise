@@ -193,7 +193,7 @@ private fun MetricPicker(
     LazyRow(horizontalArrangement = Arrangement.spacedBy(StepwiseSpacing.extraSmall)) {
         items(metrics, key = { it.id.value }) { metric ->
             StepwiseFilterChip(
-                label = "${metric.key} (${metric.canonicalUnit})",
+                label = metric.displayLabel(),
                 selected = selectedId == metric.id,
                 onSelectedChange = { onMetricSelected(metric.id) },
             )

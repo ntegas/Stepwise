@@ -137,6 +137,15 @@ private fun ManageRow(
     onActivitiesClick: () -> Unit,
     onHabitsClick: () -> Unit,
 ) {
+    // DEV-018 review, design reviewer, MEDIUM: two bare chips directly above the Goal-status
+    // sections risked reading as "filter Goals by Activities/Habits" (StepwiseFilterChip's own
+    // established in-place-filter role elsewhere in this diff) rather than "navigate away to
+    // manage these" - a short label makes the navigation intent explicit.
+    Text(
+        text = stringResource(R.string.goals_manage_label),
+        style = MaterialTheme.typography.labelLarge,
+        modifier = Modifier.padding(bottom = StepwiseSpacing.extraSmall),
+    )
     Row(
         modifier = Modifier.fillMaxWidth().padding(bottom = StepwiseSpacing.medium),
         horizontalArrangement = Arrangement.spacedBy(StepwiseSpacing.small),

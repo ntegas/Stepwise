@@ -11,6 +11,7 @@
     <string name="goals_target_label">Target: %1$s %2$s</string>
     <string name="goals_add_content_description">New goal</string>
     <string name="goals_error_generic">Couldn\'t load your goals — please try again.</string>
+    <string name="goals_manage_label">Manage</string>
     <string name="goals_manage_activities">Activities</string>
     <string name="goals_manage_habits">Habits</string>
 

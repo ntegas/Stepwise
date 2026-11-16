@@ -11,6 +11,7 @@ import com.stepwise.domain.usecase.GetGoalLinksForSourceUseCase
 import com.stepwise.domain.usecase.GetHabitsUseCase
 import com.stepwise.domain.usecase.GetMetricsUseCase
 import com.stepwise.domain.usecase.GetSessionHistoryUseCase
+import com.stepwise.domain.usecase.GetSessionMetricValuesUseCase
 import com.stepwise.domain.usecase.ObserveActivityUseCase
 import com.stepwise.domain.usecase.ObserveHabitUseCase
 import dagger.Module
@@ -61,4 +62,8 @@ object ActivityReadUseCaseModule {
         sessionRepository: SessionRepository,
     ): GetSessionHistoryUseCase =
         GetSessionHistoryUseCase(taskRepository, activityRepository, habitRepository, sessionRepository)
+
+    @Provides
+    fun provideGetSessionMetricValuesUseCase(sessionRepository: SessionRepository): GetSessionMetricValuesUseCase =
+        GetSessionMetricValuesUseCase(sessionRepository)
 }

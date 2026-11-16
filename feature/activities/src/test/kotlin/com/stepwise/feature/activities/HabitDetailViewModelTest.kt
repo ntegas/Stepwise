@@ -29,11 +29,15 @@ import com.stepwise.domain.fake.FakeRecurrenceRuleRepository
 import com.stepwise.domain.fake.FakeSessionRepository
 import com.stepwise.domain.fake.FakeTaskRepository
 import com.stepwise.domain.usecase.CompleteOccurrenceUseCase
+import com.stepwise.domain.usecase.DeleteSessionUseCase
 import com.stepwise.domain.usecase.EditHabitUseCase
+import com.stepwise.domain.usecase.EditSessionUseCase
 import com.stepwise.domain.usecase.GetGoalLinksForSourceUseCase
 import com.stepwise.domain.usecase.GetGoalsUseCase
 import com.stepwise.domain.usecase.GetMetricsUseCase
 import com.stepwise.domain.usecase.GetSessionHistoryUseCase
+import com.stepwise.domain.usecase.GetSessionMetricValuesUseCase
+import com.stepwise.domain.usecase.LinkActivityToGoalCommand
 import com.stepwise.domain.usecase.LinkActivityToGoalUseCase
 import com.stepwise.domain.usecase.MetricResolver
 import com.stepwise.domain.usecase.ObserveHabitUseCase
@@ -49,6 +53,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -110,6 +115,7 @@ class HabitDetailViewModelTest {
     private val getMetricsUseCase = GetMetricsUseCase(metricRepository)
     private val getSessionHistoryUseCase =
         GetSessionHistoryUseCase(taskRepository, activityRepository, habitRepository, sessionRepository)
+    private val getSessionMetricValuesUseCase = GetSessionMetricValuesUseCase(sessionRepository)
     private val editHabitUseCase =
         EditHabitUseCase(habitRepository, activityRepository, metricRepository, FakeClock(NOW))
     private val linkActivityToGoalUseCase =
@@ -134,6 +140,8 @@ class HabitDetailViewModelTest {
             idGenerator = FakeIdGenerator(),
             clock = FakeClock(NOW),
         )
+    private val editSessionUseCase = EditSessionUseCase(sessionRepository, FakeClock(NOW))
+    private val deleteSessionUseCase = DeleteSessionUseCase(sessionRepository, FakeClock(NOW))
 
     @BeforeEach
     fun setUp() {
@@ -155,10 +163,14 @@ class HabitDetailViewModelTest {
             getGoalsUseCase,
             getMetricsUseCase,
             getSessionHistoryUseCase,
+            getSessionMetricValuesUseCase,
             editHabitUseCase,
             linkActivityToGoalUseCase,
             unlinkActivityFromGoalUseCase,
             completeOccurrenceUseCase,
+            editSessionUseCase,
+            deleteSessionUseCase,
+            FakeClock(NOW),
         )
 
     @Test
@@ -202,6 +214,40 @@ class HabitDetailViewModelTest {
         }
 
     @Test
+    fun `the manual-entry metric input pre-fills with the Habit's own target value`() =
+        runTest {
+            habitRepository.seed(habit())
+            val vm = viewModel()
+
+            vm.onLogSessionClicked()
+
+            val dialog = (vm.state.value as HabitDetailUiState.Content).manualEntryDialog
+            check(dialog != null)
+            val metricInput = dialog.metricInputs.single { it.metricId == COUNT_METRIC.id }
+            assertEquals("3.0", metricInput.value)
+            assertEquals(3.0, metricInput.plannedValue)
+        }
+
+    @Test
+    fun `an explicit actual value typed for a DONE session preserves the Habit's target as plannedValue`() =
+        runTest {
+            habitRepository.seed(habit())
+            val vm = viewModel()
+
+            vm.onLogSessionClicked()
+            vm.onManualEntryDateChanged("2026-11-15")
+            vm.onManualEntryMetricValueChanged(COUNT_METRIC.id, "5")
+            vm.onConfirmManualEntry()
+
+            val sessionId = sessionRepository.observeForSource(ExecutableKind.HABIT, HABIT_ID.value).first().single().id
+            val metricValuesResult = getSessionMetricValuesUseCase.execute(OWNER, sessionId)
+            check(metricValuesResult is AppResult.Success)
+            val metricValue = metricValuesResult.value.single()
+            assertEquals(5.0, metricValue.actualValue)
+            assertEquals(3.0, metricValue.plannedValue)
+        }
+
+    @Test
     fun `logging a PARTIAL session with no explicit metric value fails, surfaced as an error`() =
         runTest {
             habitRepository.seed(habit())
@@ -210,6 +256,7 @@ class HabitDetailViewModelTest {
             vm.onLogSessionClicked()
             vm.onManualEntryDateChanged("2026-11-15")
             vm.onManualEntryStatusSelected(ExecutionStatus.PARTIAL)
+            vm.onManualEntryMetricValueChanged(COUNT_METRIC.id, "")
             vm.onConfirmManualEntry()
 
             assertEquals(0, sessionRepository.sessionCount)
@@ -217,6 +264,24 @@ class HabitDetailViewModelTest {
             check(state is HabitDetailUiState.Content)
             check(state.manualEntryDialog != null)
             assertTrue(state.manualEntryDialog.hasError)
+        }
+
+    @Test
+    fun `selecting MISSED hides metric inputs and excludes them from the logged session`() =
+        runTest {
+            habitRepository.seed(habit())
+            val vm = viewModel()
+
+            vm.onLogSessionClicked()
+            vm.onManualEntryDateChanged("2026-11-15")
+            vm.onManualEntryStatusSelected(ExecutionStatus.MISSED)
+            vm.onConfirmManualEntry()
+
+            assertEquals(1, sessionRepository.sessionCount)
+            val sessionId = sessionRepository.observeForSource(ExecutableKind.HABIT, HABIT_ID.value).first().single().id
+            val metricValuesResult = getSessionMetricValuesUseCase.execute(OWNER, sessionId)
+            check(metricValuesResult is AppResult.Success)
+            assertTrue(metricValuesResult.value.isEmpty())
         }
 
     @Test
@@ -235,5 +300,52 @@ class HabitDetailViewModelTest {
                 getGoalLinksForSourceUseCase.execute(OWNER, ProgressSourceKind.HABIT, HABIT_ID.value).first()
             check(linksResult is AppResult.Success)
             assertEquals(1, linksResult.value.size)
+        }
+
+    @Test
+    fun `unlinking a goal requires a confirmation before it actually unlinks`() =
+        runTest {
+            habitRepository.seed(habit())
+            goalRepository.seed(goal())
+            val linkResult =
+                linkActivityToGoalUseCase.execute(
+                    LinkActivityToGoalCommand(
+                        userId = OWNER,
+                        sourceType = ProgressSourceKind.HABIT,
+                        sourceId = HABIT_ID.value,
+                        goalId = GOAL_ID,
+                        metricId = COUNT_METRIC.id,
+                    ),
+                )
+            check(linkResult is AppResult.Success)
+            val vm = viewModel()
+
+            vm.onUnlinkClicked(linkResult.value.id)
+            val pending = (vm.state.value as HabitDetailUiState.Content).unlinkConfirmLinkId
+            assertEquals(linkResult.value.id, pending)
+
+            vm.onConfirmUnlink()
+
+            val linksAfterConfirm =
+                getGoalLinksForSourceUseCase.execute(OWNER, ProgressSourceKind.HABIT, HABIT_ID.value).first()
+            check(linksAfterConfirm is AppResult.Success)
+            assertEquals(0, linksAfterConfirm.value.size)
+            assertNull((vm.state.value as HabitDetailUiState.Content).unlinkConfirmLinkId)
+        }
+
+    @Test
+    fun `deleting a logged session removes it`() =
+        runTest {
+            habitRepository.seed(habit())
+            val vm = viewModel()
+            vm.onLogSessionClicked()
+            vm.onManualEntryDateChanged("2026-11-15")
+            vm.onConfirmManualEntry()
+            val sessionId = sessionRepository.observeForSource(ExecutableKind.HABIT, HABIT_ID.value).first().single().id
+
+            vm.onDeleteSessionClicked(sessionId)
+            vm.onConfirmDeleteSession()
+
+            assertTrue(sessionRepository.observeForSource(ExecutableKind.HABIT, HABIT_ID.value).first().isEmpty())
         }
 }

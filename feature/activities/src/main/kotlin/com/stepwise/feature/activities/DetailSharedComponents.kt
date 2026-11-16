@@ -43,6 +43,7 @@ import com.stepwise.core.model.GoalId
 import com.stepwise.core.model.Metric
 import com.stepwise.core.model.MetricId
 import com.stepwise.core.model.Session
+import com.stepwise.core.model.SessionId
 import kotlinx.datetime.LocalDate
 import java.time.Instant
 import java.time.ZoneOffset
@@ -71,7 +72,7 @@ internal fun GoalLinksSection(
             GoalLinkRow(
                 link = link,
                 goalTitle = goals.firstOrNull { it.id == link.goalId }?.title,
-                metricLabel = metrics.firstOrNull { it.id == link.metricId }?.let { "${it.key} (${it.canonicalUnit})" },
+                metricLabel = metrics.firstOrNull { it.id == link.metricId }?.displayLabel(),
                 onUnlinkClicked = onUnlinkClicked,
             )
         }
@@ -110,6 +111,8 @@ private fun GoalLinkRow(
 internal fun SessionHistorySection(
     sessions: List<Session>,
     onLogSessionClicked: () -> Unit,
+    onEditSessionClicked: (SessionId) -> Unit,
+    onDeleteSessionClicked: (SessionId) -> Unit,
 ) {
     Text(
         text = stringResource(R.string.detail_session_history_header),
@@ -124,7 +127,13 @@ internal fun SessionHistorySection(
             modifier = Modifier.padding(top = StepwiseSpacing.small),
         )
     } else {
-        sorted.forEach { session -> SessionRow(session = session) }
+        sorted.forEach { session ->
+            SessionRow(
+                session = session,
+                onEditClicked = onEditSessionClicked,
+                onDeleteClicked = onDeleteSessionClicked,
+            )
+        }
     }
     StepwiseTextButton(
         text = stringResource(R.string.detail_log_session_action),
@@ -134,16 +143,33 @@ internal fun SessionHistorySection(
 }
 
 @Composable
-private fun SessionRow(session: Session) {
+private fun SessionRow(
+    session: Session,
+    onEditClicked: (SessionId) -> Unit,
+    onDeleteClicked: (SessionId) -> Unit,
+) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(top = StepwiseSpacing.extraSmall),
         horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text = session.date.toDisplayString(), style = MaterialTheme.typography.bodyMedium)
-        Text(
-            text = stringResource(executionStatusLabelRes(session.status)),
-            style = MaterialTheme.typography.bodyMedium,
-        )
+        Column(modifier = Modifier.weight(1f, fill = false)) {
+            Text(text = session.date.toDisplayString(), style = MaterialTheme.typography.bodyMedium)
+            Text(
+                text = stringResource(executionStatusLabelRes(session.status)),
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+        Row {
+            StepwiseTextButton(
+                text = stringResource(R.string.session_edit_action),
+                onClick = { onEditClicked(session.id) },
+            )
+            StepwiseTextButton(
+                text = stringResource(R.string.session_delete_action),
+                onClick = { onDeleteClicked(session.id) },
+            )
+        }
     }
 }
 
@@ -186,15 +212,27 @@ internal fun ManualEntryDialog(
                         )
                     }
                 }
-                state.metricInputs.forEach { metricInput ->
-                    StepwiseTextField(
-                        value = metricInput.value,
-                        onValueChange = { onMetricValueChanged(metricInput.metricId, it) },
-                        label = metricInput.label,
-                        isError = metricInput.error,
-                        supportingText =
-                            if (metricInput.error) stringResource(R.string.manual_entry_metric_invalid) else null,
-                        keyboardType = KeyboardType.Number,
+                if (statusAcceptsMetrics(state.status)) {
+                    state.metricInputs.forEach { metricInput ->
+                        StepwiseTextField(
+                            value = metricInput.value,
+                            onValueChange = { onMetricValueChanged(metricInput.metricId, it) },
+                            label = metricInput.label,
+                            isError = metricInput.error,
+                            supportingText =
+                                if (metricInput.error) stringResource(R.string.manual_entry_metric_invalid) else null,
+                            keyboardType = KeyboardType.Number,
+                            modifier = Modifier.padding(top = StepwiseSpacing.small),
+                        )
+                    }
+                } else if (state.metricInputs.isNotEmpty()) {
+                    // DEV-018 review, design reviewer, HIGH: MetricResolver never resolves a metric
+                    // for MISSED/CANCELLED, so a value typed while one of those is selected would be
+                    // silently dropped on save - hidden here instead, with an explanation, rather
+                    // than rendered as if it will still be recorded.
+                    Text(
+                        text = stringResource(R.string.manual_entry_metrics_not_applicable),
+                        style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(top = StepwiseSpacing.small),
                     )
                 }
@@ -302,7 +340,7 @@ internal fun LinkGoalDialog(
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(StepwiseSpacing.extraSmall)) {
                     items(metrics, key = { it.id.value }) { metric ->
                         StepwiseFilterChip(
-                            label = "${metric.key} (${metric.canonicalUnit})",
+                            label = metric.displayLabel(),
                             selected = state.selectedMetricId == metric.id,
                             onSelectedChange = { onMetricSelected(metric.id) },
                         )
@@ -326,6 +364,94 @@ internal fun LinkGoalDialog(
         },
         dismissButton = {
             StepwiseTextButton(text = stringResource(R.string.link_goal_cancel), onClick = onDismiss)
+        },
+    )
+}
+
+/**
+ * Shared confirm-before-acting shell for the two destructive-ish, single-tap-without-this-guard
+ * actions this screen has (unlinking a Goal; deleting a Session) - DEV-018 review, user-flow +
+ * design reviewers, HIGH: the first draft fired both immediately on tap, with no confirmation and
+ * no undo.
+ */
+@Composable
+internal fun ConfirmActionDialog(
+    title: String,
+    message: String,
+    confirmLabel: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = { Text(message) },
+        confirmButton = { StepwiseTextButton(text = confirmLabel, onClick = onConfirm) },
+        dismissButton = {
+            StepwiseTextButton(text = stringResource(R.string.manual_entry_cancel), onClick = onDismiss)
+        },
+    )
+}
+
+/**
+ * Corrects an already-logged Session's metric values - the UI half of "edit/delete recompute"
+ * (`/docs/dev-plan-detailed.md` DEV-018's own completion check, DEV-018 review, HIGH: the first
+ * draft had no edit/delete action anywhere, even though [EditSessionUseCase]/[DeleteSessionUseCase]
+ * already existed since DEV-009). Only metric actual values are editable - [EditSessionCommand]
+ * itself has no `status`/`date` field; those aren't what this dialog corrects.
+ */
+@Composable
+internal fun EditSessionDialog(
+    state: EditSessionDialogState,
+    onMetricValueChanged: (MetricId, String) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.edit_session_dialog_title)) },
+        text = {
+            Column {
+                when {
+                    state.isLoading -> Text(stringResource(R.string.edit_session_loading))
+                    state.metricInputs.isEmpty() -> Text(stringResource(R.string.edit_session_no_metrics))
+                    else -> {
+                        state.metricInputs.forEach { metricInput ->
+                            StepwiseTextField(
+                                value = metricInput.value,
+                                onValueChange = { onMetricValueChanged(metricInput.metricId, it) },
+                                label = metricInput.label,
+                                isError = metricInput.error,
+                                supportingText =
+                                    if (metricInput.error) {
+                                        stringResource(R.string.manual_entry_metric_invalid)
+                                    } else {
+                                        null
+                                    },
+                                keyboardType = KeyboardType.Number,
+                                modifier = Modifier.padding(top = StepwiseSpacing.small),
+                            )
+                        }
+                    }
+                }
+                if (state.hasError) {
+                    Text(
+                        text = stringResource(R.string.edit_session_error_generic),
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(top = StepwiseSpacing.small),
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            StepwiseButton(
+                text = stringResource(R.string.edit_session_save),
+                onClick = onConfirm,
+                enabled = !state.isLoading && !state.isSubmitting && state.metricInputs.isNotEmpty(),
+            )
+        },
+        dismissButton = {
+            StepwiseTextButton(text = stringResource(R.string.manual_entry_cancel), onClick = onDismiss)
         },
     )
 }

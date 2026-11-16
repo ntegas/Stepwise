@@ -11,6 +11,7 @@
     <string name="goals_target_label">Цель: %1$s %2$s</string>
     <string name="goals_add_content_description">Новая цель</string>
     <string name="goals_error_generic">Не удалось загрузить цели — попробуйте снова.</string>
+    <string name="goals_manage_label">Управление</string>
     <string name="goals_manage_activities">Активности</string>
     <string name="goals_manage_habits">Привычки</string>
 

@@ -7,27 +7,31 @@ import com.stepwise.core.model.Habit
 import com.stepwise.core.model.Metric
 import com.stepwise.core.model.Session
 
+/** Mirrors [ActivityDetailLoaded] exactly, for [HabitDetailUiState]. */
+internal data class HabitDetailLoaded(
+    val habit: AppResult<Habit?>,
+    val links: AppResult<List<GoalActivityLink>>,
+    val goals: AppResult<List<Goal>>,
+    val metrics: AppResult<List<Metric>>,
+    val sessions: AppResult<List<Session>>,
+)
+
 /** Mirrors [activityDetailStateFrom] exactly, for [HabitDetailUiState]. */
-@Suppress("LongParameterList") // One AppResult per independent reactive source this screen's own combine() merges.
 internal fun habitDetailStateFrom(
     current: HabitDetailUiState,
-    habitResult: AppResult<Habit?>,
-    linksResult: AppResult<List<GoalActivityLink>>,
-    goalsResult: AppResult<List<Goal>>,
-    metricsResult: AppResult<List<Metric>>,
-    sessionsResult: AppResult<List<Session>>,
+    loaded: HabitDetailLoaded,
 ): HabitDetailUiState {
-    val habit = (habitResult as? AppResult.Success)?.value
+    val habit = (loaded.habit as? AppResult.Success)?.value
     val anyFailure =
-        habitResult is AppResult.Failure ||
-            linksResult is AppResult.Failure ||
-            goalsResult is AppResult.Failure ||
-            metricsResult is AppResult.Failure ||
-            sessionsResult is AppResult.Failure
-    val links = (linksResult as? AppResult.Success)?.value.orEmpty()
-    val goals = (goalsResult as? AppResult.Success)?.value.orEmpty()
-    val metrics = (metricsResult as? AppResult.Success)?.value.orEmpty()
-    val sessions = (sessionsResult as? AppResult.Success)?.value.orEmpty()
+        loaded.habit is AppResult.Failure ||
+            loaded.links is AppResult.Failure ||
+            loaded.goals is AppResult.Failure ||
+            loaded.metrics is AppResult.Failure ||
+            loaded.sessions is AppResult.Failure
+    val links = (loaded.links as? AppResult.Success)?.value.orEmpty()
+    val goals = (loaded.goals as? AppResult.Success)?.value.orEmpty()
+    val metrics = (loaded.metrics as? AppResult.Success)?.value.orEmpty()
+    val sessions = (loaded.sessions as? AppResult.Success)?.value.orEmpty()
     return when {
         anyFailure -> HabitDetailUiState.Error
         habit == null -> HabitDetailUiState.NotFound
