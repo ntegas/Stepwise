@@ -4,6 +4,7 @@ import com.stepwise.core.model.ExecutableKind
 import com.stepwise.core.model.ExecutionStatus
 import com.stepwise.core.model.MetricId
 import com.stepwise.core.model.RecurrenceRuleId
+import com.stepwise.core.model.TodayItem
 import com.stepwise.core.model.UserId
 import kotlinx.datetime.LocalDate
 
@@ -55,3 +56,20 @@ data class CompleteOccurrenceCommand(
     val notes: String? = null,
     val rescheduledToDate: LocalDate? = null,
 )
+
+/**
+ * Builds the [CompletionTarget] [CompleteOccurrenceUseCase] needs from a [TodayItem] row - the
+ * one mapping shared between every screen that completes/reschedules an item from a resolved
+ * agenda (`:feature:today`'s own Quick Done, DEV-015; `:feature:plan`'s reschedule action,
+ * DEV-017), rather than each screen's ViewModel re-deriving it. A recurring item completes its
+ * own occurrence ([TodayItem.occurrenceDate], falling back to [TodayItem.date] for the rare case
+ * neither is set); a one-off item completes its [TodayItem.date] directly.
+ */
+fun TodayItem.toCompletionTarget(): CompletionTarget {
+    val ruleId = recurrenceRuleId
+    return if (ruleId != null) {
+        CompletionTarget.Recurring(sourceType, sourceId, occurrenceDate ?: date, ruleId)
+    } else {
+        CompletionTarget.OneOff(sourceType, sourceId, date)
+    }
+}

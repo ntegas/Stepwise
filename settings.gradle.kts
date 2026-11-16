@@ -47,3 +47,5 @@ include(":feature:onboarding-auth")
 // DEV-016: the second real :feature:* module (Goals list/detail/create-edit, Milestones) -
 // same module-boundary rule as :feature:today/:feature:onboarding-auth.
 include(":feature:goals")
+// DEV-017: the third real :feature:* module (Plan/Calendar) - same module-boundary rule.
+include(":feature:plan")

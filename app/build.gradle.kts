@@ -58,6 +58,7 @@ dependencies {
     implementation(project(":feature:today"))
     implementation(project(":feature:onboarding-auth"))
     implementation(project(":feature:goals"))
+    implementation(project(":feature:plan"))
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)

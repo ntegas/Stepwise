@@ -13,10 +13,12 @@ import com.stepwise.core.model.SessionId
 import com.stepwise.core.model.SessionIdentity
 import com.stepwise.core.model.SessionMetricValue
 import com.stepwise.core.model.SyncMetadata
+import com.stepwise.core.model.TaskId
 import com.stepwise.core.model.UserId
 import com.stepwise.domain.repository.RecurrenceOccurrenceRepository
 import com.stepwise.domain.repository.RecurrenceRuleRepository
 import com.stepwise.domain.repository.SessionRepository
+import com.stepwise.domain.repository.TaskRepository
 
 /**
  * The one entry point for Done/Partial/Missed/Rescheduled/In Progress/Cancelled
@@ -69,12 +71,25 @@ import com.stepwise.domain.repository.SessionRepository
  * `MISSED`/`CANCELLED`/`RESCHEDULED` for metric-value purposes (no actual-value resolution
  * applies to any of the four, [MetricResolver]'s own logic) so DEV-026 can call this same engine
  * once it exists, rather than this task inventing Timer-shaped fields ahead of that task's design.
+ *
+ * **A [CompletionTarget.OneOff] Task actually moves its own `Task.date` on a RESCHEDULED
+ * completion** (`/ROADMAP.md` DEV-017) — closing a gap disclosed, not fixed, at DEV-014 review
+ * and tracked in `/PROJECT_STATE.md`'s VERIFICATION DEBT ever since: this file already accepted
+ * [CompleteOccurrenceCommand.rescheduledToDate] for a [CompletionTarget.OneOff] target (validated
+ * non-null when [CompleteOccurrenceCommand.status] is RESCHEDULED) but only ever *applied* it for
+ * [CompletionTarget.Recurring] (onto that occurrence's own `rescheduledToDate`, via
+ * [linkOccurrenceIfRecurring]). DEV-017's own Plan/Calendar reschedule UI is what finally needs
+ * the OneOff half of that already-decided field to actually do something — the same "the task
+ * that newly depends on a disclosed gap is the one that closes it" pattern DEV-014 itself used
+ * fixing a DEV-010 bug it exposed, rather than disclosing a third time.
  */
+@Suppress("LongParameterList") // One collaborator per thing this engine reads, writes, or resolves - see KDoc.
 class CompleteOccurrenceUseCase(
     private val metricResolver: MetricResolver,
     private val recurrenceRuleRepository: RecurrenceRuleRepository,
     private val recurrenceOccurrenceRepository: RecurrenceOccurrenceRepository,
     private val sessionRepository: SessionRepository,
+    private val taskRepository: TaskRepository,
     private val idGenerator: IdGenerator,
     private val clock: Clock,
 ) {
@@ -84,6 +99,7 @@ class CompleteOccurrenceUseCase(
             .andThen { metricResolver.resolve(command.userId, command.target, command.status, command.metricValues) }
             .andThen { resolvedMetrics -> writeSession(command, resolvedMetrics) }
             .andThen { session -> linkOccurrenceIfRecurring(command, session).map { session } }
+            .andThen { session -> rescheduleOneOffTaskIfNeeded(command).map { session } }
 
     private fun validateCommand(command: CompleteOccurrenceCommand): AppResult<Unit> {
         if (command.status == ExecutionStatus.RESCHEDULED && command.rescheduledToDate == null) {
@@ -276,5 +292,39 @@ class CompleteOccurrenceUseCase(
             rescheduledToDate = command.rescheduledToDate ?: base.rescheduledToDate,
             skipped = false,
         )
+    }
+
+    /**
+     * The [CompletionTarget.OneOff] counterpart to [linkOccurrenceIfRecurring]'s own
+     * `rescheduledToDate` write - see this class's own KDoc for why this half was previously
+     * missing. Only [ExecutableKind.TASK] carries a `date` field to move at all (Activity/Habit
+     * only ever appear via a [com.stepwise.core.model.RecurrenceRule], per
+     * `/core/model/.../TodayAgenda.kt`'s own KDoc), so any other source type is a no-op here, not
+     * a silently-swallowed error - nothing upstream constructs a [CompletionTarget.OneOff] for
+     * either of those source types today.
+     *
+     * **Ownership was already verified, by [MetricResolver.resolve]'s own
+     * `TaskAccess.verifyOwnedTask` call, earlier in this same [execute] invocation** - not
+     * re-verified strictly here, deliberately: by the point this runs, [writeSession] has already
+     * succeeded and the Session this method's own caller returns is already real. Failing the
+     * whole completion over a Task that raced to deletion between those two reads would discard a
+     * write that already happened, for the same "best-effort follow-up, not a reason to fail an
+     * already-successful completion" reasoning [linkOccurrenceIfRecurring]'s own KDoc states for
+     * its symmetric case - a missing Task here simply leaves [Task.date] unmoved rather than
+     * failing [execute] outright.
+     */
+    private suspend fun rescheduleOneOffTaskIfNeeded(command: CompleteOccurrenceCommand): AppResult<Unit> {
+        val target = command.target
+        val newDate = command.rescheduledToDate
+        if (target !is CompletionTarget.OneOff || newDate == null || target.sourceType != ExecutableKind.TASK) {
+            return AppResult.Success(Unit)
+        }
+        return taskRepository.getById(TaskId(target.sourceId)).andThen { existing ->
+            if (existing == null) {
+                AppResult.Success(Unit)
+            } else {
+                taskRepository.upsert(existing.copy(date = newDate, sync = existing.sync.copy(updatedAt = clock.now())))
+            }
+        }
     }
 }

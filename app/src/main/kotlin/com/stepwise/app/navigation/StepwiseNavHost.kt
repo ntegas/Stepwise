@@ -2,6 +2,7 @@ package com.stepwise.app.navigation
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.Scaffold
@@ -28,22 +29,24 @@ import com.stepwise.feature.goals.GoalDetailRoute
 import com.stepwise.feature.goals.GoalFormRoute
 import com.stepwise.feature.goals.GoalsRoute
 import com.stepwise.feature.onboardingauth.SignInRoute
+import com.stepwise.feature.plan.PlanRoute
 import com.stepwise.feature.today.TodayRoute
 
 private const val ROUTE_SIGN_IN = "signIn"
 private const val ROUTE_TODAY = "today"
 private const val ROUTE_GOALS = "goals"
+private const val ROUTE_PLAN = "plan"
 private const val ROUTE_GOAL_CREATE = "goalCreate"
 private const val ARG_GOAL_ID = "goalId"
 private const val ROUTE_GOAL_DETAIL = "goalDetail/{$ARG_GOAL_ID}"
 private const val ROUTE_GOAL_EDIT = "goalEdit/{$ARG_GOAL_ID}"
 
-private val TAB_ROUTES = setOf(ROUTE_TODAY, ROUTE_GOALS)
+private val TAB_ROUTES = setOf(ROUTE_TODAY, ROUTE_GOALS, ROUTE_PLAN)
 
 /**
- * `/ROADMAP.md` DEV-016 grows this graph from DEV-015's two-destination shape into Today/Goals
+ * `/ROADMAP.md` DEV-017 grows this graph from DEV-016's Today/Goals shape into Today/Goals/Plan
  * as sibling tabs under one [StepwiseBottomNavigation] (`/PRODUCT_CANON.md` §70 names
- * Today/Goals/Plan/Progress — only the first two exist before DEV-017+, so only those two tabs
+ * Today/Goals/Plan/Progress — only these three exist before DEV-019+, so only these three tabs
  * are shown, the same "don't build chrome for destinations that don't exist yet" reasoning
  * DEV-015's own graph KDoc already states). The bottom bar is hidden below [TAB_ROUTES] — Goal
  * Detail/Create/Edit are destinations reached *from* a tab, not tabs themselves.
@@ -105,6 +108,13 @@ private fun StepwiseTabBar(
                     selected = currentRoute == ROUTE_GOALS,
                     onClick = { navController.navigateToTab(ROUTE_GOALS) },
                 ),
+                StepwiseNavigationItem(
+                    label = stringResource(R.string.nav_tab_plan),
+                    icon = Icons.Filled.DateRange,
+                    iconContentDescription = stringResource(R.string.nav_tab_plan_content_description),
+                    selected = currentRoute == ROUTE_PLAN,
+                    onClick = { navController.navigateToTab(ROUTE_PLAN) },
+                ),
             ),
     )
 }
@@ -121,6 +131,7 @@ private fun StepwiseNavGraph(
     ) {
         composable(ROUTE_SIGN_IN) { SignInRoute() }
         composable(ROUTE_TODAY) { TodayRoute() }
+        composable(ROUTE_PLAN) { PlanRoute() }
         composable(ROUTE_GOALS) {
             GoalsRoute(
                 onGoalClick = { goalId -> navController.navigate("goalDetail/${goalId.value}") },

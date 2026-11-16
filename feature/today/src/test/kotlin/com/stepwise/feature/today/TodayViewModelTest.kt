@@ -100,6 +100,7 @@ class TodayViewModelTest {
             ruleRepository,
             occurrenceRepository,
             sessionRepository,
+            taskRepository,
             FakeIdGenerator(),
             clock,
         )

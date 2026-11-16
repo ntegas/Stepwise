@@ -70,6 +70,7 @@ object UseCaseModule {
         recurrenceRuleRepository: RecurrenceRuleRepository,
         recurrenceOccurrenceRepository: RecurrenceOccurrenceRepository,
         sessionRepository: SessionRepository,
+        taskRepository: TaskRepository,
         idGenerator: IdGenerator,
         clock: Clock,
     ): CompleteOccurrenceUseCase =
@@ -78,6 +79,7 @@ object UseCaseModule {
             recurrenceRuleRepository,
             recurrenceOccurrenceRepository,
             sessionRepository,
+            taskRepository,
             idGenerator,
             clock,
         )

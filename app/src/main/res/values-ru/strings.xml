@@ -3,6 +3,8 @@
     <string name="app_name">Stepwise</string>
     <string name="nav_tab_today">Сегодня</string>
     <string name="nav_tab_goals">Цели</string>
+    <string name="nav_tab_plan">План</string>
     <string name="nav_tab_today_content_description">Сегодня</string>
     <string name="nav_tab_goals_content_description">Цели</string>
+    <string name="nav_tab_plan_content_description">План</string>
 </resources>

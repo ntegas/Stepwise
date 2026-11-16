@@ -79,18 +79,18 @@ import kotlinx.datetime.TimeZone
  * product-owner decision, consistent with how DEV-010's own disclosed-not-resolved product
  * defaults (the `Monthly` clamp, `Custom`'s grammar) were carried forward rather than guessed at.
  *
- * **A Task whose latest Session status is RESCHEDULED/PARTIAL/MISSED/IN_PROGRESS still counts as
- * Overdue**, per `/DATA_MODEL.md`'s own literal `status NOT IN (done, cancelled)` text — found at
- * DEV-014 review (logic reviewer, HIGH) to be a real, user-visible gap, not just a literal-text
- * technicality: [CompleteOccurrenceUseCase] accepts `RESCHEDULED` for a one-off Task's
- * [com.stepwise.domain.usecase.CompletionTarget.OneOff] but never actually moves [Task.date] (only
- * [com.stepwise.domain.usecase.CompletionTarget.Recurring]'s `rescheduledToDate` path updates
- * anything) — so even using the only existing "I rescheduled this" mechanism on a one-off Task
- * never clears it from Overdue. That `CompleteOccurrenceUseCase` gap predates this task (DEV-009)
- * and touches already-reviewed, CI-green code outside this task's own files, so it is disclosed
- * here rather than fixed inline — tracked in `/PROJECT_STATE.md` for a product-owner decision on
- * whether `/DATA_MODEL.md`'s Overdue exclusion set should widen, and as a DEV-009 follow-up either
- * way.
+ * **A Task whose latest Session status is PARTIAL/MISSED/IN_PROGRESS still counts as Overdue**,
+ * per `/DATA_MODEL.md`'s own literal `status NOT IN (done, cancelled)` text — found at DEV-014
+ * review (logic reviewer, HIGH). Tracked in `/PROJECT_STATE.md` for a product-owner decision on
+ * whether `/DATA_MODEL.md`'s Overdue exclusion set should widen; not fixed here, since this is a
+ * genuinely open product question, not a mechanical gap. **RESCHEDULED is no longer part of this
+ * same disclosure** — DEV-017 (`/ROADMAP.md`, Plan/Calendar UI) closed the mechanical half of it:
+ * [CompleteOccurrenceUseCase] now actually moves a one-off Task's [Task.date] to
+ * `rescheduledToDate` on a RESCHEDULED completion (previously accepted but silently dropped for
+ * [com.stepwise.domain.usecase.CompletionTarget.OneOff], only ever applied for
+ * [com.stepwise.domain.usecase.CompletionTarget.Recurring]'s own occurrence row) — once `date`
+ * itself moves, this aggregator's ordinary `date < today` Overdue test naturally stops matching
+ * the old date, with no change needed in this file.
  *
  * **[TodayItem.isCompleted] is coarser than [ExecutionStatus]** — "has any Session been recorded"
  * (or, for a recurring occurrence, "is it already marked skipped"), not "is its status
@@ -160,34 +160,37 @@ class GetTodayAgendaUseCase(
         val (todayTaskItems, overdueItems) = buildOneOffTaskItems(today, tasksWithoutRule, sessionsById)
 
         val recurringTasksResult =
-            resolveRecurringItems(
+            resolveScheduledItems(
                 userId,
-                today,
+                today..today,
                 TodayItemKind.TASK,
                 ExecutableKind.TASK,
                 tasksWithRule.associateBy { it.id.value },
                 rulesByOwner,
                 sessionsById,
+                resolveOccurrencesUseCase,
             ) { it.title to it.goalImpactScore }
         val activityItemsResult =
-            resolveRecurringItems(
+            resolveScheduledItems(
                 userId,
-                today,
+                today..today,
                 TodayItemKind.ACTIVITY,
                 ExecutableKind.ACTIVITY,
                 activities.filterNot { it.sync.isDeleted || it.archived }.associateBy { it.id.value },
                 rulesByOwner,
                 sessionsById,
+                resolveOccurrencesUseCase,
             ) { it.title to null }
         val habitItemsResult =
-            resolveRecurringItems(
+            resolveScheduledItems(
                 userId,
-                today,
+                today..today,
                 TodayItemKind.HABIT,
                 ExecutableKind.HABIT,
                 habits.filterNot { it.sync.isDeleted || it.archived }.associateBy { it.id.value },
                 rulesByOwner,
                 sessionsById,
+                resolveOccurrencesUseCase,
             ) { it.title to null }
 
         return recurringTasksResult.andThen { recurringTaskItems ->
@@ -230,49 +233,6 @@ class GetTodayAgendaUseCase(
             }
         }
         return todayItems to overdueItems
-    }
-
-    private suspend fun <T> resolveRecurringItems(
-        userId: UserId,
-        today: LocalDate,
-        kind: TodayItemKind,
-        sourceType: ExecutableKind,
-        ownersById: Map<String, T>,
-        rulesByOwner: Map<Pair<ExecutableKind, String>, List<RecurrenceRule>>,
-        sessionsById: Map<SessionId, Session>,
-        describe: (T) -> Pair<String, Int?>,
-    ): AppResult<List<TodayItem>> {
-        val items = mutableListOf<TodayItem>()
-        for ((ownerId, owner) in ownersById) {
-            val rulesForOwner = rulesByOwner[sourceType to ownerId] ?: continue
-            for (rule in rulesForOwner) {
-                val resolved = resolveOccurrencesUseCase.execute(userId, rule.id, today..today)
-                val occurrences =
-                    when (resolved) {
-                        is AppResult.Failure -> return resolved
-                        is AppResult.Success -> resolved.value
-                    }
-                val (title, impactScore) = describe(owner)
-                occurrences.filter { it.displayDate == today }.forEach { occurrence ->
-                    val sessionId = occurrence.sessionId
-                    val completed = occurrence.skipped || (sessionId != null && sessionsById.containsKey(sessionId))
-                    items +=
-                        TodayItem(
-                            kind = kind,
-                            sourceType = sourceType,
-                            sourceId = ownerId,
-                            title = title,
-                            date = today,
-                            time = rule.time,
-                            isCompleted = completed,
-                            goalImpactScore = impactScore,
-                            recurrenceRuleId = rule.id,
-                            occurrenceDate = occurrence.occurrenceDate,
-                        )
-                }
-            }
-        }
-        return AppResult.Success(items)
     }
 
     private fun assembleAgenda(

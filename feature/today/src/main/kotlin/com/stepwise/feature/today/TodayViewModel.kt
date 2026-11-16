@@ -10,8 +10,8 @@ import com.stepwise.core.model.UserId
 import com.stepwise.domain.repository.AuthRepository
 import com.stepwise.domain.usecase.CompleteOccurrenceCommand
 import com.stepwise.domain.usecase.CompleteOccurrenceUseCase
-import com.stepwise.domain.usecase.CompletionTarget
 import com.stepwise.domain.usecase.GetTodayAgendaUseCase
+import com.stepwise.domain.usecase.toCompletionTarget
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -120,15 +120,6 @@ class TodayViewModel
                 } finally {
                     _pendingItemKeys.value = _pendingItemKeys.value - key
                 }
-            }
-        }
-
-        private fun TodayItem.toCompletionTarget(): CompletionTarget {
-            val ruleId = recurrenceRuleId
-            return if (ruleId != null) {
-                CompletionTarget.Recurring(sourceType, sourceId, occurrenceDate ?: date, ruleId)
-            } else {
-                CompletionTarget.OneOff(sourceType, sourceId, date)
             }
         }
     }

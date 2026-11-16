@@ -56,6 +56,7 @@ class CompleteOccurrenceUseCaseTest {
             recurrenceRuleRepository = ruleRepository,
             recurrenceOccurrenceRepository = occurrenceRepository,
             sessionRepository = sessionRepository,
+            taskRepository = taskRepository,
             idGenerator = FakeIdGenerator(),
             clock = FakeClock(NOW),
         )
@@ -253,6 +254,26 @@ class CompleteOccurrenceUseCaseTest {
             check(result is AppResult.Success)
             val occurrenceId = OccurrenceIdentity.deterministicId(ruleId, DATE)
             assertEquals(RESCHEDULED_DATE, occurrenceRepository.get(occurrenceId)?.rescheduledToDate)
+        }
+
+    @Test
+    fun `RESCHEDULED on a one-off Task moves its own date, not just an occurrence that doesn't exist for it`() =
+        runTest {
+            seedTask()
+            val command =
+                CompleteOccurrenceCommand(
+                    userId = USER,
+                    target = CompletionTarget.OneOff(ExecutableKind.TASK, "task-1", DATE),
+                    status = ExecutionStatus.RESCHEDULED,
+                    rescheduledToDate = RESCHEDULED_DATE,
+                )
+
+            val result = useCase.execute(command)
+
+            check(result is AppResult.Success)
+            val updated = taskRepository.getById(TaskId("task-1"))
+            check(updated is AppResult.Success)
+            assertEquals(RESCHEDULED_DATE, updated.value?.date)
         }
 
     @Test
