@@ -55,8 +55,9 @@ fun ActivityDetailRoute(
     Scaffold(
         topBar = {
             StepwiseTopBar(
-                title = (state as? ActivityDetailUiState.Content)?.activity?.title
-                    ?: stringResource(R.string.activities_title),
+                title =
+                    (state as? ActivityDetailUiState.Content)?.activity?.title
+                        ?: stringResource(R.string.activities_title),
                 navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
                 navigationIconContentDescription = stringResource(R.string.activity_form_back_content_description),
                 onNavigationClick = onBack,
