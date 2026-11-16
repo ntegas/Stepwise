@@ -8,6 +8,7 @@ import com.stepwise.core.model.LifecycleStatus
 import com.stepwise.domain.repository.AuthRepository
 import com.stepwise.domain.usecase.GetGoalsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,6 +30,7 @@ import javax.inject.Inject
  * Goal stays visible alongside active ones (marked with a chip in [GoalsListScreen]) rather than
  * disappearing into its own rarely-checked section.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class GoalsListViewModel
     @Inject

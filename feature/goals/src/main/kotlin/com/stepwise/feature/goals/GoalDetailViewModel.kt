@@ -17,6 +17,7 @@ import com.stepwise.domain.usecase.GetMilestonesUseCase
 import com.stepwise.domain.usecase.ObserveGoalUseCase
 import com.stepwise.domain.usecase.UpdateGoalStatusUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,6 +39,7 @@ private const val KEY_GOAL_ID = "goalId"
  * [ObserveGoalUseCase] and [GetMilestonesUseCase] verify ownership centrally (DEV-016 logic
  * review, HIGH), so this ViewModel no longer needs its own ad hoc check.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class GoalDetailViewModel
     @Inject

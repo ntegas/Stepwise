@@ -13,7 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -98,7 +98,7 @@ fun GoalFormScreen(
         topBar = {
             StepwiseTopBar(
                 title = stringResource(titleRes),
-                navigationIcon = Icons.Filled.ArrowBack,
+                navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
                 navigationIconContentDescription = stringResource(R.string.goal_form_back_content_description),
                 onNavigationClick = onBack,
             )

@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -95,7 +95,7 @@ fun GoalDetailScreen(
         topBar = {
             StepwiseTopBar(
                 title = (state as? GoalDetailUiState.Content)?.goal?.title ?: stringResource(R.string.goals_title),
-                navigationIcon = Icons.Filled.ArrowBack,
+                navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
                 navigationIconContentDescription = stringResource(R.string.goal_form_back_content_description),
                 onNavigationClick = onBack,
             )

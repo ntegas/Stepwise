@@ -13,6 +13,7 @@ import com.stepwise.domain.usecase.CompleteOccurrenceUseCase
 import com.stepwise.domain.usecase.CompletionTarget
 import com.stepwise.domain.usecase.GetTodayAgendaUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -56,6 +57,7 @@ import javax.inject.Inject
  * outside Clock" extends the same way to timezone: a UI layer reading it once at this one
  * boundary, not a second place quietly re-deriving it).
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class TodayViewModel
     @Inject
