@@ -57,6 +57,15 @@ These compile-time traps waste a full edit-compile cycle each if you guess inste
   file — the qualified form `Icons.Filled.CheckCircle` still depends on that same import, and
   removing it breaks the build with "Unresolved reference" at every qualified use site (this
   exact mistake was made once already distilling this skill's own first draft).
+- **`material-icons-core` only bundles a small curated subset of icon names** (`Home`, `Add`,
+  `Search`, `List`, `Star`, `CheckCircle`, `ArrowBack`, `Settings`, `Person`, and a few dozen
+  others like them) — it is NOT "all the Material icons minus the extended styling." A name
+  that sounds just as common (`Flag`, `Edit`... check per-icon) can still be unresolved with
+  "Unresolved reference 'X'" even though `Icons.Filled.Home` right next to it compiles fine,
+  because `Home` is in core and `Flag` only exists in `material-icons-extended`. Before using a
+  new icon name, either confirm it against the module's already-working icon imports, or add
+  `material-icons-extended` deliberately (it is a much larger artifact — weigh that against
+  just picking a different icon from the set already proven to resolve in this codebase).
 - **Extension functions need their own import even when they feel obvious in context.** A
   function that reads like a member (`view.positionInParent()`, `date.toDisplayString()`) may
   be a top-level extension living in a completely different package.

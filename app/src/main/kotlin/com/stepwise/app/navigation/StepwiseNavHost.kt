@@ -2,8 +2,8 @@ package com.stepwise.app.navigation
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -78,7 +78,7 @@ fun StepwiseNavHost(sessionViewModel: SessionViewModel = hiltViewModel()) {
                             ),
                             StepwiseNavigationItem(
                                 label = stringResource(R.string.nav_tab_goals),
-                                icon = Icons.Filled.Flag,
+                                icon = Icons.Filled.List,
                                 iconContentDescription = stringResource(R.string.nav_tab_goals_content_description),
                                 selected = currentRoute == ROUTE_GOALS,
                                 onClick = { navController.navigateToTab(ROUTE_GOALS) },
