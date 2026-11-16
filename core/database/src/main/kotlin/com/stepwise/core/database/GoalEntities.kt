@@ -96,6 +96,9 @@ interface GoalDao {
 
     @Query("SELECT * FROM goals WHERE id = :id")
     suspend fun getById(id: String): GoalEntity?
+
+    @Query("SELECT * FROM goals WHERE id = :id")
+    fun observeById(id: String): Flow<GoalEntity?>
 }
 
 @Entity(tableName = "milestones", indices = [Index("goalId")])

@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.stepwise.core.common.toDisplayString
 import com.stepwise.core.designsystem.component.StepwiseAssistChip
 import com.stepwise.core.designsystem.component.StepwiseCard
 import com.stepwise.core.designsystem.component.StepwiseEmptyState
@@ -77,7 +78,9 @@ fun GoalsListScreen(
             StepwiseLoadingState(modifier = modifier, label = stringResource(R.string.goals_loading))
         }
         is GoalsListUiState.SignedOut -> Unit
-        is GoalsListUiState.Error -> StepwiseErrorState(modifier = modifier, message = state.message)
+        is GoalsListUiState.Error -> {
+            StepwiseErrorState(modifier = modifier, message = stringResource(R.string.goals_error_generic))
+        }
         is GoalsListUiState.Content -> {
             GoalsListContent(modifier = modifier, state = state, onGoalClick = onGoalClick)
         }
@@ -130,8 +133,19 @@ private fun GoalRow(
         ) {
             Column {
                 Text(text = goal.title, style = MaterialTheme.typography.titleMedium)
+                if (goal.targetValue != null && goal.unit != null) {
+                    Text(
+                        text =
+                            stringResource(
+                                R.string.goals_target_label,
+                                formatTargetValue(goal.targetValue),
+                                goal.unit,
+                            ),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
                 goal.deadline?.let { deadline ->
-                    Text(text = deadline.toString(), style = MaterialTheme.typography.bodySmall)
+                    Text(text = deadline.toDisplayString(), style = MaterialTheme.typography.bodySmall)
                 }
             }
             if (goal.status == LifecycleStatus.PAUSED) {

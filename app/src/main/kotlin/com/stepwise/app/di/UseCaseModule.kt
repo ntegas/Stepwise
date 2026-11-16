@@ -24,6 +24,7 @@ import com.stepwise.domain.usecase.GetMilestonesUseCase
 import com.stepwise.domain.usecase.GetProjectsUseCase
 import com.stepwise.domain.usecase.GetTodayAgendaUseCase
 import com.stepwise.domain.usecase.MetricResolver
+import com.stepwise.domain.usecase.ObserveGoalUseCase
 import com.stepwise.domain.usecase.ResolveOccurrencesUseCase
 import com.stepwise.domain.usecase.UpdateGoalStatusUseCase
 import dagger.Module
@@ -102,8 +103,14 @@ object UseCaseModule {
         GetGoalByIdUseCase(goalRepository)
 
     @Provides
-    fun provideGetMilestonesUseCase(milestoneRepository: MilestoneRepository): GetMilestonesUseCase =
-        GetMilestonesUseCase(milestoneRepository)
+    fun provideObserveGoalUseCase(goalRepository: GoalRepository): ObserveGoalUseCase =
+        ObserveGoalUseCase(goalRepository)
+
+    @Provides
+    fun provideGetMilestonesUseCase(
+        goalRepository: GoalRepository,
+        milestoneRepository: MilestoneRepository,
+    ): GetMilestonesUseCase = GetMilestonesUseCase(goalRepository, milestoneRepository)
 
     @Provides
     fun provideGetLifeAreasUseCase(lifeAreaRepository: LifeAreaRepository): GetLifeAreasUseCase =

@@ -21,6 +21,8 @@ class FakeGoalRepository : GoalRepository {
     override fun observeAll(userId: UserId): Flow<List<Goal>> =
         goals.map { all -> all.values.filter { it.userId == userId } }
 
+    override fun observeById(id: GoalId): Flow<Goal?> = goals.map { all -> all[id.value] }
+
     override suspend fun getById(id: GoalId): AppResult<Goal?> = AppResult.Success(goals.value[id.value])
 
     override suspend fun upsert(goal: Goal): AppResult<Unit> {

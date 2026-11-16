@@ -17,8 +17,8 @@ import com.stepwise.domain.fake.FakeGoalRepository
 import com.stepwise.domain.fake.FakeMilestoneRepository
 import com.stepwise.domain.usecase.AddMilestoneUseCase
 import com.stepwise.domain.usecase.EditMilestoneUseCase
-import com.stepwise.domain.usecase.GetGoalsUseCase
 import com.stepwise.domain.usecase.GetMilestonesUseCase
+import com.stepwise.domain.usecase.ObserveGoalUseCase
 import com.stepwise.domain.usecase.UpdateGoalStatusUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -65,8 +65,8 @@ class GoalDetailViewModelTest {
     private val authRepository = FakeAuthRepository(initialUserId = OWNER)
     private val idGenerator = FakeIdGenerator()
     private val clock = FakeClock(NOW)
-    private val getGoalsUseCase = GetGoalsUseCase(goalRepository)
-    private val getMilestonesUseCase = GetMilestonesUseCase(milestoneRepository)
+    private val observeGoalUseCase = ObserveGoalUseCase(goalRepository)
+    private val getMilestonesUseCase = GetMilestonesUseCase(goalRepository, milestoneRepository)
     private val updateGoalStatusUseCase = UpdateGoalStatusUseCase(goalRepository, clock)
     private val addMilestoneUseCase = AddMilestoneUseCase(goalRepository, milestoneRepository, idGenerator, clock)
     private val editMilestoneUseCase = EditMilestoneUseCase(goalRepository, milestoneRepository, clock)
@@ -85,7 +85,7 @@ class GoalDetailViewModelTest {
         GoalDetailViewModel(
             SavedStateHandle(mapOf("goalId" to goalId.value)),
             authRepository,
-            getGoalsUseCase,
+            observeGoalUseCase,
             getMilestonesUseCase,
             updateGoalStatusUseCase,
             addMilestoneUseCase,
@@ -96,6 +96,16 @@ class GoalDetailViewModelTest {
     fun `a goal that doesn't exist yields NotFound`() =
         runTest {
             val state = viewModel(GoalId("no-such-goal")).state.value
+
+            assertEquals(GoalDetailUiState.NotFound, state)
+        }
+
+    @Test
+    fun `a goal belonging to another user yields NotFound, not Content`() =
+        runTest {
+            goalRepository.seed(goal().copy(userId = UserId("someone-else")))
+
+            val state = viewModel().state.value
 
             assertEquals(GoalDetailUiState.NotFound, state)
         }

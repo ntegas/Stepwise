@@ -50,6 +50,17 @@ private const val KEY_GOAL_ID = "goalId"
  * exception, since switching into [GoalProgressMode.MILESTONES] makes [EditGoalUseCase] clear
  * `targetValue`/`unit` itself. Clearing Life Area, Project, category, description, or priority
  * once set is not possible through this form, matching that command's own disclosed limitation.
+ *
+ * **Edit never redefines [GoalProgressMode] (DEV-016 logic review, CRITICAL, fixed)**: the first
+ * draft called [inferTypeAndMode] on Edit too, which silently flipped a `METRIC`/`FREQUENCY`/
+ * `TASKS`/`MANUAL` Goal's mode to `MILESTONES`/`TARGET_VALUE` on *any* edit, even just a title
+ * change — `GoalProgressMode`'s own KDoc states it is "set at creation and changed only by a
+ * deliberate user edit, never computed." [toEditCommand] now always passes `progressMode = null`
+ * ("leave unchanged") and only forwards the typed Target/Unit at all when
+ * [GoalFormUiState.existingProgressMode] already uses them ([GoalValidation.TARGET_REQUIRED_MODES]);
+ * for any other existing mode, whatever is typed into those two fields is not sent — a disclosed
+ * limitation (no progressMode picker exists to make switching modes a deliberate action) rather
+ * than a silent, confusing [GoalValidation] rejection the first draft could hit instead.
  */
 @HiltViewModel
 class GoalFormViewModel
@@ -85,22 +96,17 @@ class GoalFormViewModel
             _state.value = _state.value.copy(lifeAreas = lifeAreas, projects = projects)
         }
 
-        // Scoped to [userId] the same way GoalDetailViewModel derives its own Goal from the
-        // user-scoped GetGoalsUseCase list, rather than trusting a bare-by-id lookup - a Goal
-        // belonging to a different user is treated the same as "not found" (the form simply
-        // stays blank) instead of ever being populated into this form.
+        // Ownership is verified centrally by GetGoalByIdUseCase (via GoalAccess.verifyOwnedGoal)
+        // now, not re-checked here - a Goal that doesn't exist and one that belongs to a
+        // different user both come back as the same Failure, so the form simply stays blank for
+        // both rather than disclosing which case it was.
         private suspend fun loadExistingGoal(
             goalId: GoalId,
             userId: UserId,
         ) {
-            when (val result = getGoalByIdUseCase.execute(goalId)) {
-                is AppResult.Success -> {
-                    val goal = result.value
-                    if (goal != null && goal.userId == userId) {
-                        _state.value = _state.value.copyFrom(goal)
-                    }
-                }
-                is AppResult.Failure -> _state.value = _state.value.copy(error = result.error.message)
+            when (val result = getGoalByIdUseCase.execute(userId, goalId)) {
+                is AppResult.Success -> _state.value = _state.value.copyFrom(result.value)
+                is AppResult.Failure -> _state.value = _state.value.copy(hasError = true)
             }
         }
 
@@ -115,41 +121,43 @@ class GoalFormViewModel
                 category = goal.category ?: "",
                 description = goal.description ?: "",
                 priority = goal.priority?.toString() ?: "",
+                existingProgressMode = goal.progressMode,
             )
 
         fun onTitleChanged(value: String) {
-            _state.value = _state.value.copy(title = value, titleError = false, error = null)
+            _state.value = _state.value.copy(title = value, titleError = false, hasError = false)
         }
 
         fun onTargetValueChanged(value: String) {
-            _state.value = _state.value.copy(targetValue = value, targetValueError = false, error = null)
+            _state.value =
+                _state.value.copy(targetValue = value, targetValueError = false, unitError = false, hasError = false)
         }
 
         fun onUnitChanged(value: String) {
-            _state.value = _state.value.copy(unit = value, error = null)
+            _state.value = _state.value.copy(unit = value, unitError = false, hasError = false)
         }
 
         fun onDeadlineChanged(value: String) {
-            _state.value = _state.value.copy(deadline = value, deadlineError = false, error = null)
+            _state.value = _state.value.copy(deadline = value, deadlineError = false, hasError = false)
         }
 
         fun onCategoryChanged(value: String) {
-            _state.value = _state.value.copy(category = value, error = null)
+            _state.value = _state.value.copy(category = value, hasError = false)
         }
 
         fun onDescriptionChanged(value: String) {
-            _state.value = _state.value.copy(description = value, error = null)
+            _state.value = _state.value.copy(description = value, hasError = false)
         }
 
         fun onPriorityChanged(value: String) {
-            _state.value = _state.value.copy(priority = value, priorityError = false, error = null)
+            _state.value = _state.value.copy(priority = value, priorityError = false, hasError = false)
         }
 
-        fun onLifeAreaSelected(id: com.stepwise.core.model.LifeAreaId?) {
+        fun onLifeAreaSelected(id: LifeAreaId?) {
             _state.value = _state.value.copy(lifeAreaId = id)
         }
 
-        fun onProjectSelected(id: com.stepwise.core.model.ProjectId?) {
+        fun onProjectSelected(id: ProjectId?) {
             _state.value = _state.value.copy(projectId = id)
         }
 
@@ -164,16 +172,17 @@ class GoalFormViewModel
             _state.value =
                 current.copy(
                     isSubmitting = true,
-                    error = null,
+                    hasError = false,
                     titleError = false,
                     targetValueError = false,
+                    unitError = false,
                     deadlineError = false,
                     priorityError = false,
                 )
             viewModelScope.launch {
                 val userId = authRepository.observeUserId().first()
                 if (userId == null) {
-                    _state.value = _state.value.copy(isSubmitting = false)
+                    _state.value = _state.value.copy(isSubmitting = false, hasError = true)
                     return@launch
                 }
                 val result =
@@ -185,17 +194,24 @@ class GoalFormViewModel
                 _state.value =
                     when (result) {
                         is AppResult.Success -> _state.value.copy(isSubmitting = false, saved = true)
-                        is AppResult.Failure -> _state.value.copy(isSubmitting = false, error = result.error.message)
+                        is AppResult.Failure -> _state.value.copy(isSubmitting = false, hasError = true)
                     }
             }
         }
 
+        // A Target needs a paired Unit for GoalValidation (and vice versa isn't rejected, but a
+        // lone Unit with no Target is meaningless, so both-or-neither is enforced here too,
+        // inline, rather than letting a Target-without-Unit reach CreateGoalUseCase/EditGoalUseCase
+        // only to bounce back as a confusing enum-name-bearing GoalValidation failure (DEV-016
+        // design/user-flow review).
         private fun validate(current: GoalFormUiState): ValidatedInput? {
             val title = current.title.trim()
             val targetValueText = current.targetValue.trim()
             val targetValue = targetValueText.toDoubleOrNull()
             val targetValueInvalid =
                 targetValueText.isNotBlank() && (targetValue == null || !targetValue.isFinite() || targetValue <= 0.0)
+            val unitText = current.unit.trim()
+            val unitInvalid = targetValueText.isNotBlank() && !targetValueInvalid && unitText.isBlank()
             val deadlineText = current.deadline.trim()
             val parsedDeadline = runCatching { LocalDate.parse(deadlineText) }.getOrNull()
             val deadline = if (deadlineText.isBlank()) null else parsedDeadline
@@ -203,11 +219,12 @@ class GoalFormViewModel
             val priorityText = current.priority.trim()
             val priority = priorityText.toIntOrNull()
             val priorityInvalid = priorityText.isNotBlank() && priority == null
-            if (title.isBlank() || targetValueInvalid || deadlineInvalid || priorityInvalid) {
+            if (title.isBlank() || targetValueInvalid || unitInvalid || deadlineInvalid || priorityInvalid) {
                 _state.value =
                     current.copy(
                         titleError = title.isBlank(),
                         targetValueError = targetValueInvalid,
+                        unitError = unitInvalid,
                         deadlineError = deadlineInvalid,
                         priorityError = priorityInvalid,
                     )
@@ -216,7 +233,7 @@ class GoalFormViewModel
             return ValidatedInput(
                 title = title,
                 targetValue = if (targetValueText.isBlank()) null else targetValue,
-                unit = current.unit.trim().ifBlank { null },
+                unit = unitText.ifBlank { null },
                 deadline = deadline,
                 priority = priority,
             )
@@ -257,16 +274,18 @@ class GoalFormViewModel
             goalId: GoalId,
             userId: UserId,
         ): EditGoalCommand {
-            val (_, progressMode) = inferTypeAndMode(validated)
+            val existingMode = formState.existingProgressMode
+            val usesTarget = existingMode == GoalProgressMode.TARGET_VALUE || existingMode == GoalProgressMode.FREQUENCY
             return EditGoalCommand(
                 userId = userId,
                 goalId = goalId,
                 title = validated.title,
-                progressMode = progressMode,
+                // Never redefined here - see this class's own KDoc for why.
+                progressMode = null,
                 lifeAreaId = formState.lifeAreaId,
                 projectId = formState.projectId,
-                targetValue = validated.targetValue,
-                unit = validated.unit,
+                targetValue = if (usesTarget) validated.targetValue else null,
+                unit = if (usesTarget) validated.unit else null,
                 deadline = validated.deadline,
                 priority = validated.priority,
                 category = formState.category.trim().ifBlank { null },

@@ -2,6 +2,7 @@ package com.stepwise.feature.goals
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -11,12 +12,23 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -32,6 +44,8 @@ import com.stepwise.core.model.LifeArea
 import com.stepwise.core.model.LifeAreaId
 import com.stepwise.core.model.Project
 import com.stepwise.core.model.ProjectId
+import java.time.Instant
+import java.time.ZoneOffset
 
 @Composable
 fun GoalFormRoute(
@@ -117,14 +131,14 @@ fun GoalFormScreen(
                 value = state.unit,
                 onValueChange = onUnitChanged,
                 label = stringResource(R.string.goal_form_unit_label),
+                isError = state.unitError,
+                supportingText = if (state.unitError) stringResource(R.string.goal_form_unit_required) else null,
                 modifier = Modifier.padding(top = StepwiseSpacing.small),
             )
-            StepwiseTextField(
+            DeadlineField(
                 value = state.deadline,
                 onValueChange = onDeadlineChanged,
-                label = stringResource(R.string.goal_form_deadline_label),
                 isError = state.deadlineError,
-                supportingText = if (state.deadlineError) stringResource(R.string.goal_form_deadline_invalid) else null,
                 modifier = Modifier.padding(top = StepwiseSpacing.small),
             )
             StepwiseTextButton(
@@ -142,9 +156,9 @@ fun GoalFormScreen(
                     onProjectSelected = onProjectSelected,
                 )
             }
-            if (state.error != null) {
+            if (state.hasError) {
                 Text(
-                    text = state.error,
+                    text = stringResource(R.string.goal_form_error_generic),
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.padding(top = StepwiseSpacing.small),
                 )
@@ -155,6 +169,65 @@ fun GoalFormScreen(
                 enabled = !state.isSubmitting,
                 modifier = Modifier.fillMaxWidth().padding(top = StepwiseSpacing.large),
             )
+        }
+    }
+}
+
+/**
+ * Free-text ISO `yyyy-MM-dd` input stays as a fallback (so an already-valid value pasted in or
+ * loaded from Edit mode still works), but the calendar icon is the primary affordance - DEV-016
+ * user-flow review (HIGH): `/PRODUCT_CANON.md`'s own Goal-creation example types a deadline as
+ * "31 December," which the strict ISO-only text field rejected with no feedback until Save.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DeadlineField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    isError: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    var pickerVisible by remember { mutableStateOf(false) }
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
+        StepwiseTextField(
+            value = value,
+            onValueChange = onValueChange,
+            label = stringResource(R.string.goal_form_deadline_label),
+            isError = isError,
+            supportingText = if (isError) stringResource(R.string.goal_form_deadline_invalid) else null,
+            modifier = Modifier.weight(1f),
+        )
+        IconButton(onClick = { pickerVisible = true }) {
+            Icon(
+                imageVector = Icons.Filled.DateRange,
+                contentDescription = stringResource(R.string.goal_form_deadline_picker_content_description),
+            )
+        }
+    }
+    if (pickerVisible) {
+        val datePickerState = rememberDatePickerState()
+        DatePickerDialog(
+            onDismissRequest = { pickerVisible = false },
+            confirmButton = {
+                StepwiseTextButton(
+                    text = stringResource(R.string.milestone_save),
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val localDate = Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
+                            onValueChange(localDate.toString())
+                        }
+                        pickerVisible = false
+                    },
+                )
+            },
+            dismissButton = {
+                StepwiseTextButton(
+                    text = stringResource(R.string.milestone_cancel),
+                    onClick = { pickerVisible = false },
+                )
+            },
+        ) {
+            DatePicker(state = datePickerState)
         }
     }
 }
@@ -203,7 +276,12 @@ private fun MoreOptions(
             onValueChange = onPriorityChanged,
             label = stringResource(R.string.goal_form_priority_label),
             isError = state.priorityError,
-            supportingText = if (state.priorityError) stringResource(R.string.goal_form_priority_invalid) else null,
+            supportingText =
+                if (state.priorityError) {
+                    stringResource(R.string.goal_form_priority_invalid)
+                } else {
+                    stringResource(R.string.goal_form_priority_hint)
+                },
             keyboardType = KeyboardType.Number,
             modifier = Modifier.padding(top = StepwiseSpacing.small),
         )

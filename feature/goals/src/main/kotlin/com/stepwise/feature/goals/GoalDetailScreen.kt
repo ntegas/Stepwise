@@ -27,6 +27,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.stepwise.core.common.toDisplayString
 import com.stepwise.core.designsystem.component.StepwiseAssistChip
 import com.stepwise.core.designsystem.component.StepwiseButton
 import com.stepwise.core.designsystem.component.StepwiseErrorState
@@ -108,7 +109,10 @@ fun GoalDetailScreen(
                 )
             }
             is GoalDetailUiState.Error -> {
-                StepwiseErrorState(message = state.message, modifier = Modifier.padding(padding).fillMaxSize())
+                StepwiseErrorState(
+                    message = stringResource(R.string.goal_detail_error),
+                    modifier = Modifier.padding(padding).fillMaxSize(),
+                )
             }
             is GoalDetailUiState.Content -> {
                 GoalDetailContent(
@@ -170,6 +174,13 @@ private fun GoalDetailContent(
             onArchive = onArchive,
             onReopen = onReopen,
         )
+        if (state.actionFailed) {
+            Text(
+                text = stringResource(R.string.goal_detail_action_error),
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = StepwiseSpacing.small),
+            )
+        }
         Text(
             text = stringResource(R.string.goal_detail_milestones_header),
             style = MaterialTheme.typography.titleMedium,
@@ -210,8 +221,18 @@ private fun GoalDetailContent(
 
 @Composable
 private fun GoalMetadata(goal: Goal) {
+    if (goal.targetValue != null && goal.unit != null) {
+        Text(
+            text = stringResource(R.string.goals_target_label, formatTargetValue(goal.targetValue), goal.unit),
+            style = MaterialTheme.typography.bodyMedium,
+        )
+    }
     goal.deadline?.let { deadline ->
-        Text(text = deadline.toString(), style = MaterialTheme.typography.bodyMedium)
+        Text(
+            text = deadline.toDisplayString(),
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(top = StepwiseSpacing.extraSmall),
+        )
     }
     goal.description?.let { description ->
         Text(
@@ -328,7 +349,11 @@ private fun MilestoneDialog(
                     label = stringResource(R.string.milestone_weight_label),
                     isError = state.milestoneWeightError,
                     supportingText =
-                        if (state.milestoneWeightError) stringResource(R.string.milestone_weight_invalid) else null,
+                        if (state.milestoneWeightError) {
+                            stringResource(R.string.milestone_weight_invalid)
+                        } else {
+                            stringResource(R.string.milestone_weight_hint)
+                        },
                     keyboardType = KeyboardType.Number,
                     modifier = Modifier.padding(top = StepwiseSpacing.small),
                 )
@@ -342,9 +367,9 @@ private fun MilestoneDialog(
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
-                if (state.milestoneError != null) {
+                if (state.milestoneHasError) {
                     Text(
-                        text = state.milestoneError,
+                        text = stringResource(R.string.milestone_error_generic),
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.padding(top = StepwiseSpacing.small),
                     )

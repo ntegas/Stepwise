@@ -26,6 +26,8 @@ class GoalRepositoryImpl(
     override fun observeAll(userId: UserId): Flow<List<Goal>> =
         dao.observeAll(userId.value).map { entities -> entities.map { it.toDomain() } }
 
+    override fun observeById(id: GoalId): Flow<Goal?> = dao.observeById(id.value).map { entity -> entity?.toDomain() }
+
     override suspend fun getById(id: GoalId): AppResult<Goal?> =
         runCatchingDatabaseCall { dao.getById(id.value)?.toDomain() }
 

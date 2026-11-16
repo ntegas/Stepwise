@@ -57,7 +57,7 @@ class GoalsListViewModel
             when (this) {
                 null -> GoalsListUiState.SignedOut
                 is AppResult.Success -> value.toContentState()
-                is AppResult.Failure -> GoalsListUiState.Error(error.message)
+                is AppResult.Failure -> GoalsListUiState.Error
             }
 
         private fun List<Goal>.toContentState(): GoalsListUiState.Content =

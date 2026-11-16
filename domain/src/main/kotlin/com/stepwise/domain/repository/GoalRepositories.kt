@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.Flow
 interface GoalRepository {
     fun observeAll(userId: UserId): Flow<List<Goal>>
 
+    fun observeById(id: GoalId): Flow<Goal?>
+
     suspend fun getById(id: GoalId): AppResult<Goal?>
 
     suspend fun upsert(goal: Goal): AppResult<Unit>

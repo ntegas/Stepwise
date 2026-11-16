@@ -174,4 +174,40 @@ class GoalFormViewModelTest {
             assertTrue(vm.state.value.saved)
             assertEquals("200 Hours Boxing", goalRepository.get(GoalId("goal-1"))?.title)
         }
+
+    @Test
+    fun `editing a METRIC-mode Goal's title does not corrupt its progressMode`() =
+        runTest {
+            val metricGoal =
+                existingGoal().copy(
+                    id = GoalId("goal-2"),
+                    type = GoalType.DISTANCE,
+                    progressMode = GoalProgressMode.METRIC,
+                    targetValue = null,
+                    unit = null,
+                )
+            goalRepository.seed(metricGoal)
+            val savedStateHandle = SavedStateHandle(mapOf("goalId" to "goal-2"))
+            val vm = viewModel(savedStateHandle)
+
+            vm.onTitleChanged("Run a half marathon")
+            vm.save()
+
+            assertTrue(vm.state.value.saved)
+            val updated = goalRepository.get(GoalId("goal-2"))
+            check(updated != null)
+            assertEquals(GoalProgressMode.METRIC, updated.progressMode)
+            assertEquals("Run a half marathon", updated.title)
+        }
+
+    @Test
+    fun `editing a Goal belonging to another user does not populate the form`() =
+        runTest {
+            goalRepository.seed(existingGoal().copy(userId = UserId("someone-else")))
+            val savedStateHandle = SavedStateHandle(mapOf("goalId" to "goal-1"))
+
+            val state = viewModel(savedStateHandle).state.value
+
+            assertEquals("", state.title)
+        }
 }
