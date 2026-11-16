@@ -277,7 +277,8 @@ private fun RescheduleDialog(
         Text(
             text = stringResource(hintRes),
             style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(horizontal = StepwiseSpacing.medium, bottom = StepwiseSpacing.small),
+            modifier =
+                Modifier.padding(horizontal = StepwiseSpacing.medium).padding(bottom = StepwiseSpacing.small),
         )
         DatePicker(state = datePickerState)
     }
