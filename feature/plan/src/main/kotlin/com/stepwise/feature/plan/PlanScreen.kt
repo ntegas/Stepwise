@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
@@ -21,10 +22,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -49,14 +54,27 @@ import java.time.ZoneOffset
 @Composable
 fun PlanRoute(viewModel: PlanViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val rescheduleFailedMessage = stringResource(R.string.plan_action_error)
+
+    LaunchedEffect(viewModel) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is PlanEvent.RescheduleFailed -> snackbarHostState.showSnackbar(rescheduleFailedMessage)
+            }
+        }
+    }
+
     Scaffold(
         topBar = { StepwiseTopBar(title = stringResource(R.string.plan_title)) },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         PlanScreen(
             state = state,
             modifier = Modifier.padding(padding),
             onPreviousWeek = viewModel::onPreviousWeek,
             onNextWeek = viewModel::onNextWeek,
+            onJumpToToday = viewModel::onJumpToToday,
             onRescheduleClicked = viewModel::onRescheduleClicked,
             onRescheduleDialogDismissed = viewModel::onRescheduleDialogDismissed,
             onRescheduleDateSelected = viewModel::onRescheduleDateSelected,
@@ -69,6 +87,7 @@ fun PlanScreen(
     state: PlanUiState,
     onPreviousWeek: () -> Unit,
     onNextWeek: () -> Unit,
+    onJumpToToday: () -> Unit,
     onRescheduleClicked: (TodayItem) -> Unit,
     onRescheduleDialogDismissed: () -> Unit,
     onRescheduleDateSelected: (LocalDate) -> Unit,
@@ -86,6 +105,7 @@ fun PlanScreen(
                 modifier = modifier,
                 onPreviousWeek = onPreviousWeek,
                 onNextWeek = onNextWeek,
+                onJumpToToday = onJumpToToday,
                 onRescheduleClicked = onRescheduleClicked,
                 onRescheduleDialogDismissed = onRescheduleDialogDismissed,
                 onRescheduleDateSelected = onRescheduleDateSelected,
@@ -99,6 +119,7 @@ private fun PlanContent(
     state: PlanUiState.Content,
     onPreviousWeek: () -> Unit,
     onNextWeek: () -> Unit,
+    onJumpToToday: () -> Unit,
     onRescheduleClicked: (TodayItem) -> Unit,
     onRescheduleDialogDismissed: () -> Unit,
     onRescheduleDateSelected: (LocalDate) -> Unit,
@@ -109,17 +130,11 @@ private fun PlanContent(
             agenda = state.agenda,
             onPreviousWeek = onPreviousWeek,
             onNextWeek = onNextWeek,
+            onJumpToToday = onJumpToToday,
         )
-        if (state.actionFailed) {
-            Text(
-                text = stringResource(R.string.plan_action_error),
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(horizontal = StepwiseSpacing.medium, vertical = StepwiseSpacing.small),
-            )
-        }
         LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = StepwiseSpacing.medium)) {
             items(state.agenda.days, key = { it.date.toString() }) { day ->
-                PlanDayRow(day = day, onRescheduleClicked = onRescheduleClicked)
+                PlanDayRow(day = day, today = state.today, onRescheduleClicked = onRescheduleClicked)
             }
         }
     }
@@ -127,6 +142,7 @@ private fun PlanContent(
     if (target != null) {
         RescheduleDialog(
             title = target.title,
+            isRecurring = target.isRecurring,
             onDismiss = onRescheduleDialogDismissed,
             onDateSelected = onRescheduleDateSelected,
         )
@@ -138,6 +154,7 @@ private fun WeekHeader(
     agenda: PlanAgenda,
     onPreviousWeek: () -> Unit,
     onNextWeek: () -> Unit,
+    onJumpToToday: () -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(StepwiseSpacing.medium),
@@ -153,7 +170,9 @@ private fun WeekHeader(
         Text(
             text = "${agenda.range.start.toDisplayString()} – ${agenda.range.endInclusive.toDisplayString()}",
             style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.weight(1f, fill = false),
         )
+        StepwiseTextButton(text = stringResource(R.string.plan_jump_to_today), onClick = onJumpToToday)
         IconButton(onClick = onNextWeek) {
             Icon(
                 imageVector = Icons.Filled.KeyboardArrowRight,
@@ -166,11 +185,15 @@ private fun WeekHeader(
 @Composable
 private fun PlanDayRow(
     day: PlanDay,
+    today: LocalDate,
     onRescheduleClicked: (TodayItem) -> Unit,
 ) {
+    val isToday = day.date == today
+    val dayLabel = day.date.toDisplayString()
     Text(
-        text = day.date.toDisplayString(),
+        text = if (isToday) stringResource(R.string.plan_day_today, dayLabel) else dayLabel,
         style = MaterialTheme.typography.labelLarge,
+        color = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.padding(top = StepwiseSpacing.small),
     )
     if (day.items.isEmpty()) {
@@ -201,11 +224,19 @@ private fun PlanItemRow(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f, fill = false),
             )
-            IconButton(onClick = { onRescheduleClicked(item) }) {
+            if (item.isCompleted) {
                 Icon(
-                    imageVector = Icons.Filled.DateRange,
-                    contentDescription = stringResource(R.string.plan_reschedule_content_description),
+                    imageVector = Icons.Filled.CheckCircle,
+                    contentDescription = stringResource(R.string.plan_item_completed),
+                    tint = MaterialTheme.colorScheme.primary,
                 )
+            } else {
+                IconButton(onClick = { onRescheduleClicked(item) }) {
+                    Icon(
+                        imageVector = Icons.Filled.DateRange,
+                        contentDescription = stringResource(R.string.plan_reschedule_content_description),
+                    )
+                }
             }
         }
     }
@@ -214,6 +245,7 @@ private fun PlanItemRow(
 @Composable
 private fun RescheduleDialog(
     title: String,
+    isRecurring: Boolean,
     onDismiss: () -> Unit,
     onDateSelected: (LocalDate) -> Unit,
 ) {
@@ -223,6 +255,7 @@ private fun RescheduleDialog(
         confirmButton = {
             StepwiseTextButton(
                 text = stringResource(R.string.plan_reschedule_confirm),
+                enabled = datePickerState.selectedDateMillis != null,
                 onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
                         val localDate = Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
@@ -235,13 +268,22 @@ private fun RescheduleDialog(
             StepwiseTextButton(text = stringResource(R.string.plan_reschedule_cancel), onClick = onDismiss)
         },
     ) {
+        val hintRes = rescheduleHintRes(isRecurring)
         Text(
             text = title,
             style = MaterialTheme.typography.titleSmall,
             modifier = Modifier.padding(horizontal = StepwiseSpacing.medium),
+        )
+        Text(
+            text = stringResource(hintRes),
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(horizontal = StepwiseSpacing.medium, bottom = StepwiseSpacing.small),
         )
         DatePicker(state = datePickerState)
     }
 }
 
 private fun LocalTime.formatted(): String = "%02d:%02d".format(hour, minute)
+
+private fun rescheduleHintRes(isRecurring: Boolean) =
+    if (isRecurring) R.string.plan_reschedule_hint_recurring else R.string.plan_reschedule_hint_one_off

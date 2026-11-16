@@ -6,8 +6,13 @@
     <string name="plan_action_error">Не удалось перенести — попробуйте снова.</string>
     <string name="plan_previous_week_content_description">Предыдущая неделя</string>
     <string name="plan_next_week_content_description">Следующая неделя</string>
+    <string name="plan_jump_to_today">Сегодня</string>
+    <string name="plan_day_today">Сегодня, %1$s</string>
     <string name="plan_day_empty">Ничего не запланировано</string>
+    <string name="plan_item_completed">Выполнено</string>
     <string name="plan_reschedule_content_description">Перенести</string>
     <string name="plan_reschedule_confirm">Перенести</string>
     <string name="plan_reschedule_cancel">Отмена</string>
+    <string name="plan_reschedule_hint_recurring">Будет перенесено только это вхождение — остальная серия останется по графику.</string>
+    <string name="plan_reschedule_hint_one_off">Задача будет перенесена на новую дату.</string>
 </resources>

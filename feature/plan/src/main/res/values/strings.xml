@@ -6,8 +6,13 @@
     <string name="plan_action_error">Couldn\'t reschedule — please try again.</string>
     <string name="plan_previous_week_content_description">Previous week</string>
     <string name="plan_next_week_content_description">Next week</string>
+    <string name="plan_jump_to_today">Today</string>
+    <string name="plan_day_today">Today, %1$s</string>
     <string name="plan_day_empty">Nothing scheduled</string>
+    <string name="plan_item_completed">Completed</string>
     <string name="plan_reschedule_content_description">Reschedule</string>
     <string name="plan_reschedule_confirm">Move</string>
     <string name="plan_reschedule_cancel">Cancel</string>
+    <string name="plan_reschedule_hint_recurring">This moves only this occurrence — the rest of the series keeps its normal schedule.</string>
+    <string name="plan_reschedule_hint_one_off">This moves the task to the new date.</string>
 </resources>

@@ -15,8 +15,11 @@ import com.stepwise.domain.usecase.GetPlanRangeUseCase
 import com.stepwise.domain.usecase.toCompletionTarget
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -50,11 +53,16 @@ class PlanViewModel
         private val completeOccurrenceUseCase: CompleteOccurrenceUseCase,
         private val clock: Clock,
     ) : ViewModel() {
-        private val weekStart = MutableStateFlow(clock.todayIn(TimeZone.currentSystemDefault()).startOfWeek())
+        private val weekStart = MutableStateFlow(today().startOfWeek())
         private var currentUserId: UserId? = null
 
         private val _state = MutableStateFlow<PlanUiState>(PlanUiState.Loading)
         val state: StateFlow<PlanUiState> = _state.asStateFlow()
+
+        private val _events = MutableSharedFlow<PlanEvent>(extraBufferCapacity = 1)
+        val events: SharedFlow<PlanEvent> = _events.asSharedFlow()
+
+        private fun today(): LocalDate = clock.todayIn(TimeZone.currentSystemDefault())
 
         init {
             viewModelScope.launch {
@@ -81,9 +89,9 @@ class PlanViewModel
                     is AppResult.Success -> {
                         val current = _state.value
                         if (current is PlanUiState.Content) {
-                            current.copy(agenda = result.value)
+                            current.copy(agenda = result.value, today = today())
                         } else {
-                            PlanUiState.Content(agenda = result.value)
+                            PlanUiState.Content(agenda = result.value, today = today())
                         }
                     }
                 }
@@ -97,9 +105,20 @@ class PlanViewModel
             weekStart.value = weekStart.value.plusDays(DAYS_IN_WEEK)
         }
 
+        fun onJumpToToday() {
+            weekStart.value = today().startOfWeek()
+        }
+
         fun onRescheduleClicked(item: TodayItem) {
             updateContent {
-                it.copy(rescheduleTarget = PlanRescheduleTarget(item.title, item.toCompletionTarget()))
+                it.copy(
+                    rescheduleTarget =
+                        PlanRescheduleTarget(
+                            title = item.title,
+                            completionTarget = item.toCompletionTarget(),
+                            isRecurring = item.recurrenceRuleId != null,
+                        ),
+                )
             }
         }
 
@@ -110,11 +129,11 @@ class PlanViewModel
         fun onRescheduleDateSelected(newDate: LocalDate) {
             val content = _state.value as? PlanUiState.Content ?: return
             val target = content.rescheduleTarget ?: return
-            updateContent { it.copy(rescheduleTarget = null, actionFailed = false) }
+            updateContent { it.copy(rescheduleTarget = null) }
             viewModelScope.launch {
                 val userId = currentUserId
                 if (userId == null) {
-                    updateContent { it.copy(actionFailed = true) }
+                    _events.emit(PlanEvent.RescheduleFailed)
                     return@launch
                 }
                 val command =
@@ -126,7 +145,7 @@ class PlanViewModel
                     )
                 val result = completeOccurrenceUseCase.execute(command)
                 if (result is AppResult.Failure) {
-                    updateContent { it.copy(actionFailed = true) }
+                    _events.emit(PlanEvent.RescheduleFailed)
                 }
             }
         }

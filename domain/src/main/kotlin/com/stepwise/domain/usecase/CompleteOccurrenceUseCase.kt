@@ -314,8 +314,24 @@ class CompleteOccurrenceUseCase(
      * whole completion over a Task that raced to deletion between those two reads would discard a
      * write that already happened, for the same "best-effort follow-up, not a reason to fail an
      * already-successful completion" reasoning [linkOccurrenceIfRecurring]'s own KDoc states for
-     * its symmetric case - a missing Task here simply leaves [Task.date] unmoved rather than
-     * failing [execute] outright.
+     * its symmetric case - a **missing** Task (`existing == null`, i.e. deleted between the two
+     * reads) is the one case this swallows, leaving [Task.date] unmoved rather than failing
+     * [execute] outright. A genuine repository error (as opposed to a missing row) from either
+     * call below still propagates as an [AppResult.Failure] from [execute] - deliberately not
+     * swallowed the same way, since that failure is itself the signal that `Task.date` did not
+     * move and the caller (`PlanViewModel`) needs to tell the user the reschedule didn't fully
+     * apply.
+     *
+     * **Not atomic with [writeSession]'s own Room transaction, the same disclosed trade-off
+     * [linkOccurrenceIfRecurring]'s own KDoc already states for its symmetric case** (DEV-017
+     * review, logic reviewer, MEDIUM) - `Task.date` is a canonical column
+     * (`/DATA_MODEL.md`'s `tasks` table), not a derived cache, so a crash between the two writes
+     * is a real, if narrow and recoverable, gap: the Session would read RESCHEDULED while
+     * `Task.date` never actually moved, until the same idempotent command is retried. Spanning a
+     * Room transaction across [SessionRepository] and [TaskRepository] from this `:domain`-layer
+     * class would need a cross-repository transaction primitive neither interface exposes today -
+     * tracked in `/PROJECT_STATE.md`'s VERIFICATION DEBT rather than built ahead of a second
+     * caller actually needing it.
      */
     private suspend fun rescheduleOneOffTaskIfNeeded(command: CompleteOccurrenceCommand): AppResult<Unit> {
         val target = command.target

@@ -2,6 +2,10 @@ package com.stepwise.feature.plan
 
 import com.stepwise.core.common.FakeClock
 import com.stepwise.core.common.FakeIdGenerator
+import com.stepwise.core.model.ExecutableKind
+import com.stepwise.core.model.RecurrencePattern
+import com.stepwise.core.model.RecurrenceRule
+import com.stepwise.core.model.RecurrenceRuleId
 import com.stepwise.core.model.SyncMetadata
 import com.stepwise.core.model.Task
 import com.stepwise.core.model.TaskId
@@ -162,6 +166,51 @@ class PlanViewModelTest {
             val updated = taskRepository.getById(TaskId("task-1"))
             check(updated is com.stepwise.core.common.AppResult.Success)
             assertEquals(TODAY.plusDays(2), updated.value?.date)
+        }
+
+    @Test
+    fun `onJumpToToday returns to the week containing today after navigating several weeks away`() =
+        runTest {
+            val vm = viewModel()
+            val originalStart = (vm.state.value as PlanUiState.Content).agenda.range.start
+
+            vm.onNextWeek()
+            vm.onNextWeek()
+            vm.onNextWeek()
+
+            vm.onJumpToToday()
+
+            val state = vm.state.value
+            check(state is PlanUiState.Content)
+            assertEquals(originalStart, state.agenda.range.start)
+        }
+
+    @Test
+    fun `rescheduling a recurring item's occurrence records isRecurring, unlike a one-off Task`() =
+        runTest {
+            taskRepository.seed(task(TODAY).copy(id = TaskId("recurring-task"), date = null))
+            ruleRepository.seed(
+                RecurrenceRule(
+                    id = RecurrenceRuleId("rule-1"),
+                    userId = OWNER,
+                    ownerType = ExecutableKind.TASK,
+                    ownerId = "recurring-task",
+                    pattern = RecurrencePattern.Daily,
+                    time = null,
+                    startsOn = MONDAY_OF_TODAY,
+                    endsOn = null,
+                    sync = SYNC,
+                ),
+            )
+            val vm = viewModel()
+            val day = (vm.state.value as PlanUiState.Content).agenda.days.single { it.date == TODAY }
+            val recurringItem = day.items.single()
+
+            vm.onRescheduleClicked(recurringItem)
+
+            val target = (vm.state.value as PlanUiState.Content).rescheduleTarget
+            check(target != null)
+            assertEquals(true, target.isRecurring)
         }
 
     private fun LocalDate.plusDays(days: Int): LocalDate = LocalDate.fromEpochDays(toEpochDays() + days)
