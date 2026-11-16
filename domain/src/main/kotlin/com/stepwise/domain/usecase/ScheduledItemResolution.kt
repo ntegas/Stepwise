@@ -29,6 +29,7 @@ import kotlinx.datetime.LocalDate
  * crosses), so this caller still has to filter down to "appears here," the same way
  * [GetTodayAgendaUseCase] always did.
  */
+@Suppress("LongParameterList") // Shared by two callers precisely to avoid duplicating this logic - see KDoc.
 internal suspend fun <T> resolveScheduledItems(
     userId: UserId,
     range: ClosedRange<LocalDate>,

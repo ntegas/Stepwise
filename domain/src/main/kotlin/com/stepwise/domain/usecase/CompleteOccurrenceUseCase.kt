@@ -84,7 +84,10 @@ import com.stepwise.domain.repository.TaskRepository
  * that newly depends on a disclosed gap is the one that closes it" pattern DEV-014 itself used
  * fixing a DEV-010 bug it exposed, rather than disclosing a third time.
  */
-@Suppress("LongParameterList") // One collaborator per thing this engine reads, writes, or resolves - see KDoc.
+@Suppress(
+    "LongParameterList", // One collaborator per thing this engine reads, writes, or resolves - see KDoc.
+    "TooManyFunctions", // One private helper per real sub-step of a deliberately single-purpose engine.
+)
 class CompleteOccurrenceUseCase(
     private val metricResolver: MetricResolver,
     private val recurrenceRuleRepository: RecurrenceRuleRepository,

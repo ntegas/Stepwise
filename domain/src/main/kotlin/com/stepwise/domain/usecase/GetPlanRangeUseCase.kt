@@ -66,6 +66,7 @@ class GetPlanRangeUseCase(
             emit(AppResult.Failure(AppError.Unexpected(cause.message ?: "Failed to load Plan range", cause)))
         }
 
+    @Suppress("LongParameterList") // One source list per repository this engine combines - see class KDoc.
     private suspend fun buildPlan(
         userId: UserId,
         range: ClosedRange<LocalDate>,
