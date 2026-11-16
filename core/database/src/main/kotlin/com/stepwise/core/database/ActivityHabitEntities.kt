@@ -59,6 +59,9 @@ interface ActivityDao {
 
     @Query("SELECT * FROM activities WHERE id = :id")
     suspend fun getById(id: String): ActivityEntity?
+
+    @Query("SELECT * FROM activities WHERE id = :id")
+    fun observeById(id: String): Flow<ActivityEntity?>
 }
 
 @Entity(tableName = "habits", indices = [Index("userId"), Index("activityId")])
@@ -107,4 +110,7 @@ interface HabitDao {
 
     @Query("SELECT * FROM habits WHERE id = :id")
     suspend fun getById(id: String): HabitEntity?
+
+    @Query("SELECT * FROM habits WHERE id = :id")
+    fun observeById(id: String): Flow<HabitEntity?>
 }

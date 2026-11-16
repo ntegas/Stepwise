@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="activities_title">Activities</string>
+    <string name="activities_loading">Loading activities…</string>
+    <string name="activities_empty">No activities yet — tap + to create your first one.</string>
+    <string name="activities_section_active">Active</string>
+    <string name="activities_section_archived">Archived</string>
+    <string name="activities_add_content_description">New activity</string>
+    <string name="activities_error_generic">Couldn\'t load your activities — please try again.</string>
+
+    <string name="activity_form_title_create">New Activity</string>
+    <string name="activity_form_title_edit">Edit Activity</string>
+    <string name="activity_form_name_label">Activity name</string>
+    <string name="activity_form_name_required">Activity name is required</string>
+    <string name="activity_form_life_area_label">Life Area</string>
+    <string name="activity_form_life_area_none">None</string>
+    <string name="activity_form_save">Save</string>
+    <string name="activity_form_error_generic">Couldn\'t save this activity — please try again.</string>
+    <string name="activity_form_back_content_description">Back</string>
+
+    <string name="activity_detail_error">Couldn\'t load this activity.</string>
+    <string name="activity_detail_action_error">Something went wrong — please try again.</string>
+    <string name="activity_detail_archive">Archive</string>
+    <string name="activity_detail_unarchive">Unarchive</string>
+
+    <string name="habits_title">Habits</string>
+    <string name="habits_loading">Loading habits…</string>
+    <string name="habits_empty">No habits yet — tap + to create your first one.</string>
+    <string name="habits_section_active">Active</string>
+    <string name="habits_section_archived">Archived</string>
+    <string name="habits_add_content_description">New habit</string>
+    <string name="habits_error_generic">Couldn\'t load your habits — please try again.</string>
+
+    <string name="habit_form_title_create">New Habit</string>
+    <string name="habit_form_title_edit">Edit Habit</string>
+    <string name="habit_form_name_label">Habit name</string>
+    <string name="habit_form_name_required">Habit name is required</string>
+    <string name="habit_form_target_label">Target per period</string>
+    <string name="habit_form_target_invalid">Target must be a positive number</string>
+    <string name="habit_form_metric_label">Metric</string>
+    <string name="habit_form_metric_required">Choose a metric</string>
+    <string name="habit_form_activity_label">Activity (optional)</string>
+    <string name="habit_form_activity_none">None</string>
+    <string name="habit_form_save">Save</string>
+    <string name="habit_form_error_generic">Couldn\'t save this habit — please try again.</string>
+
+    <string name="habit_detail_error">Couldn\'t load this habit.</string>
+    <string name="habit_detail_target_label">Target: %1$s %2$s per period</string>
+
+    <string name="detail_goal_links_header">Linked Goals</string>
+    <string name="detail_goal_links_empty">Not linked to any Goal yet.</string>
+    <string name="detail_link_goal_action">Link to a Goal</string>
+    <string name="detail_unlink_action">Unlink</string>
+    <string name="detail_session_history_header">Session history</string>
+    <string name="detail_session_history_empty">No sessions logged yet.</string>
+    <string name="detail_log_session_action">Log a session</string>
+
+    <string name="execution_status_done">Done</string>
+    <string name="execution_status_partial">Partial</string>
+    <string name="execution_status_missed">Missed</string>
+    <string name="execution_status_rescheduled">Rescheduled</string>
+    <string name="execution_status_in_progress">In progress</string>
+    <string name="execution_status_cancelled">Cancelled</string>
+
+    <string name="manual_entry_dialog_title">Log a session</string>
+    <string name="manual_entry_date_label">Date (YYYY-MM-DD)</string>
+    <string name="manual_entry_date_picker_content_description">Pick a date</string>
+    <string name="manual_entry_status_label">Status</string>
+    <string name="manual_entry_metric_invalid">Enter a valid number</string>
+    <string name="manual_entry_error_generic">Couldn\'t log this session — please try again.</string>
+    <string name="manual_entry_save">Save</string>
+    <string name="manual_entry_cancel">Cancel</string>
+
+    <string name="link_goal_dialog_title">Link to a Goal</string>
+    <string name="link_goal_goal_label">Goal</string>
+    <string name="link_goal_metric_label">Metric</string>
+    <string name="link_goal_error_generic">Couldn\'t link this goal — please try again.</string>
+    <string name="link_goal_save">Link</string>
+    <string name="link_goal_cancel">Cancel</string>
+</resources>

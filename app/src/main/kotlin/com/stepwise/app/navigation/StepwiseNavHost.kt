@@ -25,6 +25,12 @@ import com.stepwise.app.R
 import com.stepwise.core.designsystem.component.StepwiseBottomNavigation
 import com.stepwise.core.designsystem.component.StepwiseNavigationItem
 import com.stepwise.core.model.GoalId
+import com.stepwise.feature.activities.ActivitiesRoute
+import com.stepwise.feature.activities.ActivityDetailRoute
+import com.stepwise.feature.activities.ActivityFormRoute
+import com.stepwise.feature.activities.HabitDetailRoute
+import com.stepwise.feature.activities.HabitFormRoute
+import com.stepwise.feature.activities.HabitsRoute
 import com.stepwise.feature.goals.GoalDetailRoute
 import com.stepwise.feature.goals.GoalFormRoute
 import com.stepwise.feature.goals.GoalsRoute
@@ -41,6 +47,19 @@ private const val ARG_GOAL_ID = "goalId"
 private const val ROUTE_GOAL_DETAIL = "goalDetail/{$ARG_GOAL_ID}"
 private const val ROUTE_GOAL_EDIT = "goalEdit/{$ARG_GOAL_ID}"
 
+// DEV-018: reached from the Goals tab, not tabs themselves - see GoalsListScreen's own
+// "Manage" row KDoc for why Activities/Habits have no bottom-nav tab of their own.
+private const val ROUTE_ACTIVITIES = "activities"
+private const val ROUTE_ACTIVITY_CREATE = "activityCreate"
+private const val ARG_ACTIVITY_ID = "activityId"
+private const val ROUTE_ACTIVITY_DETAIL = "activityDetail/{$ARG_ACTIVITY_ID}"
+private const val ROUTE_ACTIVITY_EDIT = "activityEdit/{$ARG_ACTIVITY_ID}"
+private const val ROUTE_HABITS = "habits"
+private const val ROUTE_HABIT_CREATE = "habitCreate"
+private const val ARG_HABIT_ID = "habitId"
+private const val ROUTE_HABIT_DETAIL = "habitDetail/{$ARG_HABIT_ID}"
+private const val ROUTE_HABIT_EDIT = "habitEdit/{$ARG_HABIT_ID}"
+
 private val TAB_ROUTES = setOf(ROUTE_TODAY, ROUTE_GOALS, ROUTE_PLAN)
 
 /**
@@ -48,9 +67,11 @@ private val TAB_ROUTES = setOf(ROUTE_TODAY, ROUTE_GOALS, ROUTE_PLAN)
  * as sibling tabs under one [StepwiseBottomNavigation] (`/PRODUCT_CANON.md` §70 names
  * Today/Goals/Plan/Progress — only these three exist before DEV-019+, so only these three tabs
  * are shown, the same "don't build chrome for destinations that don't exist yet" reasoning
- * DEV-015's own graph KDoc already states). The bottom bar is hidden below [TAB_ROUTES] — Goal
- * Detail/Create/Edit are destinations reached *from* a tab, not tabs themselves.
- * [SessionViewModel] remains the single source of truth for Sign In vs. authenticated.
+ * DEV-015's own graph KDoc already states). The bottom bar is hidden below [TAB_ROUTES] — Goal/
+ * Activity/Habit Detail/Create/Edit (DEV-018 adds the latter two, reached from the Goals tab per
+ * `/PRODUCT_CANON.md`'s "no separate main tab per internal entity") are destinations reached
+ * *from* a tab, not tabs themselves. [SessionViewModel] remains the single source of truth for
+ * Sign In vs. authenticated.
  */
 @Composable
 fun StepwiseNavHost(sessionViewModel: SessionViewModel = hiltViewModel()) {
@@ -136,6 +157,8 @@ private fun StepwiseNavGraph(
             GoalsRoute(
                 onGoalClick = { goalId -> navController.navigate("goalDetail/${goalId.value}") },
                 onAddGoalClick = { navController.navigate(ROUTE_GOAL_CREATE) },
+                onActivitiesClick = { navController.navigate(ROUTE_ACTIVITIES) },
+                onHabitsClick = { navController.navigate(ROUTE_HABITS) },
             )
         }
         composable(ROUTE_GOAL_CREATE) {
@@ -155,6 +178,48 @@ private fun StepwiseNavGraph(
                 onEditClick = { goalId: GoalId -> navController.navigate("goalEdit/${goalId.value}") },
                 onBack = { navController.popBackStack() },
             )
+        }
+        composable(ROUTE_ACTIVITIES) {
+            ActivitiesRoute(
+                onActivityClick = { activityId -> navController.navigate("activityDetail/${activityId.value}") },
+                onAddActivityClick = { navController.navigate(ROUTE_ACTIVITY_CREATE) },
+            )
+        }
+        composable(ROUTE_ACTIVITY_CREATE) {
+            ActivityFormRoute(onSaved = { navController.popBackStack() }, onBack = { navController.popBackStack() })
+        }
+        composable(
+            route = ROUTE_ACTIVITY_EDIT,
+            arguments = listOf(navArgument(ARG_ACTIVITY_ID) { type = NavType.StringType }),
+        ) {
+            ActivityFormRoute(onSaved = { navController.popBackStack() }, onBack = { navController.popBackStack() })
+        }
+        composable(
+            route = ROUTE_ACTIVITY_DETAIL,
+            arguments = listOf(navArgument(ARG_ACTIVITY_ID) { type = NavType.StringType }),
+        ) {
+            ActivityDetailRoute(onBack = { navController.popBackStack() })
+        }
+        composable(ROUTE_HABITS) {
+            HabitsRoute(
+                onHabitClick = { habitId -> navController.navigate("habitDetail/${habitId.value}") },
+                onAddHabitClick = { navController.navigate(ROUTE_HABIT_CREATE) },
+            )
+        }
+        composable(ROUTE_HABIT_CREATE) {
+            HabitFormRoute(onSaved = { navController.popBackStack() }, onBack = { navController.popBackStack() })
+        }
+        composable(
+            route = ROUTE_HABIT_EDIT,
+            arguments = listOf(navArgument(ARG_HABIT_ID) { type = NavType.StringType }),
+        ) {
+            HabitFormRoute(onSaved = { navController.popBackStack() }, onBack = { navController.popBackStack() })
+        }
+        composable(
+            route = ROUTE_HABIT_DETAIL,
+            arguments = listOf(navArgument(ARG_HABIT_ID) { type = NavType.StringType }),
+        ) {
+            HabitDetailRoute(onBack = { navController.popBackStack() })
         }
     }
 }

@@ -21,6 +21,8 @@ class FakeActivityRepository : ActivityRepository {
     override fun observeAll(userId: UserId): Flow<List<Activity>> =
         activities.map { all -> all.values.filter { it.userId == userId } }
 
+    override fun observeById(id: ActivityId): Flow<Activity?> = activities.map { all -> all[id.value] }
+
     override suspend fun getById(id: ActivityId): AppResult<Activity?> = AppResult.Success(activities.value[id.value])
 
     override suspend fun upsert(activity: Activity): AppResult<Unit> {

@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="activities_title">Активности</string>
+    <string name="activities_loading">Загрузка активностей…</string>
+    <string name="activities_empty">Пока нет активностей — нажмите +, чтобы создать первую.</string>
+    <string name="activities_section_active">Активные</string>
+    <string name="activities_section_archived">Архивные</string>
+    <string name="activities_add_content_description">Новая активность</string>
+    <string name="activities_error_generic">Не удалось загрузить активности — попробуйте снова.</string>
+
+    <string name="activity_form_title_create">Новая активность</string>
+    <string name="activity_form_title_edit">Редактировать активность</string>
+    <string name="activity_form_name_label">Название активности</string>
+    <string name="activity_form_name_required">Укажите название активности</string>
+    <string name="activity_form_life_area_label">Сфера жизни</string>
+    <string name="activity_form_life_area_none">Нет</string>
+    <string name="activity_form_save">Сохранить</string>
+    <string name="activity_form_error_generic">Не удалось сохранить активность — попробуйте снова.</string>
+    <string name="activity_form_back_content_description">Назад</string>
+
+    <string name="activity_detail_error">Не удалось загрузить активность.</string>
+    <string name="activity_detail_action_error">Что-то пошло не так — попробуйте снова.</string>
+    <string name="activity_detail_archive">В архив</string>
+    <string name="activity_detail_unarchive">Из архива</string>
+
+    <string name="habits_title">Привычки</string>
+    <string name="habits_loading">Загрузка привычек…</string>
+    <string name="habits_empty">Пока нет привычек — нажмите +, чтобы создать первую.</string>
+    <string name="habits_section_active">Активные</string>
+    <string name="habits_section_archived">Архивные</string>
+    <string name="habits_add_content_description">Новая привычка</string>
+    <string name="habits_error_generic">Не удалось загрузить привычки — попробуйте снова.</string>
+
+    <string name="habit_form_title_create">Новая привычка</string>
+    <string name="habit_form_title_edit">Редактировать привычку</string>
+    <string name="habit_form_name_label">Название привычки</string>
+    <string name="habit_form_name_required">Укажите название привычки</string>
+    <string name="habit_form_target_label">Цель за период</string>
+    <string name="habit_form_target_invalid">Цель должна быть положительным числом</string>
+    <string name="habit_form_metric_label">Метрика</string>
+    <string name="habit_form_metric_required">Выберите метрику</string>
+    <string name="habit_form_activity_label">Активность (необязательно)</string>
+    <string name="habit_form_activity_none">Нет</string>
+    <string name="habit_form_save">Сохранить</string>
+    <string name="habit_form_error_generic">Не удалось сохранить привычку — попробуйте снова.</string>
+
+    <string name="habit_detail_error">Не удалось загрузить привычку.</string>
+    <string name="habit_detail_target_label">Цель: %1$s %2$s за период</string>
+
+    <string name="detail_goal_links_header">Связанные цели</string>
+    <string name="detail_goal_links_empty">Пока не связано ни с одной целью.</string>
+    <string name="detail_link_goal_action">Связать с целью</string>
+    <string name="detail_unlink_action">Отвязать</string>
+    <string name="detail_session_history_header">История сессий</string>
+    <string name="detail_session_history_empty">Пока нет записанных сессий.</string>
+    <string name="detail_log_session_action">Записать сессию</string>
+
+    <string name="execution_status_done">Выполнено</string>
+    <string name="execution_status_partial">Частично</string>
+    <string name="execution_status_missed">Пропущено</string>
+    <string name="execution_status_rescheduled">Перенесено</string>
+    <string name="execution_status_in_progress">В процессе</string>
+    <string name="execution_status_cancelled">Отменено</string>
+
+    <string name="manual_entry_dialog_title">Записать сессию</string>
+    <string name="manual_entry_date_label">Дата (ГГГГ-ММ-ДД)</string>
+    <string name="manual_entry_date_picker_content_description">Выбрать дату</string>
+    <string name="manual_entry_status_label">Статус</string>
+    <string name="manual_entry_metric_invalid">Введите корректное число</string>
+    <string name="manual_entry_error_generic">Не удалось записать сессию — попробуйте снова.</string>
+    <string name="manual_entry_save">Сохранить</string>
+    <string name="manual_entry_cancel">Отмена</string>
+
+    <string name="link_goal_dialog_title">Связать с целью</string>
+    <string name="link_goal_goal_label">Цель</string>
+    <string name="link_goal_metric_label">Метрика</string>
+    <string name="link_goal_error_generic">Не удалось связать цель — попробуйте снова.</string>
+    <string name="link_goal_save">Связать</string>
+    <string name="link_goal_cancel">Отмена</string>
+</resources>

@@ -49,3 +49,5 @@ include(":feature:onboarding-auth")
 include(":feature:goals")
 // DEV-017: the third real :feature:* module (Plan/Calendar) - same module-boundary rule.
 include(":feature:plan")
+// DEV-018: the fourth real :feature:* module (Activities/Habits) - same module-boundary rule.
+include(":feature:activities")

@@ -22,6 +22,9 @@ class ActivityRepositoryImpl(
     override fun observeAll(userId: UserId): Flow<List<Activity>> =
         dao.observeAll(userId.value).map { entities -> entities.map { it.toDomain() } }
 
+    override fun observeById(id: ActivityId): Flow<Activity?> =
+        dao.observeById(id.value).map { entity -> entity?.toDomain() }
+
     override suspend fun getById(id: ActivityId): AppResult<Activity?> =
         runCatchingDatabaseCall { dao.getById(id.value)?.toDomain() }
 
@@ -34,6 +37,9 @@ class HabitRepositoryImpl(
 ) : HabitRepository {
     override fun observeAll(userId: UserId): Flow<List<Habit>> =
         dao.observeAll(userId.value).map { entities -> entities.map { it.toDomain() } }
+
+    override fun observeById(id: HabitId): Flow<Habit?> =
+        dao.observeById(id.value).map { entity -> entity?.toDomain() }
 
     override suspend fun getById(id: HabitId): AppResult<Habit?> =
         runCatchingDatabaseCall { dao.getById(id.value)?.toDomain() }

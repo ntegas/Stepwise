@@ -43,6 +43,8 @@ import com.stepwise.core.model.LifecycleStatus
 fun GoalsRoute(
     onGoalClick: (GoalId) -> Unit,
     onAddGoalClick: () -> Unit,
+    onActivitiesClick: () -> Unit,
+    onHabitsClick: () -> Unit,
     viewModel: GoalsListViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -65,6 +67,8 @@ fun GoalsRoute(
         GoalsListScreen(
             state = state,
             onGoalClick = onGoalClick,
+            onActivitiesClick = onActivitiesClick,
+            onHabitsClick = onHabitsClick,
             modifier = Modifier.padding(padding),
         )
     }
@@ -74,6 +78,8 @@ fun GoalsRoute(
 fun GoalsListScreen(
     state: GoalsListUiState,
     onGoalClick: (GoalId) -> Unit,
+    onActivitiesClick: () -> Unit,
+    onHabitsClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when (state) {
@@ -85,7 +91,13 @@ fun GoalsListScreen(
             StepwiseErrorState(modifier = modifier, message = stringResource(R.string.goals_error_generic))
         }
         is GoalsListUiState.Content -> {
-            GoalsListContent(modifier = modifier, state = state, onGoalClick = onGoalClick)
+            GoalsListContent(
+                modifier = modifier,
+                state = state,
+                onGoalClick = onGoalClick,
+                onActivitiesClick = onActivitiesClick,
+                onHabitsClick = onHabitsClick,
+            )
         }
     }
 }
@@ -94,22 +106,44 @@ fun GoalsListScreen(
 private fun GoalsListContent(
     state: GoalsListUiState.Content,
     onGoalClick: (GoalId) -> Unit,
+    onActivitiesClick: () -> Unit,
+    onHabitsClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    if (state.active.isEmpty() && state.completed.isEmpty() && state.archived.isEmpty()) {
-        StepwiseEmptyState(modifier = modifier, message = stringResource(R.string.goals_empty))
-        return
-    }
     // stringResource() is @Composable; LazyColumn's own content block is a plain
     // LazyListScope builder (not a @Composable scope itself - only item{}/items{} inside it
     // are), so these have to resolve out here, not as arguments evaluated inside that block.
     val activeHeader = stringResource(R.string.goals_section_active)
     val completedHeader = stringResource(R.string.goals_section_completed)
     val archivedHeader = stringResource(R.string.goals_section_archived)
+    val isEmpty = state.active.isEmpty() && state.completed.isEmpty() && state.archived.isEmpty()
     LazyColumn(modifier = modifier.fillMaxSize().padding(StepwiseSpacing.medium)) {
-        goalSection(state.active, activeHeader, onGoalClick)
-        goalSection(state.completed, completedHeader, onGoalClick)
-        goalSection(state.archived, archivedHeader, onGoalClick)
+        // Activities/Habits deliberately have no bottom-nav tab of their own
+        // (/PRODUCT_CANON.md: no separate main tab per internal entity - they open from the
+        // main screens instead). Surfaced here rather than Today/Plan, since GoalActivityLink
+        // is specifically the Activity/Habit-to-Goal fan-out this screen already cares about.
+        item { ManageRow(onActivitiesClick = onActivitiesClick, onHabitsClick = onHabitsClick) }
+        if (isEmpty) {
+            item { Text(text = stringResource(R.string.goals_empty), style = MaterialTheme.typography.bodyMedium) }
+        } else {
+            goalSection(state.active, activeHeader, onGoalClick)
+            goalSection(state.completed, completedHeader, onGoalClick)
+            goalSection(state.archived, archivedHeader, onGoalClick)
+        }
+    }
+}
+
+@Composable
+private fun ManageRow(
+    onActivitiesClick: () -> Unit,
+    onHabitsClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(bottom = StepwiseSpacing.medium),
+        horizontalArrangement = Arrangement.spacedBy(StepwiseSpacing.small),
+    ) {
+        StepwiseAssistChip(label = stringResource(R.string.goals_manage_activities), onClick = onActivitiesClick)
+        StepwiseAssistChip(label = stringResource(R.string.goals_manage_habits), onClick = onHabitsClick)
     }
 }
 

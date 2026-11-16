@@ -19,6 +19,8 @@ class FakeHabitRepository : HabitRepository {
     override fun observeAll(userId: UserId): Flow<List<Habit>> =
         habits.map { all -> all.values.filter { it.userId == userId } }
 
+    override fun observeById(id: HabitId): Flow<Habit?> = habits.map { all -> all[id.value] }
+
     override suspend fun getById(id: HabitId): AppResult<Habit?> = AppResult.Success(habits.value[id.value])
 
     override suspend fun upsert(habit: Habit): AppResult<Unit> {

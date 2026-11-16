@@ -6,6 +6,7 @@ import com.stepwise.core.database.ActivityDao
 import com.stepwise.core.database.GoalDao
 import com.stepwise.core.database.HabitDao
 import com.stepwise.core.database.LifeAreaDao
+import com.stepwise.core.database.MetricDao
 import com.stepwise.core.database.MilestoneDao
 import com.stepwise.core.database.ProjectDao
 import com.stepwise.core.database.RecurrenceRuleDao
@@ -66,4 +67,7 @@ object DatabaseModule {
 
     @Provides
     fun provideProjectDao(database: StepwiseDatabase): ProjectDao = database.projectDao()
+
+    @Provides
+    fun provideMetricDao(database: StepwiseDatabase): MetricDao = database.metricDao()
 }

@@ -59,6 +59,7 @@ dependencies {
     implementation(project(":feature:onboarding-auth"))
     implementation(project(":feature:goals"))
     implementation(project(":feature:plan"))
+    implementation(project(":feature:activities"))
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
