@@ -30,7 +30,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.stepwise.core.common.toDisplayString
 import com.stepwise.core.designsystem.component.StepwiseAssistChip
 import com.stepwise.core.designsystem.component.StepwiseCard
-import com.stepwise.core.designsystem.component.StepwiseEmptyState
 import com.stepwise.core.designsystem.component.StepwiseErrorState
 import com.stepwise.core.designsystem.component.StepwiseLoadingState
 import com.stepwise.core.designsystem.component.StepwiseTopBar
