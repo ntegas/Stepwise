@@ -43,7 +43,8 @@ class HabitFormViewModelTest {
     private val observeHabitUseCase = ObserveHabitUseCase(habitRepository)
     private val createHabitUseCase =
         CreateHabitUseCase(habitRepository, activityRepository, metricRepository, FakeIdGenerator(), FakeClock(NOW))
-    private val editHabitUseCase = EditHabitUseCase(habitRepository, activityRepository, metricRepository, FakeClock(NOW))
+    private val editHabitUseCase =
+        EditHabitUseCase(habitRepository, activityRepository, metricRepository, FakeClock(NOW))
 
     @BeforeEach
     fun setUp() {

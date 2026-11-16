@@ -143,8 +143,9 @@ class HabitDetailViewModel
 
         fun onConfirmLinkGoal() {
             val content = _state.value as? HabitDetailUiState.Content ?: return
-            val goalId = content.linkGoalDialog.selectedGoalId ?: return
-            val metricId = content.linkGoalDialog.selectedMetricId ?: return
+            val goalId = content.linkGoalDialog.selectedGoalId
+            val metricId = content.linkGoalDialog.selectedMetricId
+            if (goalId == null || metricId == null) return
             updateContent { it.copy(linkGoalDialog = it.linkGoalDialog.copy(isSubmitting = true, hasError = false)) }
             viewModelScope.launch {
                 val userId = currentUserId ?: return@launch
@@ -217,8 +218,9 @@ class HabitDetailViewModel
         }
 
         fun onConfirmManualEntry() {
-            val content = _state.value as? HabitDetailUiState.Content ?: return
-            val dialog = content.manualEntryDialog ?: return
+            val content = _state.value as? HabitDetailUiState.Content
+            val dialog = content?.manualEntryDialog
+            if (content == null || dialog == null) return
             val result = validateManualEntry(dialog)
             val validated = result.validated
             if (validated == null) {

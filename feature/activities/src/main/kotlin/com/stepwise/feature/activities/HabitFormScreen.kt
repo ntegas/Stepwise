@@ -127,29 +127,8 @@ private fun HabitFormContent(
             keyboardType = KeyboardType.Number,
             modifier = Modifier.padding(top = StepwiseSpacing.small),
         )
-        Text(
-            text = stringResource(R.string.habit_form_metric_label),
-            style = MaterialTheme.typography.labelLarge,
-            modifier = Modifier.padding(top = StepwiseSpacing.medium),
-        )
-        MetricPicker(metrics = state.metrics, selectedId = state.metricId, onMetricSelected = onMetricSelected)
-        if (state.metricError) {
-            Text(
-                text = stringResource(R.string.habit_form_metric_required),
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-            )
-        }
-        Text(
-            text = stringResource(R.string.habit_form_activity_label),
-            style = MaterialTheme.typography.labelLarge,
-            modifier = Modifier.padding(top = StepwiseSpacing.medium),
-        )
-        ActivityPicker(
-            activities = state.activities,
-            selectedId = state.activityId,
-            onActivitySelected = onActivitySelected,
-        )
+        HabitMetricSection(state = state, onMetricSelected = onMetricSelected)
+        HabitActivitySection(state = state, onActivitySelected = onActivitySelected)
         if (state.hasError) {
             Text(
                 text = stringResource(R.string.habit_form_error_generic),
@@ -164,6 +143,45 @@ private fun HabitFormContent(
             modifier = Modifier.fillMaxWidth().padding(top = StepwiseSpacing.large),
         )
     }
+}
+
+// Split out of HabitFormContent (detekt LongMethod) - purely a composable extraction, no
+// behavior change.
+@Composable
+private fun HabitMetricSection(
+    state: HabitFormUiState,
+    onMetricSelected: (MetricId) -> Unit,
+) {
+    Text(
+        text = stringResource(R.string.habit_form_metric_label),
+        style = MaterialTheme.typography.labelLarge,
+        modifier = Modifier.padding(top = StepwiseSpacing.medium),
+    )
+    MetricPicker(metrics = state.metrics, selectedId = state.metricId, onMetricSelected = onMetricSelected)
+    if (state.metricError) {
+        Text(
+            text = stringResource(R.string.habit_form_metric_required),
+            color = MaterialTheme.colorScheme.error,
+            style = MaterialTheme.typography.bodySmall,
+        )
+    }
+}
+
+@Composable
+private fun HabitActivitySection(
+    state: HabitFormUiState,
+    onActivitySelected: (ActivityId?) -> Unit,
+) {
+    Text(
+        text = stringResource(R.string.habit_form_activity_label),
+        style = MaterialTheme.typography.labelLarge,
+        modifier = Modifier.padding(top = StepwiseSpacing.medium),
+    )
+    ActivityPicker(
+        activities = state.activities,
+        selectedId = state.activityId,
+        onActivitySelected = onActivitySelected,
+    )
 }
 
 @Composable

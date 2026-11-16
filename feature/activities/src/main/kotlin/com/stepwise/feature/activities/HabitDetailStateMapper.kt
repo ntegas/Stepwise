@@ -8,6 +8,7 @@ import com.stepwise.core.model.Metric
 import com.stepwise.core.model.Session
 
 /** Mirrors [activityDetailStateFrom] exactly, for [HabitDetailUiState]. */
+@Suppress("LongParameterList") // One AppResult per independent reactive source this screen's own combine() merges.
 internal fun habitDetailStateFrom(
     current: HabitDetailUiState,
     habitResult: AppResult<Habit?>,

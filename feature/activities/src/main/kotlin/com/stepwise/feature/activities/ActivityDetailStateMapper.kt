@@ -13,6 +13,7 @@ import com.stepwise.core.model.Session
  * `goalDetailStateFrom` (DEV-016) pattern applied once a ViewModel's own `applyLoaded` would
  * otherwise cross detekt's TooManyFunctions/CyclomaticComplexMethod thresholds.
  */
+@Suppress("LongParameterList") // One AppResult per independent reactive source this screen's own combine() merges.
 internal fun activityDetailStateFrom(
     current: ActivityDetailUiState,
     activityResult: AppResult<Activity?>,
