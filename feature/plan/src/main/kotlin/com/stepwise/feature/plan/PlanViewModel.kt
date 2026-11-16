@@ -28,7 +28,7 @@ import javax.inject.Inject
 /**
  * `:feature:plan`'s Week view (`/ROADMAP.md` DEV-017, first pass — see [PlanUiState]'s own KDoc
  * for the Day/Month/Year scope-narrowing). [GetPlanRangeUseCase] reactively drives [state] over
- * the currently-selected week (`_weekStart`); [onPreviousWeek]/[onNextWeek] shift it by seven
+ * the currently-selected week (`weekStart`); [onPreviousWeek]/[onNextWeek] shift it by seven
  * days and simply re-subscribe, the same `flatMapLatest`-over-a-changing-key shape
  * `:feature:goals`'s own Goal Detail screen already established for a different changing key
  * (the selected Goal id).
@@ -50,7 +50,7 @@ class PlanViewModel
         private val completeOccurrenceUseCase: CompleteOccurrenceUseCase,
         private val clock: Clock,
     ) : ViewModel() {
-        private val _weekStart = MutableStateFlow(clock.todayIn(TimeZone.currentSystemDefault()).startOfWeek())
+        private val weekStart = MutableStateFlow(clock.todayIn(TimeZone.currentSystemDefault()).startOfWeek())
         private var currentUserId: UserId? = null
 
         private val _state = MutableStateFlow<PlanUiState>(PlanUiState.Loading)
@@ -62,11 +62,11 @@ class PlanViewModel
                     .observeUserId()
                     .flatMapLatest { userId ->
                         currentUserId = userId
-                        _weekStart.flatMapLatest { weekStart ->
+                        weekStart.flatMapLatest { start ->
                             if (userId == null) {
                                 flowOf<AppResult<PlanAgenda>?>(null)
                             } else {
-                                getPlanRangeUseCase.execute(userId, weekStart..weekStart.plusDays(DAYS_IN_WEEK - 1))
+                                getPlanRangeUseCase.execute(userId, start..start.plusDays(DAYS_IN_WEEK - 1))
                             }
                         }
                     }.collect { result -> applyLoaded(result) }
@@ -90,11 +90,11 @@ class PlanViewModel
         }
 
         fun onPreviousWeek() {
-            _weekStart.value = _weekStart.value.minusDays(DAYS_IN_WEEK)
+            weekStart.value = weekStart.value.minusDays(DAYS_IN_WEEK)
         }
 
         fun onNextWeek() {
-            _weekStart.value = _weekStart.value.plusDays(DAYS_IN_WEEK)
+            weekStart.value = weekStart.value.plusDays(DAYS_IN_WEEK)
         }
 
         fun onRescheduleClicked(item: TodayItem) {
