@@ -106,7 +106,10 @@ class GetMilestonesUseCase(
         flow {
             val ownership = GoalAccess.verifyOwnedGoal(goalRepository, userId, goalId)
             if (ownership is AppResult.Failure) {
-                emit(AppResult.Failure(ownership.error))
+                // Not found and not owned read back identically here too, matching
+                // ObserveGoalUseCase - otherwise GoalDetailViewModel sees a Failure where it
+                // expects the Success(empty-goal-equivalent) that resolves to NotFound.
+                emit(AppResult.Success<List<Milestone>>(emptyList()))
                 return@flow
             }
             emitAll(
