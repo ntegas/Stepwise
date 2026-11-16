@@ -47,7 +47,16 @@ These compile-time traps waste a full edit-compile cycle each if you guess inste
 ```
 
 - **Every Compose icon needs its own import.** `Icons.Filled.X` / `Icons.AutoMirrored.Filled.X`
-  is not auto-resolved from a wildcard you already have elsewhere in the file.
+  is not auto-resolved from a wildcard you already have elsewhere in the file. Each icon is an
+  *extension property* on `Icons.Filled`/`Icons.Outlined`/etc, not a real member — so the import
+  is still required even though the call site writes it in qualified form (`Icons.Filled.
+  CheckCircle`), and it is required *per icon name*, independently, for every style it's used in
+  (`Icons.Filled.CheckCircle` and `Icons.Outlined.CheckCircle` are two separate extension
+  properties needing two separate imports, both named `CheckCircle`). Don't delete an icon
+  import just because grep shows the simple name `CheckCircle` never appears unqualified in the
+  file — the qualified form `Icons.Filled.CheckCircle` still depends on that same import, and
+  removing it breaks the build with "Unresolved reference" at every qualified use site (this
+  exact mistake was made once already distilling this skill's own first draft).
 - **Extension functions need their own import even when they feel obvious in context.** A
   function that reads like a member (`view.positionInParent()`, `date.toDisplayString()`) may
   be a top-level extension living in a completely different package.
