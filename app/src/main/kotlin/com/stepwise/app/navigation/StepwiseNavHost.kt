@@ -62,7 +62,12 @@ fun StepwiseNavHost(sessionViewModel: SessionViewModel = hiltViewModel()) {
         }
     }
 
-    val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
+    val currentRoute =
+        navController
+            .currentBackStackEntryAsState()
+            .value
+            ?.destination
+            ?.route
 
     Scaffold(
         bottomBar = {
