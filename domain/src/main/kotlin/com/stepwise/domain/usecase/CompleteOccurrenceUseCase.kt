@@ -4,6 +4,7 @@ import com.stepwise.core.common.AppError
 import com.stepwise.core.common.AppResult
 import com.stepwise.core.common.Clock
 import com.stepwise.core.common.IdGenerator
+import com.stepwise.core.model.ExecutableKind
 import com.stepwise.core.model.ExecutionStatus
 import com.stepwise.core.model.OccurrenceIdentity
 import com.stepwise.core.model.RecurrenceOccurrence
