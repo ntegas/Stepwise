@@ -239,7 +239,12 @@ class HabitDetailViewModelTest {
             vm.onManualEntryMetricValueChanged(COUNT_METRIC.id, "5")
             vm.onConfirmManualEntry()
 
-            val sessionId = sessionRepository.observeForSource(ExecutableKind.HABIT, HABIT_ID.value).first().single().id
+            val sessionId =
+                sessionRepository
+                    .observeForSource(ExecutableKind.HABIT, HABIT_ID.value)
+                    .first()
+                    .single()
+                    .id
             val metricValuesResult = getSessionMetricValuesUseCase.execute(OWNER, sessionId)
             check(metricValuesResult is AppResult.Success)
             val metricValue = metricValuesResult.value.single()
@@ -278,7 +283,12 @@ class HabitDetailViewModelTest {
             vm.onConfirmManualEntry()
 
             assertEquals(1, sessionRepository.sessionCount)
-            val sessionId = sessionRepository.observeForSource(ExecutableKind.HABIT, HABIT_ID.value).first().single().id
+            val sessionId =
+                sessionRepository
+                    .observeForSource(ExecutableKind.HABIT, HABIT_ID.value)
+                    .first()
+                    .single()
+                    .id
             val metricValuesResult = getSessionMetricValuesUseCase.execute(OWNER, sessionId)
             check(metricValuesResult is AppResult.Success)
             assertTrue(metricValuesResult.value.isEmpty())
@@ -341,7 +351,12 @@ class HabitDetailViewModelTest {
             vm.onLogSessionClicked()
             vm.onManualEntryDateChanged("2026-11-15")
             vm.onConfirmManualEntry()
-            val sessionId = sessionRepository.observeForSource(ExecutableKind.HABIT, HABIT_ID.value).first().single().id
+            val sessionId =
+                sessionRepository
+                    .observeForSource(ExecutableKind.HABIT, HABIT_ID.value)
+                    .first()
+                    .single()
+                    .id
 
             vm.onDeleteSessionClicked(sessionId)
             vm.onConfirmDeleteSession()

@@ -248,7 +248,11 @@ class ActivityDetailViewModelTest {
             vm.onConfirmManualEntry()
 
             val sessionId =
-                sessionRepository.observeForSource(ExecutableKind.ACTIVITY, ACTIVITY_ID.value).first().single().id
+                sessionRepository
+                    .observeForSource(ExecutableKind.ACTIVITY, ACTIVITY_ID.value)
+                    .first()
+                    .single()
+                    .id
             val metricValuesResult = getSessionMetricValuesUseCase.execute(OWNER, sessionId)
             check(metricValuesResult is AppResult.Success)
             assertTrue(metricValuesResult.value.isEmpty())
@@ -330,7 +334,11 @@ class ActivityDetailViewModelTest {
             vm.onManualEntryMetricValueChanged(COUNT_METRIC.id, "10")
             vm.onConfirmManualEntry()
             val sessionId =
-                sessionRepository.observeForSource(ExecutableKind.ACTIVITY, ACTIVITY_ID.value).first().single().id
+                sessionRepository
+                    .observeForSource(ExecutableKind.ACTIVITY, ACTIVITY_ID.value)
+                    .first()
+                    .single()
+                    .id
 
             vm.onEditSessionClicked(sessionId)
             vm.onEditSessionMetricValueChanged(COUNT_METRIC.id, "20")
@@ -353,11 +361,20 @@ class ActivityDetailViewModelTest {
             vm.onManualEntryDateChanged("2026-11-15")
             vm.onConfirmManualEntry()
             val sessionId =
-                sessionRepository.observeForSource(ExecutableKind.ACTIVITY, ACTIVITY_ID.value).first().single().id
+                sessionRepository
+                    .observeForSource(ExecutableKind.ACTIVITY, ACTIVITY_ID.value)
+                    .first()
+                    .single()
+                    .id
 
             vm.onDeleteSessionClicked(sessionId)
             vm.onConfirmDeleteSession()
 
-            assertTrue(sessionRepository.observeForSource(ExecutableKind.ACTIVITY, ACTIVITY_ID.value).first().isEmpty())
+            assertTrue(
+                sessionRepository
+                    .observeForSource(ExecutableKind.ACTIVITY, ACTIVITY_ID.value)
+                    .first()
+                    .isEmpty(),
+            )
         }
 }
