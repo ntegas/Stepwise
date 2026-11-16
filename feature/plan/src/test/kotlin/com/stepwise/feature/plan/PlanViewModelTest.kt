@@ -2,7 +2,6 @@ package com.stepwise.feature.plan
 
 import com.stepwise.core.common.FakeClock
 import com.stepwise.core.common.FakeIdGenerator
-import com.stepwise.core.model.ExecutableKind
 import com.stepwise.core.model.SyncMetadata
 import com.stepwise.core.model.Task
 import com.stepwise.core.model.TaskId
@@ -18,7 +17,6 @@ import com.stepwise.domain.usecase.CompleteOccurrenceUseCase
 import com.stepwise.domain.usecase.GetPlanRangeUseCase
 import com.stepwise.domain.usecase.MetricResolver
 import com.stepwise.domain.usecase.ResolveOccurrencesUseCase
-import com.stepwise.domain.usecase.toCompletionTarget
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -125,7 +123,8 @@ class PlanViewModelTest {
 
             check(state is PlanUiState.Content)
             assertEquals(MONDAY_OF_TODAY, state.agenda.range.start)
-            assertEquals(1, state.agenda.days.single { it.date == TODAY }.items.size)
+            val today = state.agenda.days.single { it.date == TODAY }
+            assertEquals(1, today.items.size)
         }
 
     @Test
@@ -150,7 +149,8 @@ class PlanViewModelTest {
             val seeded = task(TODAY)
             taskRepository.seed(seeded)
             val vm = viewModel()
-            val item = (vm.state.value as PlanUiState.Content).agenda.days.single { it.date == TODAY }.items.single()
+            val day = (vm.state.value as PlanUiState.Content).agenda.days.single { it.date == TODAY }
+            val item = day.items.single()
             vm.onRescheduleClicked(item)
             check((vm.state.value as PlanUiState.Content).rescheduleTarget != null)
 
