@@ -35,6 +35,12 @@ These compile-time traps waste a full edit-compile cycle each if you guess inste
 //    (unary minus on a nullable is an ambiguous overload)
 // ❌ PaddingValues(vertical = 8.dp,       ✅ pick ONE axis form: either (vertical=, horizontal=)
 //      bottom = 4.dp)                       or (top=, bottom=, start=, end=) — not mixed
+// ❌ Modifier.padding(horizontal = 8.dp,  ✅ Modifier.padding(horizontal = 8.dp)
+//      bottom = 4.dp)                        .padding(bottom = 4.dp)   (chain two calls, or
+//    (same mixed-axis restriction as         pick one consistent axis form — the overload set
+//     PaddingValues above, but easier         is (start/top/end/bottom), (horizontal/vertical),
+//     to miss because the call reads          (all), or (PaddingValues); none of them accept
+//     like a single natural sentence)         a horizontal/vertical name plus one side name)
 // ❌ Icon(Icons.Filled.ArrowBack, ...)    ✅ import ...icons.automirrored.filled.ArrowBack
 //    on a recent Compose BOM                 Icons.AutoMirrored.Filled.ArrowBack
 //    (ArrowBack/Send/List/Reply/ExitToApp/Sort/FormatListBulleted/Label and similar
@@ -375,6 +381,49 @@ Run this whenever touching storage, intents, exported components, or anything au
 - **Add double-tap protection to any "confirm" action that creates a new record with a
   client-generated id.** A fast double-tap before the UI closes or disables itself can create
   two records with two different ids before either one has a chance to prevent the second.
+
+## 7. detekt/ktlint findings — recognize fast, fix right
+
+These five keep recurring, project after project, because each looks like a one-off until you've
+hit it twice. Check for all five *before* pushing a new or heavily-edited file, not just after CI
+reports them — every one below is cheaper to self-check than to burn a CI round-trip on.
+
+- **`@OptIn`/`@file:OptIn` is required per file, not per "kind of file you've already handled
+  once."** A design-system component's own optional parameter (e.g. `TopBar`'s `scrollBehavior`,
+  any `DatePickerDialog`/`AlertDialog`/`FilterChip` usage) carries its experimental-API
+  requirement to *every caller*, regardless of whether that parameter is ever supplied. Six new
+  screen files in one module missing this is a single mechanical oversight, not six separate
+  bugs — but it still means: before pushing a batch of new Compose screen files, grep the whole
+  batch for the same Material3/experimental symbols your other, already-working screens use, and
+  confirm each new file carries the same `@file:OptIn`, rather than assuming "I did this for the
+  pattern already, so it's covered."
+- **ktlint's function-signature/body-expression-wrapping rule is exact-character-count-driven,
+  not shape-driven.** Two near-identical one-liner functions (e.g. two sibling repository methods
+  that differ only by a type name a few characters longer/shorter) can require *opposite*
+  formatting: one must stay split across two lines because the combined signature+body exceeds
+  the line-length ceiling, the other must be joined onto one line because it doesn't. Don't
+  pattern-match "this looks like that other function, so it gets the same layout" — compute or
+  count the actual combined length before deciding to split or join.
+- **detekt's `MatchingDeclarationName` applies only when a file has exactly one top-level
+  class/object/function-holding declaration** — a file bundling two or more such declarations
+  (the established convention for a small cluster of related read-side Use Cases, e.g.
+  `GoalReadUseCases.kt` holding four classes) is exempt, but a file that was trimmed down to hold
+  only one no longer is. If a grouped-use-cases file ever ends up with just one class in it
+  (after a later edit removes the others, or because it only ever needed one from the start),
+  rename the file to match that one declaration's exact name.
+- **A function with more than two `return` statements (`ReturnCount`) is usually two or more
+  sequential `x ?: return` / `val x = ... ?: return` null-coalescing guards that can be merged.**
+  The fix is almost always: extract each guarded value as a plain nullable `val` first (no early
+  return yet), then add one `if (a == null || b == null) return` combining as many of the
+  original guards as are logically independent of each other (not dependent on one already being
+  non-null) — collapsing N sequential one-value guards into fewer combined-condition guards,
+  rather than restructuring the function's actual logic.
+- **After any refactor that replaces, extracts, or removes a usage, grep the file's own import
+  list against what's actually left**, not just the lines you touched. Extracting a chunk of a
+  function into a new file/function, or replacing a component call with a different one, routinely
+  leaves behind an import for a symbol nothing in the file references anymore — ktlint's
+  unused-import check catches it, but only once that file's own ktlint task is actually reached in
+  CI (which, in a large multi-module push, can be several iterations after the file was changed).
 
 ## When you're about to say "done" / "it builds" / "tests pass"
 
