@@ -212,30 +212,7 @@ internal fun ManualEntryDialog(
                         )
                     }
                 }
-                if (statusAcceptsMetrics(state.status)) {
-                    state.metricInputs.forEach { metricInput ->
-                        StepwiseTextField(
-                            value = metricInput.value,
-                            onValueChange = { onMetricValueChanged(metricInput.metricId, it) },
-                            label = metricInput.label,
-                            isError = metricInput.error,
-                            supportingText =
-                                if (metricInput.error) stringResource(R.string.manual_entry_metric_invalid) else null,
-                            keyboardType = KeyboardType.Number,
-                            modifier = Modifier.padding(top = StepwiseSpacing.small),
-                        )
-                    }
-                } else if (state.metricInputs.isNotEmpty()) {
-                    // DEV-018 review, design reviewer, HIGH: MetricResolver never resolves a metric
-                    // for MISSED/CANCELLED, so a value typed while one of those is selected would be
-                    // silently dropped on save - hidden here instead, with an explanation, rather
-                    // than rendered as if it will still be recorded.
-                    Text(
-                        text = stringResource(R.string.manual_entry_metrics_not_applicable),
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = StepwiseSpacing.small),
-                    )
-                }
+                ManualEntryMetricsSection(state = state, onMetricValueChanged = onMetricValueChanged)
                 if (state.hasError) {
                     Text(
                         text = stringResource(R.string.manual_entry_error_generic),
@@ -256,6 +233,40 @@ internal fun ManualEntryDialog(
             StepwiseTextButton(text = stringResource(R.string.manual_entry_cancel), onClick = onDismiss)
         },
     )
+}
+
+/**
+ * [statusAcceptsMetrics]'s rendering half - shows the metric inputs when the selected status
+ * resolves them, or an explanation instead of silently dropping an already-typed value
+ * (DEV-018 review, design reviewer, HIGH: MetricResolver never resolves a metric for
+ * MISSED/CANCELLED, so a value typed while one of those is selected would otherwise be dropped
+ * on save with no indication this would happen).
+ */
+@Composable
+private fun ManualEntryMetricsSection(
+    state: ManualEntryDialogState,
+    onMetricValueChanged: (MetricId, String) -> Unit,
+) {
+    if (statusAcceptsMetrics(state.status)) {
+        state.metricInputs.forEach { metricInput ->
+            StepwiseTextField(
+                value = metricInput.value,
+                onValueChange = { onMetricValueChanged(metricInput.metricId, it) },
+                label = metricInput.label,
+                isError = metricInput.error,
+                supportingText =
+                    if (metricInput.error) stringResource(R.string.manual_entry_metric_invalid) else null,
+                keyboardType = KeyboardType.Number,
+                modifier = Modifier.padding(top = StepwiseSpacing.small),
+            )
+        }
+    } else if (state.metricInputs.isNotEmpty()) {
+        Text(
+            text = stringResource(R.string.manual_entry_metrics_not_applicable),
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(top = StepwiseSpacing.small),
+        )
+    }
 }
 
 @Composable

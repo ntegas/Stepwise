@@ -1,28 +1,6 @@
 package com.stepwise.feature.activities
 
 import com.stepwise.core.common.AppResult
-import com.stepwise.core.model.Activity
-import com.stepwise.core.model.Goal
-import com.stepwise.core.model.GoalActivityLink
-import com.stepwise.core.model.Metric
-import com.stepwise.core.model.Session
-
-/**
- * Bundles [ActivityDetailViewModel]'s own `combine()` of five independent reactive sources into
- * one value, so [activityDetailStateFrom] takes `(current, loaded)` rather than six separate
- * parameters - DEV-018 review, architecture reviewer, MEDIUM: the first draft suppressed
- * detekt's `LongParameterList` on the mapper instead of bundling, even though every one of these
- * five results was already available as one object (the ViewModel's own private `Loaded` class)
- * at every call site; promoting that bundle out of `private` removes the suppression entirely
- * rather than justifying it.
- */
-internal data class ActivityDetailLoaded(
-    val activity: AppResult<Activity?>,
-    val links: AppResult<List<GoalActivityLink>>,
-    val goals: AppResult<List<Goal>>,
-    val metrics: AppResult<List<Metric>>,
-    val sessions: AppResult<List<Session>>,
-)
 
 /**
  * Maps a freshly-loaded (Activity, GoalActivityLinks, Goals, Metrics, Sessions) tuple onto the

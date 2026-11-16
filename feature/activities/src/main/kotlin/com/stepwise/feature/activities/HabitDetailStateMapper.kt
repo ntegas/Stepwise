@@ -1,20 +1,6 @@
 package com.stepwise.feature.activities
 
 import com.stepwise.core.common.AppResult
-import com.stepwise.core.model.Goal
-import com.stepwise.core.model.GoalActivityLink
-import com.stepwise.core.model.Habit
-import com.stepwise.core.model.Metric
-import com.stepwise.core.model.Session
-
-/** Mirrors [ActivityDetailLoaded] exactly, for [HabitDetailUiState]. */
-internal data class HabitDetailLoaded(
-    val habit: AppResult<Habit?>,
-    val links: AppResult<List<GoalActivityLink>>,
-    val goals: AppResult<List<Goal>>,
-    val metrics: AppResult<List<Metric>>,
-    val sessions: AppResult<List<Session>>,
-)
 
 /** Mirrors [activityDetailStateFrom] exactly, for [HabitDetailUiState]. */
 internal fun habitDetailStateFrom(

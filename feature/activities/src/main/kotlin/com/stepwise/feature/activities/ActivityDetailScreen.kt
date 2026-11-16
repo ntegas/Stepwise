@@ -162,55 +162,97 @@ private fun ActivityDetailContent(
                     onDeleteSessionClicked = onDeleteSessionClicked,
                 )
             }
-            if (state.linkGoalDialogVisible) {
-                LinkGoalDialog(
-                    state = state.linkGoalDialog,
-                    goals = state.goals,
-                    metrics = state.metrics,
-                    onGoalSelected = onLinkGoalSelected,
-                    onMetricSelected = onLinkMetricSelected,
-                    onConfirm = onConfirmLinkGoal,
-                    onDismiss = onLinkGoalDialogDismissed,
-                )
-            }
-            val manualEntry = state.manualEntryDialog
-            if (state.manualEntryDialogVisible && manualEntry != null) {
-                ManualEntryDialog(
-                    state = manualEntry,
-                    onDateChanged = onManualEntryDateChanged,
-                    onStatusSelected = onManualEntryStatusSelected,
-                    onMetricValueChanged = onManualEntryMetricValueChanged,
-                    onConfirm = onConfirmManualEntry,
-                    onDismiss = onManualEntryDialogDismissed,
-                )
-            }
-            if (state.unlinkConfirmLinkId != null) {
-                ConfirmActionDialog(
-                    title = stringResource(R.string.unlink_confirm_title),
-                    message = stringResource(R.string.unlink_confirm_message),
-                    confirmLabel = stringResource(R.string.detail_unlink_action),
-                    onConfirm = onConfirmUnlink,
-                    onDismiss = onUnlinkDialogDismissed,
-                )
-            }
-            val editSession = state.editSessionDialog
-            if (editSession != null) {
-                EditSessionDialog(
-                    state = editSession,
-                    onMetricValueChanged = onEditSessionMetricValueChanged,
-                    onConfirm = onConfirmEditSession,
-                    onDismiss = onEditSessionDialogDismissed,
-                )
-            }
-            if (state.deleteConfirmSessionId != null) {
-                ConfirmActionDialog(
-                    title = stringResource(R.string.delete_session_confirm_title),
-                    message = stringResource(R.string.delete_session_confirm_message),
-                    confirmLabel = stringResource(R.string.session_delete_action),
-                    onConfirm = onConfirmDeleteSession,
-                    onDismiss = onDeleteSessionDialogDismissed,
-                )
-            }
+            ActivityDetailDialogs(
+                state = state,
+                onLinkGoalSelected = onLinkGoalSelected,
+                onLinkMetricSelected = onLinkMetricSelected,
+                onConfirmLinkGoal = onConfirmLinkGoal,
+                onLinkGoalDialogDismissed = onLinkGoalDialogDismissed,
+                onManualEntryDateChanged = onManualEntryDateChanged,
+                onManualEntryStatusSelected = onManualEntryStatusSelected,
+                onManualEntryMetricValueChanged = onManualEntryMetricValueChanged,
+                onConfirmManualEntry = onConfirmManualEntry,
+                onManualEntryDialogDismissed = onManualEntryDialogDismissed,
+                onConfirmUnlink = onConfirmUnlink,
+                onUnlinkDialogDismissed = onUnlinkDialogDismissed,
+                onEditSessionMetricValueChanged = onEditSessionMetricValueChanged,
+                onConfirmEditSession = onConfirmEditSession,
+                onEditSessionDialogDismissed = onEditSessionDialogDismissed,
+                onConfirmDeleteSession = onConfirmDeleteSession,
+                onDeleteSessionDialogDismissed = onDeleteSessionDialogDismissed,
+            )
         }
+    }
+}
+
+@Suppress("LongParameterList") // One callback per dialog field/action - mirrors ActivityDetailContent's own surface.
+@Composable
+private fun ActivityDetailDialogs(
+    state: ActivityDetailUiState.Content,
+    onLinkGoalSelected: (GoalId) -> Unit,
+    onLinkMetricSelected: (MetricId) -> Unit,
+    onConfirmLinkGoal: () -> Unit,
+    onLinkGoalDialogDismissed: () -> Unit,
+    onManualEntryDateChanged: (String) -> Unit,
+    onManualEntryStatusSelected: (ExecutionStatus) -> Unit,
+    onManualEntryMetricValueChanged: (MetricId, String) -> Unit,
+    onConfirmManualEntry: () -> Unit,
+    onManualEntryDialogDismissed: () -> Unit,
+    onConfirmUnlink: () -> Unit,
+    onUnlinkDialogDismissed: () -> Unit,
+    onEditSessionMetricValueChanged: (MetricId, String) -> Unit,
+    onConfirmEditSession: () -> Unit,
+    onEditSessionDialogDismissed: () -> Unit,
+    onConfirmDeleteSession: () -> Unit,
+    onDeleteSessionDialogDismissed: () -> Unit,
+) {
+    if (state.linkGoalDialogVisible) {
+        LinkGoalDialog(
+            state = state.linkGoalDialog,
+            goals = state.goals,
+            metrics = state.metrics,
+            onGoalSelected = onLinkGoalSelected,
+            onMetricSelected = onLinkMetricSelected,
+            onConfirm = onConfirmLinkGoal,
+            onDismiss = onLinkGoalDialogDismissed,
+        )
+    }
+    val manualEntry = state.manualEntryDialog
+    if (state.manualEntryDialogVisible && manualEntry != null) {
+        ManualEntryDialog(
+            state = manualEntry,
+            onDateChanged = onManualEntryDateChanged,
+            onStatusSelected = onManualEntryStatusSelected,
+            onMetricValueChanged = onManualEntryMetricValueChanged,
+            onConfirm = onConfirmManualEntry,
+            onDismiss = onManualEntryDialogDismissed,
+        )
+    }
+    if (state.unlinkConfirmLinkId != null) {
+        ConfirmActionDialog(
+            title = stringResource(R.string.unlink_confirm_title),
+            message = stringResource(R.string.unlink_confirm_message),
+            confirmLabel = stringResource(R.string.detail_unlink_action),
+            onConfirm = onConfirmUnlink,
+            onDismiss = onUnlinkDialogDismissed,
+        )
+    }
+    val editSession = state.editSessionDialog
+    if (editSession != null) {
+        EditSessionDialog(
+            state = editSession,
+            onMetricValueChanged = onEditSessionMetricValueChanged,
+            onConfirm = onConfirmEditSession,
+            onDismiss = onEditSessionDialogDismissed,
+        )
+    }
+    if (state.deleteConfirmSessionId != null) {
+        ConfirmActionDialog(
+            title = stringResource(R.string.delete_session_confirm_title),
+            message = stringResource(R.string.delete_session_confirm_message),
+            confirmLabel = stringResource(R.string.session_delete_action),
+            onConfirm = onConfirmDeleteSession,
+            onDismiss = onDeleteSessionDialogDismissed,
+        )
     }
 }

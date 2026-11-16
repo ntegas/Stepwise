@@ -5,13 +5,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.stepwise.core.common.AppResult
 import com.stepwise.core.common.Clock
+import com.stepwise.core.model.Activity
 import com.stepwise.core.model.ActivityId
 import com.stepwise.core.model.ExecutableKind
 import com.stepwise.core.model.ExecutionStatus
+import com.stepwise.core.model.Goal
+import com.stepwise.core.model.GoalActivityLink
 import com.stepwise.core.model.GoalActivityLinkId
 import com.stepwise.core.model.GoalId
+import com.stepwise.core.model.Metric
 import com.stepwise.core.model.MetricId
 import com.stepwise.core.model.ProgressSourceKind
+import com.stepwise.core.model.Session
 import com.stepwise.core.model.SessionId
 import com.stepwise.core.model.UserId
 import com.stepwise.domain.repository.AuthRepository
@@ -395,3 +400,22 @@ class ActivityDetailViewModel
             }
         }
     }
+
+/**
+ * Bundles [ActivityDetailViewModel]'s own `combine()` of five independent reactive sources into
+ * one value, so [activityDetailStateFrom] takes `(current, loaded)` rather than six separate
+ * parameters - DEV-018 review, architecture reviewer, MEDIUM: the first draft suppressed
+ * detekt's `LongParameterList` on the mapper instead of bundling, even though every one of these
+ * five results was already available as one object (the ViewModel's own private `Loaded` class)
+ * at every call site; promoting that bundle out of `private` removes the suppression entirely
+ * rather than justifying it. Defined here, not in `ActivityDetailStateMapper.kt`, so that file
+ * keeps exactly one top-level class-like declaration and detekt's `MatchingDeclarationName`
+ * doesn't force it to be renamed away from its own established naming convention.
+ */
+internal data class ActivityDetailLoaded(
+    val activity: AppResult<Activity?>,
+    val links: AppResult<List<GoalActivityLink>>,
+    val goals: AppResult<List<Goal>>,
+    val metrics: AppResult<List<Metric>>,
+    val sessions: AppResult<List<Session>>,
+)

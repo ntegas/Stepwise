@@ -7,11 +7,16 @@ import com.stepwise.core.common.AppResult
 import com.stepwise.core.common.Clock
 import com.stepwise.core.model.ExecutableKind
 import com.stepwise.core.model.ExecutionStatus
+import com.stepwise.core.model.Goal
+import com.stepwise.core.model.GoalActivityLink
 import com.stepwise.core.model.GoalActivityLinkId
 import com.stepwise.core.model.GoalId
+import com.stepwise.core.model.Habit
 import com.stepwise.core.model.HabitId
+import com.stepwise.core.model.Metric
 import com.stepwise.core.model.MetricId
 import com.stepwise.core.model.ProgressSourceKind
+import com.stepwise.core.model.Session
 import com.stepwise.core.model.SessionId
 import com.stepwise.core.model.UserId
 import com.stepwise.domain.repository.AuthRepository
@@ -399,3 +404,16 @@ class HabitDetailViewModel
             }
         }
     }
+
+/**
+ * Mirrors [ActivityDetailLoaded] exactly, for [HabitDetailUiState]. Defined here, not in
+ * `HabitDetailStateMapper.kt`, so that file keeps exactly one top-level class-like declaration -
+ * see [ActivityDetailLoaded]'s own KDoc for why.
+ */
+internal data class HabitDetailLoaded(
+    val habit: AppResult<Habit?>,
+    val links: AppResult<List<GoalActivityLink>>,
+    val goals: AppResult<List<Goal>>,
+    val metrics: AppResult<List<Metric>>,
+    val sessions: AppResult<List<Session>>,
+)
