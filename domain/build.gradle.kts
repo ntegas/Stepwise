@@ -17,6 +17,10 @@ kotlin {
 dependencies {
     api(project(":core:model"))
     api(project(":core:common"))
+    // DEV-019: GetGoalProgressUseCase/GetActivityStatsUseCase expose PeriodRange/GoalProgressResult/
+    // ActivityStats directly in their own public signatures, the same "api, not implementation"
+    // reasoning this file's own top comment already states for :core:model/:core:common.
+    api(project(":core:calculation"))
     api(libs.kotlinx.coroutines.core)
 
     // DEV-009: the first Use Cases exist now, and with them the first real need for

@@ -4,6 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.stepwise.core.common.AppResult
 import com.stepwise.core.common.Clock
+import com.stepwise.core.common.minusDays
+import com.stepwise.core.common.plusDays
+import com.stepwise.core.common.startOfWeek
 import com.stepwise.core.model.ExecutionStatus
 import com.stepwise.core.model.PlanAgenda
 import com.stepwise.core.model.TodayItem
@@ -158,21 +161,7 @@ class PlanViewModel
         }
     }
 
+// startOfWeek()/plusDays()/minusDays() moved to :core:common's DateMath.kt at DEV-019, once
+// :core:calculation needed the identical Monday-start week boundary - one shared implementation
+// now, not a second hand-copied one.
 private const val DAYS_IN_WEEK = 7
-
-// 1970-01-01 (epoch day 0) is a Thursday, a fact independent of any kotlinx-datetime API this
-// sandbox cannot locally compile-check - Monday first falls on epoch day 4 (1970-01-05), so a
-// date's own days-since-Monday is ((epochDay - 4) mod 7), normalized into [0, 6] since Kotlin's
-// `%` keeps the dividend's sign. Deliberately not `date.dayOfWeek.ordinal`, to avoid trusting an
-// enum-ordering assumption this sandbox has no way to verify before a real CI run does.
-private const val MONDAY_EPOCH_DAY_MOD = 4
-
-private fun LocalDate.startOfWeek(): LocalDate {
-    val epochDay = toEpochDays()
-    val daysSinceMonday = ((epochDay - MONDAY_EPOCH_DAY_MOD) % DAYS_IN_WEEK + DAYS_IN_WEEK) % DAYS_IN_WEEK
-    return LocalDate.fromEpochDays(epochDay - daysSinceMonday)
-}
-
-private fun LocalDate.plusDays(days: Int): LocalDate = LocalDate.fromEpochDays(toEpochDays() + days)
-
-private fun LocalDate.minusDays(days: Int): LocalDate = LocalDate.fromEpochDays(toEpochDays() - days)

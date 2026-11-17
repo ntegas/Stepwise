@@ -51,3 +51,6 @@ include(":feature:goals")
 include(":feature:plan")
 // DEV-018: the fourth real :feature:* module (Activities/Habits) - same module-boundary rule.
 include(":feature:activities")
+// DEV-019: the Calculation Engine (Goal Progress/Execution Rate/Activity stats) - pure Kotlin,
+// depends only on :core:model/:core:common, per ARCHITECTURE.md §5's own module table.
+include(":core:calculation")

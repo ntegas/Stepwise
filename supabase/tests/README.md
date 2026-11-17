@@ -1,12 +1,19 @@
 # RLS test harness (local Postgres, no Supabase project required)
 
-Two adversarial test scripts live here, both exercising real Postgres Row Level Security — not a
+Three test scripts live here, each exercising real Postgres behavior against this schema — not a
 description of intended behavior, actually-executed tests:
 
 - `rls_adversarial_test.sql` — against `/supabase/migrations/0002_canonical_schema.sql` (DEV-007).
 - `sync_engine_adversarial_test.sql` — against `/supabase/migrations/0003_sync_engine.sql`
   (DEV-008): the `enforce_sync_metadata()` trigger and `conflict_copies` RLS/CHECK constraint.
   Run this one after applying both 0002 and 0003 to the same database.
+- `calculation_views_manual_check.sql` — against `/supabase/migrations/0004_calculation_views.sql`
+  (DEV-019): seeds one representative row per `GoalProgressMode`/`ExecutionStatus` branch and
+  asserts `goal_progress`/`execution_rate`/`activity_stats_lifetime`'s output against
+  `/CALCULATION_ENGINE.md`'s own formulas by hand. Run after applying 0002, 0003, and 0004 to the
+  same database. Not an adversarial/RLS test (no cross-user attempt here) — a correctness check
+  for the calculation formulas themselves, the Kotlin/SQL parity half of DEV-019's own
+  completion criteria.
 
 Both need a Postgres 13+ server (any local install works; last run against Postgres 16) and
 `auth_shim.sql`, a small checked-in shim reproducing just enough of Supabase's `auth` schema for
@@ -41,6 +48,11 @@ psql -d stepwise_rls_test -f rls_adversarial_test.sql
 # Sync engine (DEV-008) — same database, apply 0003 on top first:
 psql -d stepwise_rls_test -v ON_ERROR_STOP=1 -f ../migrations/0003_sync_engine.sql
 psql -d stepwise_rls_test -f sync_engine_adversarial_test.sql
+
+# Calculation views (DEV-019) — same database, apply 0004 on top too. Runs as the migration
+# role, not app_user - this script checks formula correctness, not RLS, and seeds its own user.
+psql -d stepwise_rls_test -v ON_ERROR_STOP=1 -f ../migrations/0004_calculation_views.sql
+psql -d stepwise_rls_test -v ON_ERROR_STOP=1 -f calculation_views_manual_check.sql
 ```
 
 `app_user` must be a plain login role with **no** superuser/BYPASSRLS attribute and must not own
