@@ -23,10 +23,14 @@ class FakeGoalActivityLinkRepository : GoalActivityLinkRepository {
         sourceType: ProgressSourceKind,
         sourceId: String,
     ): Flow<List<GoalActivityLink>> =
-        links.map { all -> all.values.filter { it.sourceType == sourceType && it.sourceId == sourceId } }
+        links.map { all ->
+            all.values.filter {
+                it.sourceType == sourceType && it.sourceId == sourceId && !it.sync.isDeleted
+            }
+        }
 
     override fun observeForGoal(goalId: GoalId): Flow<List<GoalActivityLink>> =
-        links.map { all -> all.values.filter { it.goalId == goalId } }
+        links.map { all -> all.values.filter { it.goalId == goalId && !it.sync.isDeleted } }
 
     override suspend fun getById(id: GoalActivityLinkId): AppResult<GoalActivityLink?> =
         AppResult.Success(links.value[id.value])
