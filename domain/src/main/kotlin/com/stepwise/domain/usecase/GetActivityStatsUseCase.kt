@@ -29,23 +29,21 @@ class GetActivityStatsUseCase(
         sourceType: ExecutableKind,
         sourceId: String,
         period: PeriodRange,
-    ): AppResult<ActivityStats> {
-        val allSessionsResult = getSessionHistoryUseCase.execute(userId, sourceType, sourceId).first()
-        if (allSessionsResult is AppResult.Failure) return allSessionsResult
-        check(allSessionsResult is AppResult.Success)
-        val allSessions = allSessionsResult.value
+    ): AppResult<ActivityStats> =
+        getSessionHistoryUseCase.execute(userId, sourceType, sourceId).first().andThen { allSessions ->
+            inputsFor(allSessions, period).andThen { currentInputs ->
+                previousInputsFor(allSessions, period).map { previousInputs ->
+                    activityStats(currentInputs, previousInputs)
+                }
+            }
+        }
 
-        val currentInputsResult = inputsFor(allSessions, period)
-        if (currentInputsResult is AppResult.Failure) return currentInputsResult
-        check(currentInputsResult is AppResult.Success)
-
-        val previousPeriod = period.previous()
-        val previousInputsResult =
-            if (previousPeriod == null) AppResult.Success(emptyList()) else inputsFor(allSessions, previousPeriod)
-        if (previousInputsResult is AppResult.Failure) return previousInputsResult
-        check(previousInputsResult is AppResult.Success)
-
-        return AppResult.Success(activityStats(currentInputsResult.value, previousInputsResult.value))
+    private suspend fun previousInputsFor(
+        allSessions: List<Session>,
+        period: PeriodRange,
+    ): AppResult<List<ActivityStatsSessionInput>> {
+        val previousPeriod = period.previous() ?: return AppResult.Success(emptyList())
+        return inputsFor(allSessions, previousPeriod)
     }
 
     private suspend fun inputsFor(

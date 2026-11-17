@@ -13,9 +13,9 @@ import com.stepwise.core.common.AppResult
 import com.stepwise.core.model.ExecutableKind
 import com.stepwise.core.model.ExecutionStatus
 import com.stepwise.core.model.Goal
-import com.stepwise.core.model.GoalActivityLink
 import com.stepwise.core.model.GoalId
 import com.stepwise.core.model.GoalProgressMode
+import com.stepwise.core.model.MetricId
 import com.stepwise.core.model.ProgressSourceKind
 import com.stepwise.core.model.Session
 import com.stepwise.core.model.UserId
@@ -68,12 +68,12 @@ class GetGoalProgressUseCase(
         }
 
     private suspend fun metricResult(goal: Goal): AppResult<GoalProgressResult> {
-        val target = goal.targetValue ?: return invalidTarget()
+        val target = goal.targetValue ?: return invalidTargetError()
         return actualValuesForGoal(goal.id).map { metricProgress(target, it) }
     }
 
     private suspend fun targetValueResult(goal: Goal): AppResult<GoalProgressResult> {
-        val target = goal.targetValue ?: return invalidTarget()
+        val target = goal.targetValue ?: return invalidTargetError()
         return mostRecentActualValueForGoal(goal.id).map { targetValueProgress(target, it) }
     }
 
@@ -81,7 +81,7 @@ class GetGoalProgressUseCase(
         goal: Goal,
         period: PeriodRange,
     ): AppResult<GoalProgressResult> {
-        val target = goal.targetValue ?: return invalidTarget()
+        val target = goal.targetValue ?: return invalidTargetError()
         return qualifyingSessionCountForGoal(goal.id, period).map { frequencyProgress(target, it) }
     }
 
@@ -112,40 +112,42 @@ class GetGoalProgressUseCase(
         return AppResult.Success(tasksProgress(completedCount, tasks.size))
     }
 
-    private suspend fun linksForGoal(goalId: GoalId): List<GoalActivityLink> =
+    /**
+     * Every (metricId, Session) pair reachable from this Goal's linked Activities/Habits - the one
+     * shared join the three formula-reading functions below all need, so none of them has to nest
+     * a Session loop inside a Link loop itself (detekt's `NestedBlockDepth` caught that shape once
+     * in this exact function, before it was pulled out).
+     */
+    private suspend fun sessionsForGoal(goalId: GoalId): List<Pair<MetricId, Session>> =
         goalActivityLinkRepository.observeForGoal(goalId).first().filterNot { it.sync.isDeleted }
-
-    private suspend fun sessionsForLink(link: GoalActivityLink): List<Session> =
-        sessionRepository.observeForSource(link.sourceType.toExecutableKind(), link.sourceId).first()
+            .flatMap { link ->
+                sessionRepository.observeForSource(link.sourceType.toExecutableKind(), link.sourceId).first()
+                    .map { session -> link.metricId to session }
+            }
 
     private suspend fun actualValuesForGoal(goalId: GoalId): AppResult<List<Double>> {
         val values = mutableListOf<Double>()
-        for (link in linksForGoal(goalId)) {
-            for (session in sessionsForLink(link)) {
-                val metricValues = sessionRepository.getMetricValuesForSession(session.id)
-                if (metricValues is AppResult.Failure) return metricValues
-                if (metricValues is AppResult.Success) {
-                    metricValues.value.filter { it.metricId == link.metricId }.forEach { values += it.actualValue }
-                }
+        for ((metricId, session) in sessionsForGoal(goalId)) {
+            val metricValues = sessionRepository.getMetricValuesForSession(session.id)
+            if (metricValues is AppResult.Failure) return metricValues
+            if (metricValues is AppResult.Success) {
+                values += metricValues.value.filter { it.metricId == metricId }.map { it.actualValue }
             }
         }
         return AppResult.Success(values)
     }
 
     private suspend fun mostRecentActualValueForGoal(goalId: GoalId): AppResult<Double?> {
-        var mostRecent: Pair<Session, Double>? = null
-        for (link in linksForGoal(goalId)) {
-            for (session in sessionsForLink(link)) {
-                val metricValues = sessionRepository.getMetricValuesForSession(session.id)
-                if (metricValues is AppResult.Failure) return metricValues
-                if (metricValues !is AppResult.Success) continue
-                val matching = metricValues.value.filter { it.metricId == link.metricId }
-                for (metricValue in matching) {
-                    if (mostRecent == null || session.isMoreRecentThan(mostRecent.first)) {
-                        mostRecent = session to metricValue.actualValue
-                    }
-                }
+        val readings = mutableListOf<Pair<Session, Double>>()
+        for ((metricId, session) in sessionsForGoal(goalId)) {
+            val metricValues = sessionRepository.getMetricValuesForSession(session.id)
+            if (metricValues is AppResult.Failure) return metricValues
+            if (metricValues is AppResult.Success) {
+                readings += metricValues.value.filter { it.metricId == metricId }.map { session to it.actualValue }
             }
+        }
+        val mostRecent = readings.fold(null as Pair<Session, Double>?) { latest, candidate ->
+            if (latest == null || candidate.first.isMoreRecentThan(latest.first)) candidate else latest
         }
         return AppResult.Success(mostRecent?.second)
     }
@@ -154,21 +156,17 @@ class GetGoalProgressUseCase(
         goalId: GoalId,
         period: PeriodRange,
     ): AppResult<Int> {
-        var count = 0
-        for (link in linksForGoal(goalId)) {
-            for (session in sessionsForLink(link)) {
-                val qualifies =
-                    session.date in period &&
-                        (session.status == ExecutionStatus.DONE || session.status == ExecutionStatus.PARTIAL)
-                if (qualifies) count++
+        val count =
+            sessionsForGoal(goalId).count { (_, session) ->
+                session.date in period &&
+                    (session.status == ExecutionStatus.DONE || session.status == ExecutionStatus.PARTIAL)
             }
-        }
         return AppResult.Success(count)
     }
-
-    private fun invalidTarget(): AppResult<GoalProgressResult> =
-        AppResult.Failure(AppError.Validation("This mode requires a targetValue", field = "targetValue"))
 }
+
+private fun invalidTargetError(): AppResult<GoalProgressResult> =
+    AppResult.Failure(AppError.Validation("This mode requires a targetValue", field = "targetValue"))
 
 private fun Session.isMoreRecentThan(other: Session): Boolean =
     if (date != other.date) date > other.date else sync.updatedAt > other.sync.updatedAt

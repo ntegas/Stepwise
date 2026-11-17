@@ -3,6 +3,7 @@ package com.stepwise.domain.usecase
 import com.stepwise.core.calculation.PeriodRange
 import com.stepwise.core.common.AppError
 import com.stepwise.core.common.AppResult
+import com.stepwise.core.common.minusDays
 import com.stepwise.core.model.ExecutableKind
 import com.stepwise.core.model.ExecutionStatus
 import com.stepwise.core.model.Goal
@@ -187,7 +188,7 @@ class GetGoalProgressUseCaseTest {
         runTest {
             goalRepository.seed(goal(GoalProgressMode.TARGET_VALUE, targetValue = 70.0))
             seedLink()
-            seedSessionWithMetric(DATE.minus(1), actualValue = 80.0)
+            seedSessionWithMetric(DATE.minusDays(1), actualValue = 80.0)
             seedSessionWithMetric(DATE, actualValue = 63.0)
 
             val result = useCase.execute(USER, GOAL_ID, PeriodRange.allTime(DATE))
@@ -213,7 +214,7 @@ class GetGoalProgressUseCaseTest {
             goalRepository.seed(goal(GoalProgressMode.FREQUENCY, targetValue = 3.0))
             seedLink()
             seedSessionWithMetric(DATE, actualValue = 1.0)
-            seedSessionWithMetric(DATE.minus(10), actualValue = 1.0)
+            seedSessionWithMetric(DATE.minusDays(10), actualValue = 1.0)
             seedSessionWithMetric(DATE, actualValue = 1.0, status = ExecutionStatus.CANCELLED)
 
             val result = useCase.execute(USER, GOAL_ID, PeriodRange.week(DATE))
@@ -298,5 +299,3 @@ class GetGoalProgressUseCaseTest {
             sync = SYNC,
         )
 }
-
-private fun LocalDate.minus(days: Int): LocalDate = LocalDate.fromEpochDays(toEpochDays() - days)
