@@ -10,6 +10,7 @@ import com.stepwise.core.common.startOfYear
 import kotlinx.datetime.LocalDate
 
 private const val DAYS_IN_WEEK = 7
+private const val DECEMBER = 12
 
 /** Which bucketing produced a [PeriodRange] - needed so [PeriodRange.previous] knows the right calendar step. */
 enum class PeriodKind { WEEK, MONTH, YEAR, ALL_TIME }
@@ -65,4 +66,4 @@ data class PeriodRange(
 }
 
 private fun LocalDate.minusOneMonth(): LocalDate =
-    if (monthNumber == 1) LocalDate(year - 1, 12, 1) else LocalDate(year, monthNumber - 1, 1)
+    if (monthNumber == 1) LocalDate(year - 1, DECEMBER, 1) else LocalDate(year, monthNumber - 1, 1)
