@@ -44,6 +44,7 @@ private val OTHER_USER = UserId("user-2")
 private val SYNC = SyncMetadata(updatedAt = NOW, version = 1, deletedAt = null)
 private val GOAL_ID = GoalId("goal-1")
 private val DURATION_METRIC = MetricId("duration_minutes")
+private val DISTANCE_METRIC = MetricId("distance_km")
 private val DATE = LocalDate(2026, 11, 17)
 
 private fun goal(
@@ -85,10 +86,13 @@ class GetGoalProgressUseCaseTest {
             taskRepository,
         )
 
-    private fun seedLink(metricId: MetricId = DURATION_METRIC): GoalActivityLink {
+    private fun seedLink(
+        metricId: MetricId = DURATION_METRIC,
+        linkId: String = "link-1",
+    ): GoalActivityLink {
         val link =
             GoalActivityLink(
-                id = GoalActivityLinkId("link-1"),
+                id = GoalActivityLinkId(linkId),
                 sourceType = ProgressSourceKind.ACTIVITY,
                 sourceId = "activity-1",
                 goalId = GOAL_ID,
@@ -106,6 +110,12 @@ class GetGoalProgressUseCaseTest {
         actualValue: Double,
         status: ExecutionStatus = ExecutionStatus.DONE,
         metricId: MetricId = DURATION_METRIC,
+    ) = seedSessionWithMetrics(date, status, metricId to actualValue)
+
+    private suspend fun seedSessionWithMetrics(
+        date: LocalDate,
+        status: ExecutionStatus = ExecutionStatus.DONE,
+        vararg metricValues: Pair<MetricId, Double>,
     ) {
         val sessionId = SessionId("session-${nextSessionSuffix++}")
         sessionRepository.upsertSessionWithMetricValues(
@@ -120,16 +130,16 @@ class GetGoalProgressUseCaseTest {
                 notes = null,
                 sync = SYNC,
             ),
-            listOf(
+            metricValues.mapIndexed { index, (metricId, actualValue) ->
                 SessionMetricValue(
-                    id = SessionMetricValueId("${sessionId.value}-metric"),
+                    id = SessionMetricValueId("${sessionId.value}-metric-$index"),
                     sessionId = sessionId,
                     metricId = metricId,
                     plannedValue = null,
                     actualValue = actualValue,
                     sync = SYNC,
-                ),
-            ),
+                )
+            },
         )
     }
 
@@ -216,6 +226,52 @@ class GetGoalProgressUseCaseTest {
             seedSessionWithMetric(DATE, actualValue = 1.0)
             seedSessionWithMetric(DATE.minusDays(10), actualValue = 1.0)
             seedSessionWithMetric(DATE, actualValue = 1.0, status = ExecutionStatus.CANCELLED)
+
+            val result = useCase.execute(USER, GOAL_ID, PeriodRange.week(DATE))
+
+            check(result is AppResult.Success)
+            assertEquals(1.0, result.value.currentValue)
+        }
+
+    @Test
+    fun `FREQUENCY mode counts a PARTIAL session, not only DONE`() =
+        runTest {
+            goalRepository.seed(goal(GoalProgressMode.FREQUENCY, targetValue = 3.0))
+            seedLink()
+            seedSessionWithMetric(DATE, actualValue = 1.0, status = ExecutionStatus.PARTIAL)
+
+            val result = useCase.execute(USER, GOAL_ID, PeriodRange.week(DATE))
+
+            check(result is AppResult.Success)
+            assertEquals(1.0, result.value.currentValue)
+        }
+
+    @Test
+    fun `FREQUENCY mode excludes RESCHEDULED, MISSED, and IN_PROGRESS, not only CANCELLED`() =
+        runTest {
+            goalRepository.seed(goal(GoalProgressMode.FREQUENCY, targetValue = 3.0))
+            seedLink()
+            seedSessionWithMetric(DATE, actualValue = 1.0, status = ExecutionStatus.RESCHEDULED)
+            seedSessionWithMetric(DATE, actualValue = 1.0, status = ExecutionStatus.MISSED)
+            seedSessionWithMetric(DATE, actualValue = 1.0, status = ExecutionStatus.IN_PROGRESS)
+
+            val result = useCase.execute(USER, GOAL_ID, PeriodRange.week(DATE))
+
+            check(result is AppResult.Success)
+            assertEquals(0.0, result.value.currentValue)
+        }
+
+    @Test
+    fun `FREQUENCY mode counts a session reachable through two links to the same source once`() =
+        runTest {
+            // A Goal can have two GoalActivityLinks to the same source - one per linked Metric
+            // (goal_activity_links' own uniqueness is on sourceType+sourceId+goalId+metricId, not
+            // sourceType+sourceId+goalId) - and a session linked via both must still count once,
+            // not once per link.
+            goalRepository.seed(goal(GoalProgressMode.FREQUENCY, targetValue = 3.0))
+            seedLink(metricId = DURATION_METRIC, linkId = "link-duration")
+            seedLink(metricId = DISTANCE_METRIC, linkId = "link-distance")
+            seedSessionWithMetrics(DATE, ExecutionStatus.DONE, DURATION_METRIC to 30.0, DISTANCE_METRIC to 5.0)
 
             val result = useCase.execute(USER, GOAL_ID, PeriodRange.week(DATE))
 

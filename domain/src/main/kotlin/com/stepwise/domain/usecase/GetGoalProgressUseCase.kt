@@ -156,11 +156,19 @@ class GetGoalProgressUseCase(
         goalId: GoalId,
         period: PeriodRange,
     ): AppResult<Int> {
+        // distinctBy session id, not just count(): a Goal can have more than one GoalActivityLink
+        // to the same source (one per linked Metric - goal_activity_links' own uniqueness
+        // constraint is on (sourceType, sourceId, goalId, metricId), not (sourceType, sourceId,
+        // goalId)), so sessionsForGoal can hand back the same physical Session twice. Counting it
+        // once per link would inflate FREQUENCY - caught by the DEV-019 logic reviewer.
         val count =
-            sessionsForGoal(goalId).count { (_, session) ->
-                session.date in period &&
-                    (session.status == ExecutionStatus.DONE || session.status == ExecutionStatus.PARTIAL)
-            }
+            sessionsForGoal(goalId)
+                .map { (_, session) -> session }
+                .distinctBy { it.id }
+                .count { session ->
+                    session.date in period &&
+                        (session.status == ExecutionStatus.DONE || session.status == ExecutionStatus.PARTIAL)
+                }
         return AppResult.Success(count)
     }
 }

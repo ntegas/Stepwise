@@ -68,16 +68,42 @@ insert into sessions (id, user_id, source_type, source_id, date, status, client_
   ('00000000-0000-0000-0000-0000000c0005', '11111111-1111-1111-1111-111111111111', 'activity',
    '00000000-0000-0000-0000-0000000a0001', '2026-11-20', 'rescheduled', 'evt-5');
 
+-- A multi-metric DONE Session (duration_minutes + distance_km, the normal case per DATA_MODEL.md
+-- §23 - e.g. Running tracks both), to regression-test the fan-out bug the DEV-019 logic reviewer
+-- caught: joining session_metric_values directly (instead of a pre-aggregated per-session
+-- subquery) fanned this one session's rate_percent out into one row per linked metric, so a
+-- buggy avg() would count it twice as heavily as a single-metric session. Uses its own Activity
+-- (Running, not Boxing) so this Session's duration_minutes value doesn't also feed the METRIC
+-- goal above, which is linked to Boxing's duration_minutes specifically.
+insert into activities (id, user_id, title) values
+  ('00000000-0000-0000-0000-0000000a0002', '11111111-1111-1111-1111-111111111111', 'Running');
+
+insert into sessions (id, user_id, source_type, source_id, date, status, client_event_id) values
+  ('00000000-0000-0000-0000-0000000c0006', '11111111-1111-1111-1111-111111111111', 'activity',
+   '00000000-0000-0000-0000-0000000a0002', '2026-11-17', 'done', 'evt-6'),
+  ('00000000-0000-0000-0000-0000000c0007', '11111111-1111-1111-1111-111111111111', 'activity',
+   '00000000-0000-0000-0000-0000000a0002', '2026-11-18', 'partial', 'evt-7');
+
+insert into session_metric_values (id, session_id, metric_id, planned_value, actual_value)
+select '00000000-0000-0000-0000-0000000d0003'::uuid, '00000000-0000-0000-0000-0000000c0006'::uuid, id, 20, 20
+from metrics where key = 'duration_minutes'
+union all
+select '00000000-0000-0000-0000-0000000d0004'::uuid, '00000000-0000-0000-0000-0000000c0006'::uuid, id, 5, 5
+from metrics where key = 'distance_km'
+union all
+select '00000000-0000-0000-0000-0000000d0005'::uuid, '00000000-0000-0000-0000-0000000c0007'::uuid, id, 60, 30
+from metrics where key = 'duration_minutes';
+
 \echo '--- goal_progress (expect: metric=70, milestones=83.33.., tasks=50) ---'
 select goal_id, progress_mode, current_value from goal_progress order by goal_id;
 
-\echo '--- execution_rate (expect: done=100, partial=50, cancelled=NULL, rescheduled=NULL) ---'
+\echo '--- execution_rate (expect: done=100, partial=50, cancelled=NULL, rescheduled=NULL, Running done(multi-metric)=100, Running partial=50) ---'
 select session_id, status, rate_percent from execution_rate order by session_id;
 
-\echo '--- activity_stats_lifetime for the Boxing activity (expect planned=90, actual=70, session_count=3 [cancelled excluded, rescheduled counted], execution_rate=75 [avg of 100 and 50]) ---'
+\echo '--- activity_stats_lifetime for Running (expect planned=85, actual=55, session_count=2, execution_rate=75 [avg of 100 and 50 - NOT the multi-metric session double-counted, which would give 83.33..]) ---'
 select planned_total, actual_total, session_count, execution_rate
 from activity_stats_lifetime
-where source_id = '00000000-0000-0000-0000-0000000a0001';
+where source_id = '00000000-0000-0000-0000-0000000a0002';
 
 do $$
 declare
@@ -104,8 +130,24 @@ begin
   select rate_percent into v from execution_rate where session_id = '00000000-0000-0000-0000-0000000c0005';
   if v is not null then raise exception 'RESCHEDULED execution_rate should be NULL, got %', v; end if;
 
-  select planned_total into v from activity_stats_lifetime where source_id = '00000000-0000-0000-0000-0000000a0001';
-  if v is distinct from 90.0 then raise exception 'activity_stats_lifetime planned_total mismatch: got %, expected 90.0', v; end if;
+  select rate_percent into v from execution_rate where session_id = '00000000-0000-0000-0000-0000000c0006';
+  if v is distinct from 100.0 then raise exception 'multi-metric DONE execution_rate mismatch: got %, expected 100.0', v; end if;
+
+  select planned_total into v from activity_stats_lifetime where source_id = '00000000-0000-0000-0000-0000000a0002';
+  if v is distinct from 85.0 then raise exception 'Running activity_stats_lifetime planned_total mismatch: got %, expected 85.0', v; end if;
+
+  select actual_total into v from activity_stats_lifetime where source_id = '00000000-0000-0000-0000-0000000a0002';
+  if v is distinct from 55.0 then raise exception 'Running activity_stats_lifetime actual_total mismatch: got %, expected 55.0', v; end if;
+
+  select session_count into v from activity_stats_lifetime where source_id = '00000000-0000-0000-0000-0000000a0002';
+  if v is distinct from 2.0 then raise exception 'Running activity_stats_lifetime session_count mismatch: got %, expected 2', v; end if;
+
+  -- The regression this case exists to catch: a buggy fan-out join would average
+  -- [100, 100, 50] (the multi-metric Session's rate counted twice) = 83.33.., not 75.
+  select execution_rate into v from activity_stats_lifetime where source_id = '00000000-0000-0000-0000-0000000a0002';
+  if v is distinct from 75.0 then
+    raise exception 'Running activity_stats_lifetime execution_rate mismatch (fan-out regression?): got %, expected 75.0', v;
+  end if;
 
   raise notice 'All assertions passed';
 end $$;

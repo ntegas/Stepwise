@@ -53,7 +53,14 @@ fun frequencyProgress(
     return GoalProgressResult(currentValue = currentValue, percent = percentOf(currentValue, targetFrequency))
 }
 
-/** One Milestone's contribution to `GoalProgressMode.MILESTONES`'s weighted formula. */
+/**
+ * One Milestone's contribution to `GoalProgressMode.MILESTONES`'s weighted formula.
+ * [progressPercent] is only meaningful when [isBinary] is `false`; a non-binary Milestone that
+ * hasn't been given a reading yet (`null`) is treated as `0.0` by [milestonesProgress] - a
+ * deliberate, documented choice (CALCULATION_ENGINE.md's own "MILESTONES" entry), not an
+ * unspecified default, since the schema doesn't forbid a non-binary Milestone's progressPercent
+ * from being null.
+ */
 data class MilestoneProgressInput(
     val weight: Double,
     val isBinary: Boolean,

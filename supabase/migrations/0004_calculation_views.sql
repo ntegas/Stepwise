@@ -83,12 +83,17 @@ select
       where gal.goal_id = g.id and gal.deleted_at is null and s.deleted_at is null and smv.deleted_at is null
     )
     when 'target_value' then (
+      -- Tie-break on the Session's own updated_at, not the SessionMetricValue's - matching
+      -- Kotlin's Session.isMoreRecentThan (GetGoalProgressUseCase.kt). The two rows can diverge
+      -- (a metric value corrected without touching its parent Session's updated_at), so this has
+      -- to name one canonical field rather than "the latest sync.updatedAt" staying ambiguous
+      -- between the two tables - caught by the DEV-019 logic reviewer.
       select smv.actual_value
       from goal_activity_links gal
       join sessions s on s.source_type = gal.source_type::text::executable_kind and s.source_id = gal.source_id
       join session_metric_values smv on smv.session_id = s.id and smv.metric_id = gal.metric_id
       where gal.goal_id = g.id and gal.deleted_at is null and s.deleted_at is null and smv.deleted_at is null
-      order by s.date desc, smv.updated_at desc
+      order by s.date desc, s.updated_at desc
       limit 1
     )
     when 'milestones' then (
@@ -129,19 +134,36 @@ where g.deleted_at is null;
 -- CALCULATION_ENGINE.md's "Activity/Habit/Task period statistics". date_trunc('week', ...)
 -- truncates to Monday - the exact same week-start convention :core:common's LocalDate.startOfWeek()
 -- uses, confirmed by inspection rather than assumed.
+--
+-- Joins a pre-aggregated per-session subquery (session_metric_sums below), not the raw
+-- session_metric_values table directly - a session with more than one linked metric (the normal
+-- case per DATA_MODEL.md §23, e.g. a Running session tracking both duration and distance) would
+-- otherwise fan out into one row per metric *before* the join to execution_rate, so avg(rate_percent)
+-- counted that session's single rate N times instead of once, skewing execution_rate/trend toward
+-- multi-metric sessions. Caught by the DEV-019 logic reviewer; planned_total/actual_total were
+-- unaffected (sum() over the fanned-out rows still summed each metric row exactly once either way).
 -- ---------------------------------------------------------------------------
+create or replace view session_metric_sums as
+select
+  session_id,
+  sum(planned_value) as planned_total,
+  sum(actual_value) as actual_total
+from session_metric_values
+where deleted_at is null
+group by session_id;
+
 create or replace view activity_stats_weekly as
 select
   s.user_id,
   s.source_type,
   s.source_id,
   date_trunc('week', s.date)::date as period_start,
-  coalesce(sum(smv.planned_value), 0.0) as planned_total,
-  coalesce(sum(smv.actual_value), 0.0) as actual_total,
+  coalesce(sum(smv.planned_total), 0.0) as planned_total,
+  coalesce(sum(smv.actual_total), 0.0) as actual_total,
   count(distinct s.id) filter (where s.status != 'cancelled') as session_count,
   avg(er.rate_percent) as execution_rate
 from sessions s
-left join session_metric_values smv on smv.session_id = s.id and smv.deleted_at is null
+left join session_metric_sums smv on smv.session_id = s.id
 left join execution_rate er on er.session_id = s.id
 where s.deleted_at is null
 group by s.user_id, s.source_type, s.source_id, date_trunc('week', s.date);
@@ -152,12 +174,12 @@ select
   s.source_type,
   s.source_id,
   date_trunc('month', s.date)::date as period_start,
-  coalesce(sum(smv.planned_value), 0.0) as planned_total,
-  coalesce(sum(smv.actual_value), 0.0) as actual_total,
+  coalesce(sum(smv.planned_total), 0.0) as planned_total,
+  coalesce(sum(smv.actual_total), 0.0) as actual_total,
   count(distinct s.id) filter (where s.status != 'cancelled') as session_count,
   avg(er.rate_percent) as execution_rate
 from sessions s
-left join session_metric_values smv on smv.session_id = s.id and smv.deleted_at is null
+left join session_metric_sums smv on smv.session_id = s.id
 left join execution_rate er on er.session_id = s.id
 where s.deleted_at is null
 group by s.user_id, s.source_type, s.source_id, date_trunc('month', s.date);
@@ -168,12 +190,12 @@ select
   s.source_type,
   s.source_id,
   date_trunc('year', s.date)::date as period_start,
-  coalesce(sum(smv.planned_value), 0.0) as planned_total,
-  coalesce(sum(smv.actual_value), 0.0) as actual_total,
+  coalesce(sum(smv.planned_total), 0.0) as planned_total,
+  coalesce(sum(smv.actual_total), 0.0) as actual_total,
   count(distinct s.id) filter (where s.status != 'cancelled') as session_count,
   avg(er.rate_percent) as execution_rate
 from sessions s
-left join session_metric_values smv on smv.session_id = s.id and smv.deleted_at is null
+left join session_metric_sums smv on smv.session_id = s.id
 left join execution_rate er on er.session_id = s.id
 where s.deleted_at is null
 group by s.user_id, s.source_type, s.source_id, date_trunc('year', s.date);
@@ -183,12 +205,12 @@ select
   s.user_id,
   s.source_type,
   s.source_id,
-  coalesce(sum(smv.planned_value), 0.0) as planned_total,
-  coalesce(sum(smv.actual_value), 0.0) as actual_total,
+  coalesce(sum(smv.planned_total), 0.0) as planned_total,
+  coalesce(sum(smv.actual_total), 0.0) as actual_total,
   count(distinct s.id) filter (where s.status != 'cancelled') as session_count,
   avg(er.rate_percent) as execution_rate
 from sessions s
-left join session_metric_values smv on smv.session_id = s.id and smv.deleted_at is null
+left join session_metric_sums smv on smv.session_id = s.id
 left join execution_rate er on er.session_id = s.id
 where s.deleted_at is null
 group by s.user_id, s.source_type, s.source_id;

@@ -78,6 +78,19 @@ class GoalProgressCalculatorTest {
     }
 
     @Test
+    fun `milestonesProgress treats a non-binary milestone with no reading yet as 0, a deliberate default`() {
+        val milestones =
+            listOf(
+                MilestoneProgressInput(weight = 1.0, isBinary = false, completed = false, progressPercent = null),
+                MilestoneProgressInput(weight = 1.0, isBinary = false, completed = false, progressPercent = 80.0),
+            )
+
+        // (1*0 + 1*80) / 2 = 40 - the null-progressPercent milestone contributes 0, not a NaN
+        // and not silently excluded from the weight denominator.
+        assertEquals(40.0, milestonesProgress(milestones).percent)
+    }
+
+    @Test
     fun `tasksProgress with zero linked tasks is null`() {
         val result = tasksProgress(completedTaskCount = 0, totalTaskCount = 0)
 

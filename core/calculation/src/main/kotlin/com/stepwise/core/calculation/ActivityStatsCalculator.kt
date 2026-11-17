@@ -32,9 +32,10 @@ data class ActivityStats(
  * [currentPeriod]/[previousPeriod] are both already filtered to one source and their own
  * [PeriodRange] by the caller (`:domain`'s `GetActivityStatsUseCase`) - this function only
  * aggregates, never queries. `CANCELLED` Sessions are excluded from [ActivityStats.sessionCount]
- * (matching [executionRate]'s own denominator rule), but still contribute nothing to
- * plannedTotal/actualTotal either way since neither total double-counts a Session that didn't
- * record an actual.
+ * (matching [executionRate]'s own denominator rule) but are NOT excluded from plannedTotal/
+ * actualTotal - CALCULATION_ENGINE.md's "Activity/Habit/Task period statistics" only says to
+ * exclude CANCELLED from the count, and a cancelled Session can still carry a `plannedValue` set
+ * before it was cancelled, which the totals correctly still sum.
  */
 fun activityStats(
     currentPeriod: List<ActivityStatsSessionInput>,

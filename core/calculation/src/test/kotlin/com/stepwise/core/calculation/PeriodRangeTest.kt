@@ -81,6 +81,26 @@ class PeriodRangeTest {
     }
 
     @Test
+    fun `previous month wraps from January back to December of the prior year`() {
+        val range = PeriodRange.month(LocalDate(2026, 1, 15))
+
+        val previous = range.previous()
+
+        assertEquals(LocalDate(2025, 12, 1), previous?.start)
+        assertEquals(LocalDate(2025, 12, 31), previous?.end)
+    }
+
+    @Test
+    fun `previous year is the immediately preceding calendar year`() {
+        val range = PeriodRange.year(LocalDate(2026, 6, 1))
+
+        val previous = range.previous()
+
+        assertEquals(LocalDate(2025, 1, 1), previous?.start)
+        assertEquals(LocalDate(2025, 12, 31), previous?.end)
+    }
+
+    @Test
     fun `allTime has no previous period`() {
         val range = PeriodRange.allTime(LocalDate(2026, 11, 17))
 
